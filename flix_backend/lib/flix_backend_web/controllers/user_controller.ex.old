@@ -1,0 +1,201 @@
+defmodule FlixBackendWeb.UserController do
+  use FlixBackendWeb, :controller
+
+  alias FlixBackend.Data.User
+  alias FlixBackend.Guardian
+  alias FlixBackendWeb.ApiResponse
+  alias FlixBackend.Repo
+
+  action_fallback FlixBackendWeb.FallbackController
+
+  @doc """
+  获取当前用户信息
+  """
+  def current(conn, _params) do
+    case Guardian.Plug.current_resource(conn) do
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(ApiResponse.unauthorized_response())
+      account ->
+        user = User.get_user_by_uid(account.user_id)
+
+        conn
+        |> put_status(:ok)
+        |> json(ApiResponse.success_response("获取当前用户成功", user))
+    end
+  end
+
+  @doc """
+  创建新用户（注册）
+  """
+  def create(conn, user_params) do
+    changeset = User.registration_changeset(%User{}, user_params)
+
+    case Repo.insert(changeset) do
+      {:ok, user} ->
+        # 创建账户并生成token
+        {:ok, token, _claims} = Guardian.encode_and_sign(user)
+
+        conn
+        |> put_status(:created)
+        |> json(ApiResponse.login_success_response(token, %{user_id: user.uid}))
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.validation_error_response(changeset))
+    end
+  end
+
+  @doc """
+  更新用户信息
+  """
+  def update(conn, user_params) do
+    case Guardian.Plug.current_resource(conn) do
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(ApiResponse.unauthorized_response())
+      account ->
+        user = User.get_user_by_uid(account.user_id)
+
+        # 过滤敏感字段，确保只能更新允许的字段
+        allowed_params = Map.take(user_params, ["nickname", "avatar", "bio", "school_id", "campus_id", "department"])
+
+        changeset = User.changeset(user, allowed_params)
+
+        case Repo.update(changeset) do
+          {:ok, updated_user} ->
+            conn
+            |> put_status(:ok)
+            |> json(ApiResponse.success_response("用户信息更新成功", updated_user))
+
+          {:error, changeset} ->
+            conn
+            |> put_status(:unprocessable_entity)
+            |> json(ApiResponse.validation_error_response(changeset))
+        end
+    end
+  end
+
+  @doc """
+  更新用户密码
+  """
+  def update_password(conn, %{"current_password" => current_password, "new_password" => new_password}) do
+    case Guardian.Plug.current_resource(conn) do
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(ApiResponse.unauthorized_response())
+      account ->
+        user = User.get_user_by_uid(account.user_id)
+
+        # 验证当前密码
+        if User.validate_password(user, current_password) do
+          changeset = User.password_changeset(user, %{"password" => new_password})
+
+          case Repo.update(changeset) do
+            {:ok, _updated_user} ->
+              conn
+              |> put_status(:ok)
+              |> json(ApiResponse.success_response("密码更新成功"))
+
+            {:error, changeset} ->
+              conn
+              |> put_status(:unprocessable_entity)
+              |> json(ApiResponse.validation_error_response(changeset))
+          end
+        else
+          conn
+          |> put_status(:unauthorized)
+          |> json(ApiResponse.error_response("当前密码不正确"))
+        end
+    end
+  end
+
+  @doc """
+  获取用户列表（仅管理员可用）
+  """
+  def index(conn, params) do
+    case Guardian.Plug.current_resource(conn) do
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(ApiResponse.unauthorized_response())
+      account ->
+        user = User.get_user_by_uid(account.user_id)
+
+        if user.role == :admin do
+          limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1)
+          offset = Map.get(params, "offset", "0") |> String.to_integer() |> max(0)
+
+          query = User
+          total_count = Repo.aggregate(query, :count, :id)
+
+          users = query
+          |> limit(^limit)
+          |> offset(^offset)
+          |> Repo.all()
+
+          currentPage = div(offset, limit) + 1
+          totalPages = if total_count > 0, do: ceil(total_count / limit) |> trunc(), else: 1
+
+          conn
+          |> put_status(:ok)
+          |> json(%{
+            success: true,
+            message: "获取用户列表成功",
+            data: users,
+            totalCount: total_count,
+            currentPage: currentPage,
+            totalPages: totalPages
+          })
+        else
+          conn
+          |> put_status(:forbidden)
+          |> json(ApiResponse.forbidden_response("没有权限访问此资源"))
+        end
+    end
+  end
+
+  @doc """
+  删除用户（仅管理员可用）
+  """
+  def delete(conn, %{"id" => user_id}) do
+    case Guardian.Plug.current_resource(conn) do
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(ApiResponse.unauthorized_response())
+      account ->
+        admin = User.get_user_by_uid(account.user_id)
+
+        if admin.role == :admin do
+          user = Repo.get(User, user_id)
+
+          if user do
+            case Repo.delete(user) do
+              {:ok, _} ->
+                conn
+                |> put_status(:ok)
+                |> json(ApiResponse.success_response("用户删除成功"))
+
+              {:error, _changeset} ->
+                conn
+                |> put_status(:internal_server_error)
+                |> json(ApiResponse.error_response("删除用户失败"))
+            end
+          else
+            conn
+            |> put_status(:not_found)
+            |> json(ApiResponse.not_found_response("用户不存在"))
+          end
+        else
+          conn
+          |> put_status(:forbidden)
+          |> json(ApiResponse.forbidden_response("没有权限访问此资源"))
+        end
+    end
+  end
+end
