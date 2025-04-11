@@ -1,0 +1,51 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="商品状态图">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 初始状态 -->
+        <mxCell id="start" style="shape=umlState;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#000000;strokeColor=#000000;shape=ellipse;aspect=fixed;perimeter=ellipsePerimeter" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- available -->
+        <mxCell id="available" value="available\n(在售)" style="shape=umlState;fillColor=#FFFFFF;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="200" y="60" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- sold -->
+        <mxCell id="sold" value="sold\n(已售出)" style="shape=umlState;fillColor=#FFFFFF;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="400" y="60" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- deleted -->
+        <mxCell id="deleted" value="deleted\n(已删除)" style="shape=umlState;fillColor=#FFFFFF;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="200" y="200" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 连接: 初始 -> available -->
+        <mxCell id="start_to_available" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="start" target="available">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 连接: available -> sold -->
+        <mxCell id="available_to_sold" value="订单完成" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="available" target="sold">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 连接: available -> deleted -->
+        <mxCell id="available_to_deleted" value="卖家删除" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="available" target="deleted">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 连接: sold -> deleted -->
+        <mxCell id="sold_to_deleted" value="卖家删除" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="sold" target="deleted">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

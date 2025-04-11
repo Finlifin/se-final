@@ -86,6 +86,8 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
                 val product = (productState as Resource.Success<Product>).data
                 BottomActionBar(
                     isFavorited = isFavorited,
+                    isMyProduct = product.sellerId == viewModel.currentUserId,
+                    onEditClick = { navController.navigate("/product/edit/${product.id}") },
                     onFavoriteClick = { viewModel.toggleFavorite() },
                     onContactClick = { navController.navigate("/messages/${product.sellerId}") },
                     onBuyClick = { showPaymentOptions.value = true })

@@ -257,13 +257,14 @@ fun PublishScreen(navController: NavController) {
             OutlinedTextField(
                 value = location,
                 onValueChange = { location = it },
-                label = { Text("交易地点") },
-                placeholder = { Text("请输入交易地点") },
+                label = { Text("所在地") },  // 修改标签名
+                placeholder = { Text("请输入所在地，例如：北京市海淀区") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 leadingIcon = {
-                    Icon(Icons.Default.LocationOn, contentDescription = "地点")
-                })
+                    Icon(Icons.Default.LocationOn, contentDescription = "所在地")
+                }
+            )
 
             // Description
             OutlinedTextField(

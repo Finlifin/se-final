@@ -122,7 +122,9 @@ class ProductRepository(context: Context) {
         condition: String? = null,
         location: String? = null,
         status: ProductStatus? = null,
-        imageUris: List<Uri>? = null
+        imageUris: List<Uri>? = null,
+        tags: List<String>? = null,
+        availableDeliveryMethods: List<String>? = null
     ): Resource<Product> = withContext(Dispatchers.IO) {
         try {
             // 如果有新图片，先上传
@@ -145,7 +147,9 @@ class ProductRepository(context: Context) {
                 condition = condition,
                 location = location,
                 status = status?.name,
-                images = imageUrls
+                images = imageUrls,
+                tags = tags,
+                availableDeliveryMethods = availableDeliveryMethods
             )
             
             productService.updateProduct(productId, request).toResource("商品更新失败")
@@ -157,21 +161,34 @@ class ProductRepository(context: Context) {
     /**
      * 删除商品
      */
-    suspend fun deleteProduct(productId: String): Resource<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun deleteProduct(productId: String): Resource<Unit> = withContext(Dispatchers.IO) {
         productService.deleteProduct(productId).toResource("商品删除失败")
     }
+
+
+    suspend fun isProductFavorite(productId: String): Resource<Boolean> =
+        withContext(Dispatchers.IO) {
+            val response = productService.isProductFavorite(productId).toResource("获取收藏状态失败")
+            if (response is Resource.Success) {
+                Resource.Success(response.data)
+            } else if (response is Resource.Error) {
+                response
+            } else {
+                Resource.Error("获取收藏状态失败")
+            }
+        }
 
     /**
      * 收藏商品
      */
-    suspend fun favoriteProduct(productId: String): Resource<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun favoriteProduct(productId: String): Resource<Unit> = withContext(Dispatchers.IO) {
         productService.favoriteProduct(productId).toResource("收藏商品失败")
     }
 
     /**
      * 取消收藏商品
      */
-    suspend fun unfavoriteProduct(productId: String): Resource<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun unfavoriteProduct(productId: String): Resource<Unit> = withContext(Dispatchers.IO) {
         productService.unfavoriteProduct(productId).toResource("取消收藏失败")
     }
 
@@ -192,46 +209,5 @@ class ProductRepository(context: Context) {
             Resource.Error("获取收藏商品失败")
         }
     }
-
-    /**
-     * 本地模拟获取商品列表
-     */
-    fun getProductsMock(): List<Product> {
-        return listOf()
-    }
-
-    /**
-     * 本地模拟发布商品
-     */
-    fun publishProductMock(
-        sellerId: String,
-        title: String,
-        description: String,
-        price: Double,
-        category: String,
-        condition: String,
-        location: String,
-        imageUris: List<Uri>
-    ): Product {
-        // 模拟图片URL
-        val imageUrls = imageUris.mapIndexed { index, _ ->
-            "https://example.com/images/mock_${UUID.randomUUID()}_$index.jpg"
-        }
-        
-        return Product(
-            id = "p${UUID.randomUUID().toString().substring(0, 8)}",
-            sellerId = sellerId,
-            title = title,
-            description = description,
-            price = price,
-            images = imageUrls,
-            category = category,
-            condition = condition,
-            location = location,
-            postTime = System.currentTimeMillis(),
-            status = ProductStatus.AVAILABLE,
-            viewCount = 0,
-            favoriteCount = 0
-        )
-    }
 }
+

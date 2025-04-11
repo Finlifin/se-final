@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.UserAbstract
@@ -23,6 +22,9 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
     private val userRepository = ProfileRepository(application.applicationContext)
     private val orderRepository = OrderRepository(application.applicationContext)
     private val paymentRepository = PaymentRepository(application.applicationContext)
+
+    val currentUserId = application.applicationContext.getSharedPreferences("flix_prefs", 0)
+        .getString("user_id", null) ?: ""
 
     private val _productState = MutableLiveData<Resource<Product>>()
     val productState: LiveData<Resource<Product>> = _productState
@@ -48,7 +50,7 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
                     checkIfProductIsFavorite(productId)
                 } else {
                     _productState.value = Resource.Error(
-                        (productResponse as Resource.Error).message ?: "Unknown error"
+                        (productResponse as Resource.Error).message
                     )
                 }
             } catch (e: IOException) {
@@ -74,31 +76,56 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
 
     private fun checkIfProductIsFavorite(productId: String) {
         viewModelScope.launch {
-//            val isFavorite = userRepository.isProductFavorite(productId)
-            _isProductFavorite.value = false
+            try {
+                val response = productRepository.isProductFavorite(productId)
+                if (response is Resource.Success) {
+                    Log.d(TAG, "Product favorite status: ${response.data}")
+                    _isProductFavorite.value = response.data
+                } else {
+                    _isProductFavorite.value = false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking favorite status: ${e.message}")
+                _isProductFavorite.value = false
+            }
         }
     }
 
+    // BUG: 这里的收藏状态没有更新
     fun toggleFavorite() {
         val productId = (_productState.value as? Resource.Success)?.data?.id ?: return
         val currentFavoriteStatus = _isProductFavorite.value ?: false
 
         viewModelScope.launch {
+            _isProductFavorite.value = !currentFavoriteStatus  // Optimistic update
             try {
-//                if (currentFavoriteStatus) {
-//                    userRepository.unfavoriteProduct(productId)
-//                } else {
-//                    userRepository.favoriteProduct(productId)
-//                }
-//                // 更新收藏状态
-//                _isProductFavorite.value = !currentFavoriteStatus
+                val result = if (currentFavoriteStatus) {
+                    productRepository.unfavoriteProduct(productId)
+                } else {
+                    productRepository.favoriteProduct(productId)
+                }
+
+                when (result) {
+                    is Resource.Error -> {
+                        _isProductFavorite.value = currentFavoriteStatus  // Revert on error
+                        Log.e(TAG, "Error toggling favorite: ${result.message}")
+                    }
+
+                    is Resource.Success -> {
+                        // State is already updated optimistically
+                    }
+
+                    else -> _isProductFavorite.value =
+                        currentFavoriteStatus  // Revert on unknown state
+                }
             } catch (e: Exception) {
-                // 处理错误，可能显示一个通知给用户
-                Log.e("ProductDetailViewModel", "Error toggling favorite: ${e.message}")
+                _isProductFavorite.value = currentFavoriteStatus  // Revert on exception
+                Log.e(TAG, "Error toggling favorite: ${e.message}")
             }
         }
     }
-    
+
+
     // 创建订单
     fun createOrder(
         productId: String,
@@ -114,7 +141,7 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
                 val createOrderResponse = orderRepository.createOrder(productId)
                 if (createOrderResponse is Resource.Success) {
                     val orderId = createOrderResponse.data.orderId
-                    
+
                     // 第二步：设置支付和配送信息
                     val paymentResponse = paymentRepository.setupPayment(
                         orderId = orderId,
@@ -122,17 +149,17 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
                         deliveryMethod = deliveryMethod,
                         deliveryAddress = address
                     )
-                    
+
                     if (paymentResponse is Resource.Success) {
                         // 支付设置成功，返回订单ID用于跳转到支付确认页面
                         onSuccess(orderId)
                     } else {
                         // 支付设置失败
-                        onError((paymentResponse as Resource.Error).message ?: "设置支付信息失败")
+                        onError((paymentResponse as Resource.Error).message)
                     }
                 } else {
                     // 创建订单失败
-                    onError((createOrderResponse as Resource.Error).message ?: "创建订单失败")
+                    onError((createOrderResponse as Resource.Error).message)
                 }
             } catch (e: Exception) {
                 onError("创建订单失败: ${e.message}")

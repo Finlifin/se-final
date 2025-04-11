@@ -62,8 +62,9 @@ defmodule FlixBackendWeb.ProductController do
 
   # 创建新产品
   def create(conn, params) do
+    account = Guardian.Plug.current_resource(conn)
     product_params = %{
-      seller_id: params["sellerId"],
+      seller_id: account.user_id,
       title: params["title"],
       description: params["description"],
       price: params["price"],
@@ -92,7 +93,7 @@ defmodule FlixBackendWeb.ProductController do
 
   # 更新产品
   def update(conn, %{"id" => id} = params) do
-    current_user = Guardian.Plug.current_resource(conn)
+    account = Guardian.Plug.current_resource(conn)
 
     product_params = %{}
     |> add_param_if_exists(params, "title")
@@ -106,7 +107,7 @@ defmodule FlixBackendWeb.ProductController do
     |> add_param_if_exists(params, "tags")
     |> add_param_if_exists(params, "availableDeliveryMethods")
 
-    case ProductService.update_product(id, product_params, current_user.uid) do
+    case ProductService.update_product(id, product_params, account.user_id) do
       {:ok, product} ->
         conn
         |> put_status(:ok)
@@ -128,9 +129,9 @@ defmodule FlixBackendWeb.ProductController do
 
   # 删除产品
   def delete(conn, %{"id" => id}) do
-    current_user = Guardian.Plug.current_resource(conn)
+    account = Guardian.Plug.current_resource(conn)
 
-    case ProductService.delete_product(id, current_user.uid) do
+    case ProductService.delete_product(id, account.user_id) do
       {:ok, _} ->
         conn
         |> put_status(:ok)
@@ -148,9 +149,9 @@ defmodule FlixBackendWeb.ProductController do
 
   # 收藏产品
   def favorite(conn, %{"id" => id}) do
-    current_user = Guardian.Plug.current_resource(conn)
+    account = Guardian.Plug.current_resource(conn)
 
-    case ProductService.favorite_product(id, current_user.uid) do
+    case ProductService.favorite_product(id, account.user_id) do
       {:ok, _} ->
         conn
         |> put_status(:ok)
@@ -164,13 +165,29 @@ defmodule FlixBackendWeb.ProductController do
 
   # 取消收藏
   def unfavorite(conn, %{"id" => id}) do
-    current_user = Guardian.Plug.current_resource(conn)
+    account = Guardian.Plug.current_resource(conn)
 
-    case ProductService.unfavorite_product(id, current_user.uid) do
+    case ProductService.unfavorite_product(id, account.user_id) do
       {:ok, _} ->
         conn
         |> put_status(:ok)
         |> json(ApiResponse.success_response("取消收藏成功"))
+      {:error, reason} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(ApiResponse.error_response(reason))
+    end
+  end
+
+  # 是否收藏了某件商品
+  def is_favorite(conn, %{"id" => id}) do
+    account = Guardian.Plug.current_resource(conn)
+
+    case ProductService.is_favorite_product?(id, account.user_id) do
+      {:ok, is_favorite} ->
+        conn
+        |> put_status(:ok)
+        |> json(ApiResponse.success_response("查询成功", is_favorite))
       {:error, reason} ->
         conn
         |> put_status(:bad_request)

@@ -39,13 +39,16 @@ interface ProductService {
     ): Response<GenericApiResponse<Product>>
 
     @DELETE("products/{id}")
-    suspend fun deleteProduct(@Path("id") productId: String): Response<GenericApiResponse<Boolean>>
+    suspend fun deleteProduct(@Path("id") productId: String): Response<GenericApiResponse<Unit>>
+
+    @GET("products/{id}/is_favorite")
+    suspend fun isProductFavorite(@Path("id") productId: String): Response<GenericApiResponse<Boolean>>
 
     @POST("products/{id}/favorite")
-    suspend fun favoriteProduct(@Path("id") productId: String): Response<GenericApiResponse<Boolean>>
+    suspend fun favoriteProduct(@Path("id") productId: String): Response<GenericApiResponse<Unit>>
 
     @DELETE("products/{id}/favorite")
-    suspend fun unfavoriteProduct(@Path("id") productId: String): Response<GenericApiResponse<Boolean>>
+    suspend fun unfavoriteProduct(@Path("id") productId: String): Response<GenericApiResponse<Unit>>
 
     @GET("products/favorites")
     suspend fun getFavoriteProducts(
@@ -92,7 +95,9 @@ data class UpdateProductRequest(
     val category: String? = null,
     val condition: String? = null,
     val location: String? = null,
-    val status: String? = null
+    val status: String? = null,
+    val tags: List<String>? = null,
+    val availableDeliveryMethods: List<String>? = null,
 )
 
 /**

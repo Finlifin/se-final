@@ -15,7 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
@@ -39,8 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
-import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.data.UserAbstract
+import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.imageUrl
 
 
@@ -115,14 +116,14 @@ fun DeliveryMethodItem(
 @Composable
 fun BottomActionBar(
     isFavorited: Boolean,
+    isMyProduct: Boolean,
+    onEditClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onContactClick: () -> Unit,
     onBuyClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 8.dp,
-        color = Color.White
+        modifier = Modifier.fillMaxWidth(), shadowElevation = 8.dp, color = Color.White
     ) {
         Row(
             modifier = Modifier
@@ -147,20 +148,37 @@ fun BottomActionBar(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // 联系卖家按钮
-            OutlinedButton(
-                onClick = onContactClick,
-                modifier = Modifier.weight(1f),
-                border = BorderStroke(1.dp, RoseRed),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseRed)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Chat,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("联系卖家")
+
+            if (!isMyProduct) { // 联系卖家按钮
+                OutlinedButton(
+                    onClick = onContactClick,
+                    modifier = Modifier.weight(1f),
+                    border = BorderStroke(1.dp, RoseRed),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseRed)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Chat,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("联系卖家")
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onEditClick,
+                    modifier = Modifier.weight(1f),
+                    border = BorderStroke(1.dp, RoseRed),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseRed)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.NavigateNext,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("编辑商品")
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -191,8 +209,7 @@ fun ProductDetailTopBar(
     onSellerClick: (() -> Unit)? = null
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 4.dp
+        modifier = Modifier.fillMaxWidth(), shadowElevation = 4.dp
     ) {
         Row(
             modifier = Modifier
@@ -202,8 +219,7 @@ fun ProductDetailTopBar(
         ) {
             IconButton(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                    contentDescription = "返回"
+                    imageVector = Icons.AutoMirrored.Default.ArrowBack, contentDescription = "返回"
                 )
             }
 
@@ -216,17 +232,16 @@ fun ProductDetailTopBar(
                         .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            model = seller.avatarUrl?.let { imageUrl(it) }
-                                ?: "https://randomuser.me/api/portraits/lego/1.jpg"
-                        ),
+                    Image(painter = rememberAsyncImagePainter(model = seller.avatarUrl?.let {
+                        imageUrl(
+                            it
+                        )
+                    } ?: "https://randomuser.me/api/portraits/lego/1.jpg"),
                         contentDescription = "卖家头像",
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                        contentScale = ContentScale.Crop)
 
                     Spacer(modifier = Modifier.width(8.dp))
 
@@ -244,8 +259,7 @@ fun ProductDetailTopBar(
 
             IconButton(onClick = onShareClick) {
                 Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "分享"
+                    imageVector = Icons.Default.Share, contentDescription = "分享"
                 )
             }
         }

@@ -61,7 +61,9 @@ defmodule FlixBackend.Data.Product do
       :post_time,
       :status,
       :view_count,
-      :favorite_count
+      :favorite_count,
+      :tags,
+      :available_delivery_methods
     ])
     |> validate_required([
       :seller_id,

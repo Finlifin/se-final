@@ -4,8 +4,9 @@ defmodule FlixBackend.Messaging do
   Provides functions for backend services to send various types of messages.
   """
 
-  alias FlixBackend.Data.Message
+  alias FlixBackend.Data.{Message, Event, Conversation, UserConversation}
   alias FlixBackend.Repo
+  import Ecto.Query
 
   @doc """
   Sends a system notification to a specific user.
@@ -27,13 +28,26 @@ defmodule FlixBackend.Messaging do
   - {:error, changeset} on failure
   """
   def send_system_notification(recipient_id, content_map, reference_id \\ nil) do
+    # 为系统通知创建一个专用的会话ID (如果不存在)
+    conversation_id = "system:notification:#{recipient_id}"
+
+    # 确保系统通知会话存在
+    ensure_system_conversation(conversation_id, "system_notification", [recipient_id])
+
+    # 生成消息参数
     message_params = %{
-      "sender_id" => nil,
-      "receiver_id" => recipient_id,
-      "content" => content_map,
-      "content_type" => :system,
-      "message_type" => :system_notification,
-      "reference_id" => reference_id
+      message_id: Ecto.UUID.generate(),
+      client_message_id: Ecto.UUID.generate(),
+      conversation_id: conversation_id,
+      sender_id: nil,
+      receiver_id: recipient_id,
+      content: content_map,
+      content_type: :system,
+      message_type: :system_notification,
+      reference_id: reference_id,
+      server_timestamp: DateTime.utc_now(),
+      client_timestamp: DateTime.utc_now(),
+      status: :sent
     }
 
     create_and_broadcast_message(message_params)
@@ -68,13 +82,25 @@ defmodule FlixBackend.Messaging do
     # 确定合适的content_type
     content_type = determine_content_type(interaction_type)
 
+    # 为交互消息创建专用的会话ID
+    conversation_id = "interaction:#{recipient_id}"
+
+    # 确保交互消息会话存在
+    ensure_system_conversation(conversation_id, "interaction", [recipient_id])
+
     message_params = %{
-      "sender_id" => sender_id,
-      "receiver_id" => recipient_id,
-      "content" => content,
-      "content_type" => content_type,
-      "message_type" => :interaction,
-      "reference_id" => reference_id
+      message_id: Ecto.UUID.generate(),
+      client_message_id: Ecto.UUID.generate(),
+      conversation_id: conversation_id,
+      sender_id: sender_id,
+      receiver_id: recipient_id,
+      content: content,
+      content_type: content_type,
+      message_type: :interaction,
+      reference_id: reference_id,
+      server_timestamp: DateTime.utc_now(),
+      client_timestamp: DateTime.utc_now(),
+      status: :sent
     }
 
     create_and_broadcast_message(message_params)
@@ -102,13 +128,25 @@ defmodule FlixBackend.Messaging do
   - {:error, changeset} on failure
   """
   def send_system_announcement_to_user(recipient_id, content_map, reference_id \\ nil) do
+    # 为系统公告创建一个专用的会话ID
+    conversation_id = "system:announcement:#{recipient_id}"
+
+    # 确保系统公告会话存在
+    ensure_system_conversation(conversation_id, "system_announcement", [recipient_id])
+
     message_params = %{
-      "sender_id" => nil,
-      "receiver_id" => recipient_id,
-      "content" => content_map,
-      "content_type" => :system,
-      "message_type" => :system_announcement,
-      "reference_id" => reference_id
+      message_id: Ecto.UUID.generate(),
+      client_message_id: Ecto.UUID.generate(),
+      conversation_id: conversation_id,
+      sender_id: nil,
+      receiver_id: recipient_id,
+      content: content_map,
+      content_type: :system,
+      message_type: :system_announcement,
+      reference_id: reference_id,
+      server_timestamp: DateTime.utc_now(),
+      client_timestamp: DateTime.utc_now(),
+      status: :sent
     }
 
     create_and_broadcast_message(message_params)
@@ -143,13 +181,25 @@ defmodule FlixBackend.Messaging do
     # 创建批量插入的参数
     timestamp = DateTime.utc_now()
     multi = Enum.reduce(users, Ecto.Multi.new(), fn user_id, multi ->
+      # 为系统公告创建一个专用的会话ID
+      conversation_id = "system:announcement:#{user_id}"
+
+      # 确保系统公告会话存在
+      ensure_system_conversation(conversation_id, "system_announcement", [user_id])
+
       message_params = %{
+        message_id: Ecto.UUID.generate(),
+        client_message_id: Ecto.UUID.generate(),
+        conversation_id: conversation_id,
         sender_id: nil,
         receiver_id: user_id,
         content: content_map,
         content_type: :system,
         message_type: :system_announcement,
         reference_id: reference_id,
+        server_timestamp: timestamp,
+        client_timestamp: timestamp,
+        status: :sent,
         inserted_at: timestamp,
         updated_at: timestamp
       }
@@ -177,19 +227,76 @@ defmodule FlixBackend.Messaging do
     end
   end
 
+  @doc """
+  发送私信给用户
+
+  ## Parameters
+
+  - sender_id: 发送者ID
+  - receiver_id: 接收者ID
+  - content: 消息内容
+  - content_type: 消息内容类型
+  - reference_id: 可选的关联ID
+
+  ## Returns
+
+  - {:ok, message} 成功
+  - {:error, reason} 失败
+  """
+  def send_private_message(sender_id, receiver_id, content, content_type, reference_id \\ nil) do
+    # 获取或创建私聊会话
+    case Conversation.get_or_create_private_conversation(sender_id, receiver_id) do
+      {:ok, conversation} ->
+        # 创建消息参数
+        message_params = %{
+          message_id: Ecto.UUID.generate(),
+          client_message_id: Ecto.UUID.generate(),
+          conversation_id: conversation.conversation_id,
+          sender_id: sender_id,
+          receiver_id: receiver_id,
+          content: content,
+          content_type: content_type,
+          message_type: :private_message,
+          reference_id: reference_id,
+          server_timestamp: DateTime.utc_now(),
+          client_timestamp: DateTime.utc_now(),
+          status: :sent
+        }
+
+        # 保存消息并广播
+        case create_and_broadcast_message(message_params) do
+          {:ok, message} ->
+            # 更新会话的最后消息信息
+            update_conversation_last_message(conversation, message)
+
+            {:ok, message}
+
+          error -> error
+        end
+
+      error -> error
+    end
+  end
+
   # 私有方法：创建消息并广播
   defp create_and_broadcast_message(params) do
     changeset = Message.changeset(%Message{}, params)
 
     case Repo.insert(changeset) do
       {:ok, message} ->
-        # 仅当有接收者ID时才广播
+        # 仅当有接收者ID时才创建事件和广播
         if message.receiver_id do
+          # 创建事件
+          {:ok, event} = Event.create_new_message_event(message, message.receiver_id)
+
+          # 广播事件
           FlixBackendWeb.Endpoint.broadcast!(
             "user:#{message.receiver_id}",
-            "new_message",
-            %{message: message}
+            "event",
+            event
           )
+
+          # TODO: 如果用户不在线，触发外部推送通知
         end
 
         {:ok, message}
@@ -197,6 +304,49 @@ defmodule FlixBackend.Messaging do
       {:error, changeset} ->
         {:error, changeset}
     end
+  end
+
+  # 私有方法：更新会话的最后一条消息
+  defp update_conversation_last_message(conversation, message) do
+    # 获取消息预览
+    preview = case message.content_type do
+      :text -> Map.get(message.content, "text", "")
+      :image -> "[图片消息]"
+      :audio -> "[语音消息]"
+      :video -> "[视频消息]"
+      :product -> "[商品]" <> Map.get(message.content, "product_name", "")
+      :order -> "[订单]" <> Map.get(message.content, "order_id", "")
+      :comment -> "[评论]" <> Map.get(message.content, "text", "")
+      :like -> "[点赞]"
+      :favorite -> "[收藏]"
+      :system -> Map.get(message.content, "title", "系统消息")
+      _ -> "[消息]"
+    end
+
+    # 更新会话
+    conversation
+    |> Conversation.changeset(%{
+      last_message_id: message.message_id,
+      last_message_content: String.slice(preview, 0, 50),
+      last_message_timestamp: message.server_timestamp,
+      updated_at: DateTime.utc_now()
+    })
+    |> Repo.update()
+
+    # 增加接收者的未读消息计数
+    if message.receiver_id do
+      case Repo.get_by(UserConversation,
+        user_id: message.receiver_id,
+        conversation_id: conversation.conversation_id) do
+        nil -> nil  # 忽略不存在的用户会话关系
+        uc -> UserConversation.increment_unread(uc)
+      end
+    end
+  end
+
+  # 私有方法：确保系统会话存在
+  defp ensure_system_conversation(conversation_id, type, participant_ids) do
+    Conversation.ensure_system_conversation(conversation_id, type, participant_ids)
   end
 
   # 私有方法：根据交互类型确定内容类型
@@ -211,122 +361,31 @@ defmodule FlixBackend.Messaging do
     end
   end
 
-  # 根据需求扩展更多辅助函数
+  @doc """
+  获取用户的会话列表
+
+  ## Parameters
+
+  - user_id: 用户ID
+
+  ## Returns
+
+  会话列表，包括最后消息预览和未读数
+  """
+  def list_conversations(user_id) do
+    # 查询用户的所有会话，按照更新时间降序排序
+    query = from c in Conversation,
+      join: uc in UserConversation,
+      on: c.conversation_id == uc.conversation_id,
+      where: uc.user_id == ^user_id,
+      order_by: [desc: c.updated_at],
+      select: %{
+        conversation: c,
+        unread_count: uc.unread_count,
+        is_pinned: uc.is_pinned,
+        is_muted: uc.is_muted
+      }
+
+    Repo.all(query)
+  end
 end
-
-# # 在 FlixBackend.Orders 模块中
-# def create_order(order_params) do
-#   # 启动事务
-#   Ecto.Multi.new()
-#   |> Ecto.Multi.insert(:order, Order.changeset(%Order{}, order_params))
-#   |> Ecto.Multi.run(:notification, fn repo, %{order: order} ->
-#     # 获取商品信息
-#     product = repo.get!(Product, order.product_id)
-
-#     # 构建消息内容
-#     content = %{
-#       "text" => "您收到一个新订单",
-#       "title" => "新订单通知",
-#       "order_id" => order.id,
-#       "product_id" => order.product_id,
-#       "product_name" => product.name,
-#       "buyer_id" => order.buyer_id,
-#       "amount" => order.amount,
-#       "deep_link" => "app://orders/#{order.id}"
-#     }
-
-#     # 发送互动消息给卖家
-#     FlixBackend.Messaging.send_interaction_message(
-#       product.seller_id,  # 接收者是卖家
-#       :new_order,         # 互动类型
-#       content,            # 消息内容
-#       order.buyer_id,     # 发送者是买家
-#       order.id            # 关联ID是订单ID
-#     )
-#   end)
-#   |> Repo.transaction()
-# end
-
-# # 在 FlixBackend.Comments 模块中
-# def create_reply(reply_params) do
-#   # 启动事务
-#   Ecto.Multi.new()
-#   |> Ecto.Multi.insert(:reply, Comment.changeset(%Comment{}, reply_params))
-#   |> Ecto.Multi.run(:get_parent, fn repo, %{reply: reply} ->
-#     # 获取原始评论
-#     parent_comment = repo.get!(Comment, reply.parent_id)
-#     {:ok, parent_comment}
-#   end)
-#   |> Ecto.Multi.run(:notification, fn _repo, %{reply: reply, get_parent: parent_comment} ->
-#     # 确保不给自己发通知
-#     if reply.user_id != parent_comment.user_id do
-#       # 获取商品信息(假设评论关联了商品)
-#       product = Repo.get!(Product, parent_comment.product_id)
-
-#       # 构建消息内容
-#       content = %{
-#         "text" => "您的评论收到了新回复",
-#         "title" => "评论回复",
-#         "comment_id" => parent_comment.id,
-#         "reply_id" => reply.id,
-#         "product_id" => product.id,
-#         "product_name" => product.name,
-#         "deep_link" => "app://products/#{product.id}/comments/#{parent_comment.id}"
-#       }
-
-#       # 发送互动消息给原评论作者
-#       FlixBackend.Messaging.send_interaction_message(
-#         parent_comment.user_id, # 接收者是原评论作者
-#         :new_comment_reply,     # 互动类型
-#         content,                # 消息内容
-#         reply.user_id,          # 发送者是回复作者
-#         reply.id                # 关联ID是回复ID
-#       )
-#     end
-
-#     {:ok, nil}
-#   end)
-#   |> Repo.transaction()
-# end
-
-# # 公告分发后台任务
-# defmodule FlixBackend.Workers.AnnouncementDistribution do
-#   use Oban.Worker
-
-#   @impl Oban.Worker
-#   def perform(%Oban.Job{args: %{"announcement_id" => id, "batch" => batch, "batch_size" => size}}) do
-#     # 获取公告
-#     announcement = FlixBackend.Announcements.get_announcement!(id)
-
-#     # 获取当前批次的用户
-#     users = FlixBackend.Accounts.get_users_batch(batch, size, announcement.target_criteria)
-
-#     # 为每个用户创建消息并发送
-#     Enum.each(users, fn user ->
-#       FlixBackend.Messaging.send_system_announcement_to_user(
-#         user.id,
-#         announcement.content,
-#         announcement.id
-#       )
-#     end)
-
-#     # 如果还有更多批次，继续创建任务
-#     if more_batches_needed?(batch, size, announcement.target_criteria) do
-#       %{announcement_id: id, batch: batch + 1, batch_size: size}
-#       |> __MODULE__.new()
-#       |> Oban.insert()
-#     end
-
-#     :ok
-#   end
-# end
-
-# # 启动公告分发(在公告创建后调用)
-# def distribute_announcement(announcement) do
-#   batch_size = 100  # 每批处理100个用户
-
-#   # 创建第一个批次任务
-#   %{announcement_id: announcement.id, batch: 1, batch_size: batch_size}
-#   |> FlixBackend.Workers.AnnouncementDistribution.new()
-#   |> Oban.insert()
-# end

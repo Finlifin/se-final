@@ -159,7 +159,7 @@ defmodule FlixBackendWeb.OrderController do
 
                 case Repo.insert(changeset) do
                   {:ok, order} ->
-                    # 可以添加其他逻辑，如通知卖家等
+                    # TODO: 通知卖家等
 
                     conn
                     |> put_status(:created)

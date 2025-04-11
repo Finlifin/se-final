@@ -28,6 +28,7 @@ import fin.phoenix.flix.ui.myprofile.MyPurchasedProductsScreen
 import fin.phoenix.flix.ui.myprofile.MySoldProductsScreen
 import fin.phoenix.flix.ui.myprofile.ProfileEditScreen
 import fin.phoenix.flix.ui.product.ProductDetailScreen
+import fin.phoenix.flix.ui.product.ProductEditScreen
 import fin.phoenix.flix.ui.product.PublishScreen
 import fin.phoenix.flix.ui.profile.UserScreen
 import fin.phoenix.flix.ui.about.AboutScreen
@@ -83,6 +84,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val ctx = this
+
+        // install thread exception handler
+        val defaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            handleUncaughtException(thread, throwable)
+        }
+
         initPhoenixClient()
 
         setContent {
@@ -122,6 +130,11 @@ fun Flix(ctx: Context, intent: Intent?) {
         composable("/product/{productId}") { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId") ?: ""
             ProductDetailScreen(navController = navController, productId = productId)
+        }
+        // Add route for editing products
+        composable("/product/edit/{productId}") { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+            ProductEditScreen(navController = navController, productId = productId)
         }
         composable("/publish") {
             PublishScreen(navController = navController) // 发布商品页

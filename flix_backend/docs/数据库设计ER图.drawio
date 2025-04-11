@@ -1,0 +1,265 @@
+<mxfile host="65bd71144e">
+    <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
+        <mxGraphModel dx="384" dy="345" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="WIyWlLk6GJQsqaUBKTNV-0"/>
+                <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0"/>
+                <mxCell id="account-entity" value="Account" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="40" y="40" width="160" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="account-fields" value="+ id: binary_id&#xa;+ phone_number: string&#xa;+ hashed_password: string&#xa;+ role: string&#xa;+ user_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="account-entity" vertex="1">
+                    <mxGeometry y="26" width="160" height="84" as="geometry"/>
+                </mxCell>
+                <mxCell id="account-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="account-entity" vertex="1">
+                    <mxGeometry y="110" width="160" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="account-methods" value="" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="account-entity" vertex="1">
+                    <mxGeometry y="118" width="160" height="12" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-entity" value="User" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="370" y="40" width="200" height="228" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-fields" value="+ uid: binary_id&#xa;+ phone_number: string&#xa;+ user_name: string&#xa;+ avatar_url: string&#xa;+ addresses: [string]&#xa;+ current_address: string&#xa;+ balance: integer&#xa;+ published_product_ids: [binary_id]&#xa;+ sold_product_ids: [binary_id]&#xa;+ purchased_product_ids: [binary_id]&#xa;+ favorite_product_ids: [binary_id]&#xa;+ school_id: binary_id&#xa;+ campus_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="user-entity" vertex="1">
+                    <mxGeometry y="26" width="200" height="194" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="user-entity" vertex="1">
+                    <mxGeometry y="220" width="200" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="school-entity" value="School" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="40" y="219" width="160" height="88" as="geometry"/>
+                </mxCell>
+                <mxCell id="school-fields" value="+ id: binary_id&#xa;+ name: string&#xa;+ code: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="school-entity" vertex="1">
+                    <mxGeometry y="26" width="160" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="school-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="school-entity" vertex="1">
+                    <mxGeometry y="80" width="160" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="campus-entity" value="Campus" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="40" y="339" width="160" height="98" as="geometry"/>
+                </mxCell>
+                <mxCell id="campus-fields" value="+ id: binary_id&#xa;+ name: string&#xa;+ address: string&#xa;+ school_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="campus-entity" vertex="1">
+                    <mxGeometry y="26" width="160" height="64" as="geometry"/>
+                </mxCell>
+                <mxCell id="campus-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="campus-entity" vertex="1">
+                    <mxGeometry y="90" width="160" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="product-entity" value="Product" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="710" y="40" width="200" height="228" as="geometry"/>
+                </mxCell>
+                <mxCell id="product-fields" value="+ id: binary_id&#xa;+ seller_id: binary_id&#xa;+ title: string&#xa;+ description: string&#xa;+ price: float&#xa;+ images: [string]&#xa;+ category: string&#xa;+ condition: string&#xa;+ location: string&#xa;+ post_time: integer&#xa;+ status: ProductStatus&#xa;+ view_count: integer&#xa;+ favorite_count: integer&#xa;+ tags: [string]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="product-entity" vertex="1">
+                    <mxGeometry y="26" width="200" height="194" as="geometry"/>
+                </mxCell>
+                <mxCell id="product-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="product-entity" vertex="1">
+                    <mxGeometry y="220" width="200" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="order-entity" value="Order" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="710" y="290" width="200" height="218" as="geometry"/>
+                </mxCell>
+                <mxCell id="order-fields" value="+ order_id: binary_id&#xa;+ buyer_id: binary_id&#xa;+ seller_id: binary_id&#xa;+ product_id: binary_id&#xa;+ order_time: integer&#xa;+ price: float&#xa;+ status: OrderStatus&#xa;+ delivery_method: string&#xa;+ delivery_address: string&#xa;+ delivery_time: integer&#xa;+ delivery_fee: float&#xa;+ payment_method: string&#xa;+ payment_time: integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="order-entity" vertex="1">
+                    <mxGeometry y="26" width="200" height="184" as="geometry"/>
+                </mxCell>
+                <mxCell id="order-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="order-entity" vertex="1">
+                    <mxGeometry y="210" width="200" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="message-entity" value="Message" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="370" y="340" width="200" height="238" as="geometry"/>
+                </mxCell>
+                <mxCell id="message-fields" value="+ id: binary_id&#xa;+ client_message_id: binary_id&#xa;+ conversation_id: binary_id&#xa;+ sender_id: binary_id&#xa;+ receiver_id: binary_id&#xa;+ content: [map]&#xa;+ message_type: MessageType&#xa;+ status: MessageStatus&#xa;+ reference_id: binary_id&#xa;+ server_timestamp: utc_datetime&#xa;+ client_timestamp: utc_datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="message-entity" vertex="1">
+                    <mxGeometry y="26" width="200" height="204" as="geometry"/>
+                </mxCell>
+                <mxCell id="message-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="message-entity" vertex="1">
+                    <mxGeometry y="230" width="200" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="conversation-entity" value="Conversation" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="40" y="480" width="200" height="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="conversation-fields" value="+ id: binary_id&#xa;+ conversation_id: string&#xa;+ type: string&#xa;+ participant_ids: [binary_id]&#xa;+ last_message_id: binary_id&#xa;+ last_message_content: string&#xa;+ last_message_timestamp: utc_datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="conversation-entity" vertex="1">
+                    <mxGeometry y="26" width="200" height="144" as="geometry"/>
+                </mxCell>
+                <mxCell id="conversation-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="conversation-entity" vertex="1">
+                    <mxGeometry y="170" width="200" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-conversation-entity" value="UserConversation" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="370" y="620" width="200" height="168" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-conversation-fields" value="+ id: binary_id&#xa;+ user_id: binary_id&#xa;+ conversation_id: string&#xa;+ last_read_message_id: binary_id&#xa;+ unread_count: integer&#xa;+ is_pinned: boolean&#xa;+ is_muted: boolean&#xa;+ draft: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="user-conversation-entity" vertex="1">
+                    <mxGeometry y="26" width="200" height="134" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-conversation-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="user-conversation-entity" vertex="1">
+                    <mxGeometry y="160" width="200" height="8" as="geometry"/>
+                </mxCell>
+                <mxCell id="account-user-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="account-fields" target="user-fields" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="200" y="100" as="sourcePoint"/>
+                        <mxPoint x="280" y="100" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="account-user-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="account-user-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="account-user-relation-text2" value="1" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="account-user-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-product-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="user-fields" target="product-fields" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="630" y="123" as="sourcePoint"/>
+                        <mxPoint x="710" y="123" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="user-product-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="user-product-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-product-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="user-product-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="school-campus-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="school-entity" target="campus-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="120" y="309" as="sourcePoint"/>
+                        <mxPoint x="120" y="339" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="school-campus-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="school-campus-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="school-campus-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="school-campus-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="school-user-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=1;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="school-fields" target="user-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="200" y="250" as="sourcePoint"/>
+                        <mxPoint x="280" y="150" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="240" y="253"/>
+                            <mxPoint x="240" y="170"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="school-user-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="school-user-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="school-user-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="school-user-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="campus-user-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=1;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.9;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="campus-fields" target="user-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="200" y="370" as="sourcePoint"/>
+                        <mxPoint x="280" y="200" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="230" y="358"/>
+                            <mxPoint x="230" y="190"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="campus-user-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="campus-user-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="campus-user-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="campus-user-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-order-buyer-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="user-entity" target="order-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="630" y="100" as="sourcePoint"/>
+                        <mxPoint x="710" y="345" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="660" y="98"/>
+                            <mxPoint x="660" y="345"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="user-order-buyer-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="user-order-buyer-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-order-buyer-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="user-order-buyer-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-order-seller-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="user-entity" target="order-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="630" y="170" as="sourcePoint"/>
+                        <mxPoint x="710" y="400" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="650" y="168"/>
+                            <mxPoint x="650" y="400"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="user-order-seller-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="user-order-seller-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-order-seller-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="user-order-seller-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="product-order-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="product-entity" target="order-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="810" y="270" as="sourcePoint"/>
+                        <mxPoint x="810" y="290" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="product-order-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="product-order-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="product-order-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="product-order-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-message-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="user-entity" target="message-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="470" y="270" as="sourcePoint"/>
+                        <mxPoint x="470" y="310" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="user-message-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="user-message-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-message-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="user-message-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="conversation-message-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="conversation-fields" target="message-fields" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="240" y="525" as="sourcePoint"/>
+                        <mxPoint x="280" y="430" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="260" y="538"/>
+                            <mxPoint x="260" y="430"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="conversation-message-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="conversation-message-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="conversation-message-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="conversation-message-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="conversation-userconversation-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0.998;exitY=0.565;exitDx=0;exitDy=0;exitPerimeter=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="conversation-fields" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="250" y="610" as="sourcePoint"/>
+                        <mxPoint x="390" y="713" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="390" y="587"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="conversation-userconversation-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="conversation-userconversation-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="conversation-userconversation-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="conversation-userconversation-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user-userconversation-relation" value="" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="message-entity" target="user-conversation-entity" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="470" y="600" as="sourcePoint"/>
+                        <mxPoint x="470" y="620" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="user-userconversation-relation-text" value="1" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;" parent="user-userconversation-relation" connectable="0" vertex="1">
+                    <mxGeometry x="-1" relative="1" as="geometry">
+                        <mxPoint x="10" y="12" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="user-userconversation-relation-text2" value="*" style="edgeLabel;resizable=0;html=1;align=right;verticalAlign=top;" parent="user-userconversation-relation" connectable="0" vertex="1">
+                    <mxGeometry x="1" relative="1" as="geometry">
+                        <mxPoint x="40" y="-40" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

@@ -1,8 +1,5 @@
 defmodule FlixBackendWeb.AnnouncementController do
   use FlixBackendWeb, :controller
-  import Ecto.Query, only: [from: 2]
-  alias FlixBackend.Data.Message
-  alias FlixBackend.Guardian
 
   # 获取系统公告列表
   # GET /api/v1/announcements?limit=10&offset=0

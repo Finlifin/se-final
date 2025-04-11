@@ -8,24 +8,30 @@ defmodule FlixBackend.Data.Message do
   @derive {Jason.Encoder,
            only: [
              :id,
+             :client_message_id,
+             :conversation_id,
              :sender_id,
              :receiver_id,
              :content,
-             :content_type,
              :message_type,
              :status,
              :reference_id,
+             :server_timestamp,
+             :client_timestamp,
              :inserted_at,
              :updated_at
            ]}
   schema "messages" do
+    field :client_message_id, :binary_id
+    field :conversation_id, :binary_id
     field :sender_id, :binary_id
     field :receiver_id, :binary_id
-    field :content, :map
-    field :content_type, FlixBackend.Data.MessageContentType
+    field :content, {:array, :map}, default: []
     field :message_type, FlixBackend.Data.MessageType
     field :status, FlixBackend.Data.MessageStatus, default: :unread
     field :reference_id, :binary_id
+    field :server_timestamp, :utc_datetime_usec
+    field :client_timestamp, :utc_datetime_usec
 
     timestamps()
   end
@@ -33,22 +39,24 @@ defmodule FlixBackend.Data.Message do
   def changeset(message, attrs) do
     message
     |> cast(attrs, [
+      :client_message_id,
+      :conversation_id,
       :sender_id,
       :receiver_id,
       :content,
-      :content_type,
       :message_type,
       :status,
       :reference_id,
+      :server_timestamp,
+      :client_timestamp
     ])
     |> validate_required([
-      :receiver_id,
       :content,
-      :content_type,
       :message_type
     ])
   end
 
+  @spec get_messages_for_user(any(), keyword()) :: any()
   def get_messages_for_user(user_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
     offset = Keyword.get(opts, :offset, 0)
@@ -164,5 +172,58 @@ defmodule FlixBackend.Data.Message do
     end
 
     FlixBackend.Repo.all(query)
+  end
+
+  # 获取会话的消息
+  def get_conversation_messages(conversation_id, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+    before_timestamp = Keyword.get(opts, :before_timestamp, nil)
+
+    query = from m in __MODULE__,
+      where: m.conversation_id == ^conversation_id,
+      order_by: [desc: m.server_timestamp],
+      limit: ^limit
+
+    query = if before_timestamp do
+      from m in query, where: m.server_timestamp < ^before_timestamp
+    else
+      query
+    end
+
+    FlixBackend.Repo.all(query)
+  end
+
+  # 撤回消息
+  def withdraw_message(message_id, user_id) do
+    case FlixBackend.Repo.get_by(__MODULE__, message_id: message_id, sender_id: user_id) do
+      nil -> {:error, :not_found}
+      message ->
+        # 检查是否在可撤回时间范围内（例如2分钟）
+        time_diff = DateTime.diff(DateTime.utc_now(), message.server_timestamp, :second)
+
+        if time_diff <= 120 do
+          # 替换内容为占位符
+          withdrawn_content = %{
+            "text" => "此消息已被撤回",
+            "original_type" => Atom.to_string(message.content_type)
+          }
+
+          message
+          |> changeset(%{
+            status: :withdrawn,
+            content: withdrawn_content,
+            content_type: :text,
+            updated_at: DateTime.utc_now()
+          })
+          |> FlixBackend.Repo.update()
+        else
+          {:error, :time_expired}
+        end
+    end
+  end
+
+  # 根据客户端消息ID获取消息
+  def get_by_client_message_id(client_message_id) do
+    FlixBackend.Repo.get_by(__MODULE__, client_message_id: client_message_id)
   end
 end

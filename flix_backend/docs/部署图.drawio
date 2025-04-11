@@ -1,0 +1,145 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="部署图" id="deployment-diagram">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 客户端设备 -->
+        <mxCell id="client_device" value="&lt;&lt;device&gt;&gt;&#xa;客户端设备" style="verticalAlign=top;align=center;shape=cube;size=10;direction=south;fontStyle=0;html=1;boundedLbl=1;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="70" y="40" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="client_app" value="&lt;&lt;component&gt;&gt;&#xa;移动应用" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="client_device">
+          <mxGeometry x="20" y="45" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 应用服务器 -->
+        <mxCell id="app_server" value="&lt;&lt;device&gt;&gt;&#xa;应用服务器" style="verticalAlign=top;align=center;shape=cube;size=10;direction=south;fontStyle=0;html=1;boundedLbl=1;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="300" y="200" width="250" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="web_server" value="&lt;&lt;执行环境&gt;&gt;&#xa;Phoenix Web服务器" style="verticalAlign=top;align=center;shape=folder;fontStyle=0;tabWidth=50;tabHeight=20;html=1;strokeWidth=1;" vertex="1" parent="app_server">
+          <mxGeometry x="30" y="45" width="190" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="api_module" value="&lt;&lt;component&gt;&gt;&#xa;API模块" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="web_server">
+          <mxGeometry x="35" y="40" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="service_module" value="&lt;&lt;component&gt;&gt;&#xa;服务模块" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="web_server">
+          <mxGeometry x="35" y="90" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="websocket_module" value="&lt;&lt;component&gt;&gt;&#xa;WebSocket模块" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="web_server">
+          <mxGeometry x="35" y="140" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- 数据库服务器 -->
+        <mxCell id="db_server" value="&lt;&lt;device&gt;&gt;&#xa;数据库服务器" style="verticalAlign=top;align=center;shape=cube;size=10;direction=south;fontStyle=0;html=1;boundedLbl=1;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="300" y="480" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres" value="&lt;&lt;component&gt;&gt;&#xa;PostgreSQL" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="db_server">
+          <mxGeometry x="20" y="45" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 外部支付系统 -->
+        <mxCell id="payment_system" value="&lt;&lt;device&gt;&gt;&#xa;外部支付系统" style="verticalAlign=top;align=center;shape=cube;size=10;direction=south;fontStyle=0;html=1;boundedLbl=1;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="600" y="40" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="payment_api" value="&lt;&lt;component&gt;&gt;&#xa;支付API" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="payment_system">
+          <mxGeometry x="20" y="45" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 外部推送系统 -->
+        <mxCell id="push_system" value="&lt;&lt;device&gt;&gt;&#xa;外部推送系统" style="verticalAlign=top;align=center;shape=cube;size=10;direction=south;fontStyle=0;html=1;boundedLbl=1;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="600" y="200" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="push_api" value="&lt;&lt;component&gt;&gt;&#xa;推送API" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="push_system">
+          <mxGeometry x="20" y="45" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 外部OSS存储 -->
+        <mxCell id="oss_system" value="&lt;&lt;device&gt;&gt;&#xa;外部OSS存储" style="verticalAlign=top;align=center;shape=cube;size=10;direction=south;fontStyle=0;html=1;boundedLbl=1;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="600" y="360" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="oss_api" value="&lt;&lt;component&gt;&gt;&#xa;存储API" style="html=1;dropTarget=0;strokeWidth=1;" vertex="1" parent="oss_system">
+          <mxGeometry x="20" y="45" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 连接线 -->
+        <!-- 客户端 -> 应用服务器 -->
+        <mxCell id="client_to_server" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;endArrow=open;endSize=12;strokeWidth=1;dashed=1;" edge="1" parent="1" source="client_device" target="app_server">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="client_to_server_label" value="&lt;&lt;protocol&gt;&gt;&#xa;HTTPS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="client_to_server">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 应用服务器 -> 数据库 -->
+        <mxCell id="server_to_db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=open;endSize=12;strokeWidth=1;dashed=1;" edge="1" parent="1" source="app_server" target="db_server">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="server_to_db_label" value="&lt;&lt;protocol&gt;&gt;&#xa;TCP/IP" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="server_to_db">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 应用服务器 -> 支付系统 -->
+        <mxCell id="server_to_payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endSize=12;strokeWidth=1;dashed=1;" edge="1" parent="1" source="app_server" target="payment_system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="server_to_payment_label" value="&lt;&lt;protocol&gt;&gt;&#xa;HTTPS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="server_to_payment">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 应用服务器 -> 推送系统 -->
+        <mxCell id="server_to_push" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endSize=12;strokeWidth=1;dashed=1;" edge="1" parent="1" source="app_server" target="push_system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="server_to_push_label" value="&lt;&lt;protocol&gt;&gt;&#xa;HTTPS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="server_to_push">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 应用服务器 -> OSS系统 -->
+        <mxCell id="server_to_oss" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endSize=12;strokeWidth=1;dashed=1;" edge="1" parent="1" source="app_server" target="oss_system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="server_to_oss_label" value="&lt;&lt;protocol&gt;&gt;&#xa;HTTPS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="server_to_oss">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 客户端 -> 外部支付系统 -->
+        <mxCell id="client_to_payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=open;endSize=12;strokeWidth=1;dashed=1;" edge="1" parent="1" source="client_device" target="payment_system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="client_to_payment_label" value="&lt;&lt;protocol&gt;&gt;&#xa;HTTPS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="client_to_payment">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 推送系统 -> 客户端 -->
+        <mxCell id="push_to_client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;endArrow=open;endSize=12;strokeWidth=1;dashed=1;" edge="1" parent="1" source="push_system" target="client_device">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="550" y="230"/>
+              <mxPoint x="550" y="170"/>
+              <mxPoint x="230" y="170"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="push_to_client_label" value="&lt;&lt;推送&gt;&gt;&#xa;FCM/APNS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="push_to_client">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

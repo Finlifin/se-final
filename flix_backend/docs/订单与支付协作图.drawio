@@ -1,0 +1,75 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="订单与支付协作图">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 参与者 -->
+        <mxCell id="buyer" value="买家" style="shape=umlLifeline;verticalAlign=top;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="100" y="40" width="80" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="system" value="系统" style="shape=umlLifeline;verticalAlign=top;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="250" y="40" width="80" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="payment" value="支付平台" style="shape=umlLifeline;verticalAlign=top;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="400" y="40" width="80" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="seller" value="卖家" style="shape=umlLifeline;verticalAlign=top;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="550" y="40" width="80" height="400" as="geometry" />
+        </mxCell>
+
+        <!-- 买家创建订单 -->
+        <mxCell value="创建订单\n状态: pending" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="buyer" target="system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 买家选择支付方式 -->
+        <mxCell value="选择支付方式\n状态: payment_pending" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="buyer" target="system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 系统请求支付 -->
+        <mxCell value="生成支付订单\n返回支付URL" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="system" target="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 买家支付 -->
+        <mxCell value="跳转支付\n完成支付" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="buyer" target="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 支付平台回调系统 -->
+        <mxCell value="支付成功回调\n状态: paid" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="payment" target="system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 系统通知卖家发货 -->
+        <mxCell value="通知发货" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="system" target="seller">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 卖家发货 -->
+        <mxCell value="确认发货\n状态: shipping" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="seller" target="system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 买家确认收货 -->
+        <mxCell value="确认收货\n状态: completed" style="endArrow=blockThin;endFill=1;" edge="1" parent="1" source="buyer" target="system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 取消订单 -->
+        <mxCell value="取消订单\n状态: cancelled" style="endArrow=blockThin;endFill=1;dashed=1;" edge="1" parent="1" source="buyer" target="system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 卖家退款 -->
+        <mxCell value="发起退款\n状态: refunded" style="endArrow=blockThin;endFill=1;dashed=1;" edge="1" parent="1" source="seller" target="system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

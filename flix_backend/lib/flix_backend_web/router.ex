@@ -86,6 +86,7 @@ defmodule FlixBackendWeb.Router do
       delete "/:id", ProductController, :delete
       post "/:id/favorite", ProductController, :favorite
       delete "/:id/favorite", ProductController, :unfavorite
+      get "/:id/is_favorite", ProductController, :is_favorite
       get "/favorites", ProductController, :favorites
     end
 

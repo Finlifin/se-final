@@ -133,7 +133,10 @@ defmodule FlixBackend.ProductService do
   def delete_product(id, user_id) do
     with {:ok, product} <- get_product_by_id(id),
          true <- product.seller_id == user_id do
-      Repo.delete(product)
+      # 更新状态为deleted
+      product
+      |> Product.changeset(%{status: :deleted})
+      |> Repo.update()
     else
       {:error, _} -> {:error, :not_found}
       false -> {:error, :unauthorized}
@@ -184,6 +187,24 @@ defmodule FlixBackend.ProductService do
         user
         |> User.changeset(%{favorite_product_ids: favorite_product_ids})
         |> Repo.update()
+      end
+    else
+      nil -> {:error, "用户不存在"}
+    end
+  end
+
+  @doc """
+  是否收藏了产品
+
+  - product_id: 产品ID
+  - user_id: 用户ID
+  """
+  def is_favorite_product?(product_id, user_id) do
+    with user = %User{} <- Repo.get(User, user_id) do
+      if Enum.member?(user.favorite_product_ids || [], product_id) do
+        {:ok, true}
+      else
+        {:ok, false}
       end
     else
       nil -> {:error, "用户不存在"}

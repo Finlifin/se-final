@@ -58,6 +58,7 @@ fun PaymentOptionsBottomSheet(
 
     val deliveryMethods = product.availableDeliveryMethods.map { methodId ->
         when (methodId) {
+            // "express", "pickup", "self_delivery", "courier"
             "express" -> DeliveryMethod(
                 "express",
                 "快递配送",
@@ -66,11 +67,17 @@ fun PaymentOptionsBottomSheet(
             )
 
             "pickup" -> DeliveryMethod("pickup", "自提", R.drawable.walk_svgrepo_com, 0.0f)
-            "same_day" -> DeliveryMethod(
-                "same_day",
-                "当日达",
+            "self_delivery" -> DeliveryMethod(
+                "self_delivery",
+                "商家配送",
                 R.drawable.fast_delivery_svgrepo_com,
-                15.0f
+                0.0f
+            )
+            "courier" -> DeliveryMethod(
+                "courier",
+                "骑手配送",
+                R.drawable.walk_svgrepo_com,
+                5.0f
             )
 
             else -> DeliveryMethod(methodId, methodId, R.drawable.ic_launcher_foreground, 0.0f)
