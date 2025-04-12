@@ -17,14 +17,14 @@ Flix API是符合OpenAPI规范的RESTful API，为客户端提供数据访问和
 ### 获取令牌
 
 ```
-POST /api/auth/login
+POST /api/v1/auth/login
 ```
 
 请求体:
 ```json
 {
   "phone": "11451419191",
-  "password": "password123"
+  "password": "__hashed_password__"
 }
 ```
 
@@ -98,37 +98,6 @@ Authorization: Bearer eyJhbG...
 
 ### 用户认证
 
-#### 注册
-
-```
-POST /api/auth/register
-```
-
-请求体:
-```json
-{
-  "phone": "11451419191",
-  "code": "123456",
-  "password": "password123",
-  "username": "张三"
-}
-```
-
-响应:
-```json
-{
-  "success": true,
-  "data": {
-    "token": "eyJhbG...",
-    "user": {
-      "id": "12345",
-      "username": "张三",
-      "phone": "11451419191"
-    }
-  }
-}
-```
-
 #### 发送验证码
 
 ```
@@ -158,7 +127,7 @@ POST /api/auth/verify_code
 #### 获取当前用户资料
 
 ```
-GET /api/profile
+GET /api/v1/profile
 ```
 
 响应:
@@ -181,7 +150,7 @@ GET /api/profile
 #### 更新用户资料
 
 ```
-PUT /api/profile
+PUT /api/v1/profile
 ```
 
 请求体:
@@ -209,7 +178,7 @@ PUT /api/profile
 #### 获取其他用户资料
 
 ```
-GET /api/users/{id}
+GET /api/v1/users/{id}
 ```
 
 响应:
@@ -233,11 +202,11 @@ GET /api/users/{id}
 #### 获取商品列表
 
 ```
-GET /api/products
+GET /api/v1/products
 ```
 
 查询参数:
-- `page`: 页码 (默认 1)
+- `offset`: 页码 (默认 1)
 - `limit`: 每页数量 (默认 20)
 - `category`: 商品分类
 - `search`: 搜索关键词
@@ -285,7 +254,7 @@ GET /api/products
 #### 获取单个商品
 
 ```
-GET /api/products/{id}
+GET /api/v1/products/{id}
 ```
 
 响应:
@@ -318,7 +287,7 @@ GET /api/products/{id}
 #### 创建商品
 
 ```
-POST /api/products
+POST /api/v1/products
 ```
 
 请求体:
@@ -361,7 +330,7 @@ POST /api/products
 #### 更新商品
 
 ```
-PUT /api/products/{id}
+PUT /api/v1/products/{id}
 ```
 
 请求体:
@@ -390,7 +359,7 @@ PUT /api/products/{id}
 #### 删除商品
 
 ```
-DELETE /api/products/{id}
+DELETE /api/v1/products/{id}
 ```
 
 响应:
@@ -408,7 +377,7 @@ DELETE /api/products/{id}
 #### 添加收藏
 
 ```
-POST /api/favorites
+POST /api/v1/favorites
 ```
 
 请求体:
@@ -433,7 +402,7 @@ POST /api/favorites
 #### 获取收藏列表
 
 ```
-GET /api/favorites
+GET /api/v1/favorites
 ```
 
 响应:
@@ -466,7 +435,7 @@ GET /api/favorites
 #### 删除收藏
 
 ```
-DELETE /api/favorites/{product_id}
+DELETE /api/v1/favorites/{product_id}
 ```
 
 响应:
@@ -484,7 +453,7 @@ DELETE /api/favorites/{product_id}
 #### 创建订单
 
 ```
-POST /api/orders
+POST /api/v1/orders
 ```
 
 请求体:
@@ -527,11 +496,11 @@ POST /api/orders
 #### 获取订单列表
 
 ```
-GET /api/orders
+GET /api/v1/orders
 ```
 
 查询参数:
-- `page`: 页码
+- `offset`: 页码
 - `limit`: 每页数量
 - `role`: 角色 (buyer, seller)
 - `status`: 订单状态
@@ -571,7 +540,7 @@ GET /api/orders
 #### 获取订单详情
 
 ```
-GET /api/orders/{id}
+GET /api/v1/orders/{id}
 ```
 
 响应:
@@ -615,7 +584,7 @@ GET /api/orders/{id}
 #### 更新订单状态
 
 ```
-PUT /api/orders/{id}/status
+PUT /api/v1/orders/{id}/status
 ```
 
 请求体:
@@ -642,7 +611,7 @@ PUT /api/orders/{id}/status
 #### 创建支付
 
 ```
-POST /api/payments
+POST /api/v1/payments
 ```
 
 请求体:
@@ -672,7 +641,7 @@ POST /api/payments
 #### 获取支付状态
 
 ```
-GET /api/payments/{id}
+GET /api/v1/payments/{id}
 ```
 
 响应:
@@ -695,7 +664,7 @@ GET /api/payments/{id}
 #### 获取会话列表
 
 ```
-GET /api/conversations
+GET /api/v1/conversations
 ```
 
 查询参数:
@@ -728,7 +697,7 @@ GET /api/conversations
 #### 获取消息列表
 
 ```
-GET /api/conversations/{id}/messages
+GET /api/v1/conversations/{id}/messages
 ```
 
 查询参数:
@@ -774,7 +743,7 @@ GET /api/conversations/{id}/messages
 #### 发送消息
 
 ```
-POST /api/conversations/{id}/messages
+POST /api/v1/conversations/{id}/messages
 ```
 
 请求体:
@@ -803,7 +772,7 @@ POST /api/conversations/{id}/messages
 #### 标记为已读
 
 ```
-PUT /api/conversations/{id}/read
+PUT /api/v1/conversations/{id}/read
 ```
 
 响应:
@@ -819,7 +788,7 @@ PUT /api/conversations/{id}/read
 #### 获取未读消息计数
 
 ```
-GET /api/messages/unread_counts
+GET /api/v1/messages/unread_counts
 ```
 
 响应:
@@ -840,7 +809,7 @@ GET /api/messages/unread_counts
 #### 上传图片
 
 ```
-POST /api/upload/image
+POST IMAGE_URL/api/v1/upload/image
 ```
 
 请求体:
