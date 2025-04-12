@@ -1,0 +1,66 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.1.1 Chrome/132.0.6834.210 Electron/34.5.0 Safari/537.36" version="26.1.1">
+  <diagram name="订单状态图" id="0">
+    <mxGraphModel dx="1154" dy="605" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" style="shape=umlState;fillColor=#000000;strokeColor=#000000;shape=ellipse;aspect=fixed;perimeter=ellipsePerimeter" parent="1" vertex="1">
+          <mxGeometry x="80" y="80" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="pending" value="pending&#xa;(已创建)" style="shape=umlState" parent="1" vertex="1">
+          <mxGeometry x="160" y="60" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="payment_pending" value="payment_pending&#xa;(待支付)" style="shape=umlState" parent="1" vertex="1">
+          <mxGeometry x="390" y="60" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="paid" value="paid&#xa;(已支付)" style="shape=umlState" parent="1" vertex="1">
+          <mxGeometry x="650" y="60" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="shipping" value="shipping&#xa;(已发货)" style="shape=umlState" parent="1" vertex="1">
+          <mxGeometry x="920" y="60" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="completed" value="completed&#xa;(已完成)" style="shape=umlState" parent="1" vertex="1">
+          <mxGeometry x="1170" y="60" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="cancelled" value="cancelled&#xa;(已取消)" style="shape=umlState" parent="1" vertex="1">
+          <mxGeometry x="400" y="310" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="refunded" value="refunded&#xa;(已退款)" style="shape=umlState" parent="1" vertex="1">
+          <mxGeometry x="920" y="200" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="2" style="endArrow=blockThin;endFill=1;" parent="1" source="start" target="pending" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="选择支付方式" style="endArrow=blockThin;endFill=1;" parent="1" source="pending" target="payment_pending" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="支付成功" style="endArrow=blockThin;endFill=1;" parent="1" source="payment_pending" target="paid" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="卖家发货" style="endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="paid" target="shipping" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="860" y="90" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="买家确认收货" style="endArrow=blockThin;endFill=1;" parent="1" source="shipping" target="completed" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="买家/卖家取消" style="endArrow=blockThin;endFill=1;" parent="1" source="pending" target="cancelled" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="买家/卖家取消" style="endArrow=blockThin;endFill=1;" parent="1" source="payment_pending" target="cancelled" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="卖家取消" style="endArrow=blockThin;endFill=1;" parent="1" source="paid" target="cancelled" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="卖家退款" style="endArrow=blockThin;endFill=1;" parent="1" source="paid" target="refunded" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="卖家退款" style="endArrow=blockThin;endFill=1;" parent="1" source="shipping" target="refunded" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

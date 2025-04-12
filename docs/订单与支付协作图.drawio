@@ -1,0 +1,93 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.1.1 Chrome/132.0.6834.210 Electron/34.5.0 Safari/537.36" version="26.1.1">
+  <diagram name="订单与支付协作图" id="0">
+    <mxGraphModel dx="1154" dy="605" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="buyer" value="买家" style="shape=umlLifeline;verticalAlign=top;startSize=30;" parent="1" vertex="1">
+          <mxGeometry x="20" y="40" width="80" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="system" value="系统" style="shape=umlLifeline;verticalAlign=top;startSize=30;" parent="1" vertex="1">
+          <mxGeometry x="270" y="40" width="80" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="seller" value="卖家" style="shape=umlLifeline;verticalAlign=top;startSize=30;" parent="1" vertex="1">
+          <mxGeometry x="770" y="40" width="80" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-1" value="创建订单&#xa;状态: pending" style="endArrow=blockThin;endFill=1;" parent="1" edge="1">
+          <mxGeometry x="-0.0518" relative="1" as="geometry">
+            <mxPoint x="60" y="120" as="sourcePoint" />
+            <mxPoint x="310" y="120" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-2" value="选择支付方式&#xa;状态: payment_pending" style="endArrow=blockThin;endFill=1;entryX=0.504;entryY=0.558;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" edge="1">
+          <mxGeometry x="0.055" y="2" relative="1" as="geometry">
+            <mxPoint x="60" y="191" as="sourcePoint" />
+            <mxPoint x="310.32000000000005" y="191.20000000000005" as="targetPoint" />
+            <Array as="points" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-3" value="生成支付订单&#xa;返回支付URL" style="endArrow=blockThin;endFill=1;exitX=0.52;exitY=0.739;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" edge="1">
+          <mxGeometry x="0.042" relative="1" as="geometry">
+            <mxPoint x="310.9999999999999" y="149.99999999999991" as="sourcePoint" />
+            <mxPoint x="539.4" y="150.4" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-4" value="跳转支付&#xa;完成支付" style="endArrow=blockThin;endFill=1;entryX=0.457;entryY=0.575;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="312" y="220" as="sourcePoint" />
+            <mxPoint x="538.5600000000002" y="220" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-5" value="支付成功回调&#xa;状态: paid" style="endArrow=blockThin;endFill=1;entryX=0.586;entryY=0.473;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.469;exitY=0.464;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" target="buyer" edge="1">
+          <mxGeometry x="0.0415" relative="1" as="geometry">
+            <mxPoint x="537.04" y="248.4799999999999" as="sourcePoint" />
+            <mxPoint x="59.999999999999886" y="271.5199999999999" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-6" value="通知发货" style="endArrow=blockThin;endFill=1;entryX=0.407;entryY=0.615;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.545;exitY=0.647;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" target="seller" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="309.9999999999999" y="310.00000000000006" as="sourcePoint" />
+            <mxPoint x="802.4" y="312.00000000000006" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-7" value="确认发货&#xa;状态: shipping" style="endArrow=blockThin;endFill=1;entryX=0.513;entryY=0.69;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.485;exitY=0.723;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" target="system" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="802.8" y="339.99999999999994" as="sourcePoint" />
+            <mxPoint x="540" y="341.6000000000001" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-8" value="确认收货&#xa;状态: completed" style="endArrow=blockThin;endFill=1;exitX=0.507;exitY=0.368;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.54;entryY=0.776;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" edge="1">
+          <mxGeometry x="-0.0308" relative="1" as="geometry">
+            <mxPoint x="60.559999999999945" y="369.99999999999994" as="sourcePoint" />
+            <mxPoint x="313.20000000000005" y="370.4" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-9" value="取消订单&#xa;状态: cancelled" style="endArrow=blockThin;endFill=1;dashed=1;entryX=0.508;entryY=0.677;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.487;exitY=0.672;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" edge="1">
+          <mxGeometry x="0.0522" y="2" relative="1" as="geometry">
+            <mxPoint x="58.960000000000036" y="410.00000000000006" as="sourcePoint" />
+            <mxPoint x="310.6400000000001" y="412.00000000000006" as="targetPoint" />
+            <Array as="points" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mh6BFrxs7SryYx65bQgb-10" value="发起退款&#xa;状态: refunded" style="endArrow=blockThin;endFill=1;dashed=1;exitX=0.446;exitY=0.906;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.464;entryY=0.907;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="payment" target="buyer" edge="1">
+          <mxGeometry x="-0.0138" relative="1" as="geometry">
+            <mxPoint x="807.52" y="443.96000000000015" as="sourcePoint" />
+            <mxPoint x="540" y="439.9999999999999" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="payment" value="支付平台" style="shape=umlLifeline;verticalAlign=top;startSize=30;" parent="1" vertex="1">
+          <mxGeometry x="500" y="40" width="80" height="440" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
