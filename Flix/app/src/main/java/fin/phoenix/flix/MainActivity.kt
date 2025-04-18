@@ -8,38 +8,36 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.NavType
+import fin.phoenix.flix.api.ConnectionState
 import fin.phoenix.flix.api.PhoenixMessageClient
+import fin.phoenix.flix.ui.about.AboutScreen
 import fin.phoenix.flix.ui.home.HomeScreen
 import fin.phoenix.flix.ui.login.SignInSignUpScreen
 import fin.phoenix.flix.ui.message.ChatScreen
 import fin.phoenix.flix.ui.message.MessageCenterScreen
-import fin.phoenix.flix.ui.message.MessageViewModel.ConnectionState
+import fin.phoenix.flix.ui.message.SystemNotificationScreen
 import fin.phoenix.flix.ui.myprofile.MyProductsScreen
 import fin.phoenix.flix.ui.myprofile.MyProfileContent
 import fin.phoenix.flix.ui.myprofile.MyPurchasedProductsScreen
 import fin.phoenix.flix.ui.myprofile.MySoldProductsScreen
 import fin.phoenix.flix.ui.myprofile.ProfileEditScreen
+import fin.phoenix.flix.ui.orders.OrderDetailScreen
+import fin.phoenix.flix.ui.orders.OrderListScreen
+import fin.phoenix.flix.ui.payment.PaymentConfirmScreen
+import fin.phoenix.flix.ui.privacy.PrivacyPolicyScreen
 import fin.phoenix.flix.ui.product.ProductDetailScreen
 import fin.phoenix.flix.ui.product.ProductEditScreen
 import fin.phoenix.flix.ui.product.PublishScreen
 import fin.phoenix.flix.ui.profile.UserScreen
-import fin.phoenix.flix.ui.about.AboutScreen
-import fin.phoenix.flix.ui.privacy.PrivacyPolicyScreen
 import fin.phoenix.flix.ui.settings.SettingsScreen
-import fin.phoenix.flix.ui.payment.PaymentConfirmScreen
-import fin.phoenix.flix.ui.orders.OrderDetailScreen
-import fin.phoenix.flix.ui.orders.OrderListScreen
 import fin.phoenix.flix.ui.theme.FlixTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -54,30 +52,72 @@ class MainActivity : AppCompatActivity() {
 
     private fun initPhoenixClient() {
         val sharedPrefs = this.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
-        val channelName = "user:" + sharedPrefs.getString("user_id", "")
+        val userId = sharedPrefs.getString("user_id", "")
         val token = sharedPrefs.getString("auth_token", null)
-        val storeToken = sharedPrefs.getString("auth_token", null)
 
-        PhoenixMessageClient.instance = PhoenixMessageClient()
-        if (!storeToken.isNullOrEmpty()) {
-            if (PhoenixMessageClient.instance.connect(storeToken)) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val joinResult = PhoenixMessageClient.instance.joinChannel(
-                        "user:${
-                            sharedPrefs.getString(
-                                "user_id",
-                                ""
-                            )
-                        }",
-                        token!!
-                    )
-                    Log.d(TAG, "加入频道结果: $joinResult")
+        if (!token.isNullOrEmpty() && !userId.isNullOrEmpty()) {
+            // 配置WebSocket URL（如果需要）
+            // PhoenixMessageClient.instance.configureUrl("ws://your-server-url/socket/websocket")
+
+            // 连接WebSocket服务器
+            PhoenixMessageClient.instance.connect(token, userId)
+
+            // 监听连接状态变化
+            lifecycleScope.launch {
+                PhoenixMessageClient.instance.connectionState.collectLatest { state ->
+                    when (state) {
+                        ConnectionState.CONNECTED -> {
+                            Log.d(TAG, "WebSocket连接成功")
+                            // 连接成功后加入用户频道
+                            PhoenixMessageClient.instance.joinUserChannel().onSuccess {
+                                    Log.d(TAG, "成功加入用户频道")
+                                    // 启用自动同步消息
+                                    PhoenixMessageClient.instance.enableAutoSync()
+                                }.onFailure { error ->
+                                    Log.e(TAG, "加入用户频道失败: ${error.message}")
+                                }
+                        }
+
+                        ConnectionState.CONNECTION_ERROR -> {
+                            Log.e(TAG, "WebSocket连接错误")
+                        }
+
+                        ConnectionState.DISCONNECTED -> {
+                            Log.d(TAG, "WebSocket已断开连接")
+                        }
+
+                        ConnectionState.CONNECTING -> {
+                            Log.d(TAG, "WebSocket正在连接...")
+                        }
+
+                        ConnectionState.RECONNECTING -> {
+                            Log.d(TAG, "WebSocket正在重连...")
+                        }
+                    }
                 }
-            } else {
-                Toast.makeText(this, "Phoenix Channel连接失败", Toast.LENGTH_SHORT).show()
+            }
+
+            // 监听WebSocket错误
+            lifecycleScope.launch {
+                PhoenixMessageClient.instance.errors.collect { error ->
+                    Log.e(TAG, "WebSocket错误: ${error.code} - ${error.message}")
+                    Toast.makeText(
+                        this@MainActivity,
+                        "消息连接错误: ${error.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            // 监听未读消息计数
+            lifecycleScope.launch {
+                PhoenixMessageClient.instance.unreadCounts.collect { counts ->
+                    Log.d(TAG, "未读消息: 共${counts.total}条")
+                    // 可以在这里更新UI上的未读消息角标
+                }
             }
         } else {
-            Log.e(TAG, "未找到存储的token，跳过连接")
+            Log.w(TAG, "未找到用户ID或token，跳过WebSocket连接")
         }
     }
 
@@ -98,6 +138,13 @@ class MainActivity : AppCompatActivity() {
                 Flix(ctx, intent)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 在活动销毁时断开WebSocket连接
+        // 如果你希望即使应用在后台也保持连接，可以考虑使用Service
+        PhoenixMessageClient.instance.disconnect()
     }
 }
 
@@ -145,7 +192,7 @@ fun Flix(ctx: Context, intent: Intent?) {
         }
         // Add new routes for MyProfile functionality
         composable("/my_profile") {
-            if(currentUserId.isNullOrEmpty()) {
+            if (currentUserId.isNullOrEmpty()) {
                 Log.d("NavController", "User ID is null or empty, navigating to login")
                 Toast.makeText(ctx, "请先登录", Toast.LENGTH_SHORT).show()
                 navController.navigate("/login")
@@ -153,7 +200,7 @@ fun Flix(ctx: Context, intent: Intent?) {
             MyProfileContent(navController = navController, userId = currentUserId!!)
         }
         composable("/my_profile/my_products") {
-            if(currentUserId.isNullOrEmpty()) {
+            if (currentUserId.isNullOrEmpty()) {
                 Log.d("NavController", "User ID is null or empty, navigating to login")
                 Toast.makeText(ctx, "请先登录", Toast.LENGTH_SHORT).show()
                 navController.navigate("/login")
@@ -161,7 +208,7 @@ fun Flix(ctx: Context, intent: Intent?) {
             MyProductsScreen(navController = navController, userId = currentUserId!!)
         }
         composable("/my_profile/sold_products") {
-            if(currentUserId.isNullOrEmpty()) {
+            if (currentUserId.isNullOrEmpty()) {
                 Log.d("NavController", "User ID is null or empty, navigating to login")
                 Toast.makeText(ctx, "请先登录", Toast.LENGTH_SHORT).show()
                 navController.navigate("/login")
@@ -169,7 +216,7 @@ fun Flix(ctx: Context, intent: Intent?) {
             MySoldProductsScreen(navController = navController, userId = currentUserId!!)
         }
         composable("/my_profile/purchased_products") {
-            if(currentUserId.isNullOrEmpty()) {
+            if (currentUserId.isNullOrEmpty()) {
                 Log.d("NavController", "User ID is null or empty, navigating to login")
                 Toast.makeText(ctx, "请先登录", Toast.LENGTH_SHORT).show()
                 navController.navigate("/login")
@@ -186,6 +233,25 @@ fun Flix(ctx: Context, intent: Intent?) {
             ChatScreen(navController = navController, partnerUserId = targetUserId)
         }
 
+        // 添加系统通知路由
+        composable("/notifications/system") {
+            SystemNotificationScreen(
+                navController = navController, conversationId = "system_notification"
+            )
+        }
+
+        // 添加系统公告路由
+        composable("/notifications/announcement") {
+            SystemNotificationScreen(
+                navController = navController, conversationId = "system_announcement"
+            )
+        }
+
+        // 添加互动消息路由
+        composable("/notifications/interaction") {
+            SystemNotificationScreen(navController = navController, conversationId = "interaction")
+        }
+
         composable("/settings") {
             SettingsScreen(navController)
         }
@@ -199,7 +265,7 @@ fun Flix(ctx: Context, intent: Intent?) {
         }
 
         composable("/my_profile/edit") {
-            if(currentUserId.isNullOrEmpty()) {
+            if (currentUserId.isNullOrEmpty()) {
                 Log.d("NavController", "User ID is null or empty, navigating to login")
                 Toast.makeText(ctx, "请先登录", Toast.LENGTH_SHORT).show()
                 navController.navigate("/login")

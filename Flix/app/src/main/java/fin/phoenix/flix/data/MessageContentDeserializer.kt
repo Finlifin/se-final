@@ -3,39 +3,79 @@ package fin.phoenix.flix.data
 import com.google.gson.*
 import java.lang.reflect.Type
 
-/**
- * Custom deserializer for MessageContent interface
- * This class handles proper deserialization of different message content types
- */
-class MessageContentDeserializer : JsonDeserializer<MessageContent> {
+class MessageContentDeserializer : JsonDeserializer<MessageContentItem> {
     override fun deserialize(
         json: JsonElement,
         typeOfT: Type,
         context: JsonDeserializationContext
-    ): MessageContent {
+    ): MessageContentItem {
         val jsonObject = json.asJsonObject
-        
-        // First check if there's an explicit content_type field in the parent object
-        // If not, determine the type based on available fields in the content
-        return when {
-            // Text message detection
-            jsonObject.has("text") && (jsonObject.has("item_id") || jsonObject.has("image_urls")) -> 
-                context.deserialize<TextMessageContent>(json, TextMessageContent::class.java)
-            
-            // System notification detection
-            jsonObject.has("text") && jsonObject.has("title") && !jsonObject.has("item_id") && 
-                    !jsonObject.has("interaction_type") -> 
-                context.deserialize<SystemNotificationContent>(json, SystemNotificationContent::class.java)
-            
-            // System announcement - if needed to distinguish from notification based on some criteria
-            // For now it will follow the same pattern as notification
-            
-            // Interaction message detection
-            jsonObject.has("interaction_type") -> 
-                context.deserialize<InteractionMessageContent>(json, InteractionMessageContent::class.java)
-            
-            // Default to text message if we can't determine the type
-            else -> context.deserialize<TextMessageContent>(json, TextMessageContent::class.java)
+        val contentType = jsonObject.get("type").asString
+        val payload = jsonObject.get("payload")
+
+        return when (contentType) {
+            // 普通文本消息
+            "text" -> MessageContentItem(
+                type = contentType,
+                payload = payload.asString
+            )
+
+            // 系统通知
+            "notification" -> {
+                val payloadObj = context.deserialize<SystemNotificationPayload>(
+                    payload,
+                    SystemNotificationPayload::class.java
+                )
+                MessageContentItem(type = contentType, payload = payloadObj)
+            }
+
+            // 系统公告
+            "announcement" -> {
+                val payloadObj = context.deserialize<SystemAnnouncementPayload>(
+                    payload,
+                    SystemAnnouncementPayload::class.java
+                )
+                MessageContentItem(type = contentType, payload = payloadObj)
+            }
+
+            // 互动消息
+            "interaction" -> {
+                val payloadObj = context.deserialize<InteractionPayload>(
+                    payload,
+                    InteractionPayload::class.java
+                )
+                MessageContentItem(type = contentType, payload = payloadObj)
+            }
+
+            // 图片消息
+            "image" -> MessageContentItem(
+                type = contentType,
+                payload = payload.asString
+            )
+
+            // 商品信息
+            "product" -> {
+                val payloadObj = context.deserialize<ProductPayload>(
+                    payload,
+                    ProductPayload::class.java
+                )
+                MessageContentItem(type = contentType, payload = payloadObj)
+            }
+
+            // 订单信息
+            "order" -> {
+                val payloadObj = context.deserialize<OrderPayload>(
+                    payload,
+                    OrderPayload::class.java
+                )
+                MessageContentItem(type = contentType, payload = payloadObj)
+            }
+
+            // 未知类型,保持原始JSON
+            else -> MessageContentItem(
+                type = contentType,
+                payload = payload.toString()
+            )
         }
     }
 }

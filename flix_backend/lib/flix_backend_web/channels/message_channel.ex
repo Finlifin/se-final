@@ -33,6 +33,7 @@ defmodule FlixBackendWeb.MessageChannel do
   # 处理同步请求
   def handle_in("sync", %{"last_sync_timestamp" => last_sync_timestamp}, socket) do
     user_id = socket.assigns.user_id
+    IO.inspect(user_id, label: "User ID")
 
     # 解析时间戳
     timestamp = case DateTime.from_iso8601(last_sync_timestamp) do
@@ -58,7 +59,7 @@ defmodule FlixBackendWeb.MessageChannel do
   end
 
   # 发送消息
-  def handle_in("send_message", payload, socket) do
+  def handle_in("send_private_message", payload, socket) do
     user_id = socket.assigns.user_id
 
     # 确保有必要的参数
@@ -320,6 +321,7 @@ defmodule FlixBackendWeb.MessageChannel do
 
   # 获取用户的会话列表
   def handle_in("get_conversations", params, socket) do
+    IO.puts "Fetching conversations for user: #{socket.assigns.user_id}"
     user_id = socket.assigns.user_id
     limit = Map.get(params, "limit", 20)
 
@@ -339,7 +341,7 @@ defmodule FlixBackendWeb.MessageChannel do
 
     conversations = Repo.all(query)
 
-    {:reply, {:ok, %{conversations: conversations}}, socket}
+    {:reply, {:ok, conversations}, socket}
   end
 
   # 辅助函数：创建并广播事件

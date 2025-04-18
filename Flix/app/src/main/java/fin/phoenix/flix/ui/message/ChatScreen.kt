@@ -1,297 +1,362 @@
 package fin.phoenix.flix.ui.message
 
-import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import fin.phoenix.flix.api.ConnectionState
+import fin.phoenix.flix.data.ContentTypes
 import fin.phoenix.flix.data.Message
-import fin.phoenix.flix.data.MessageTypes
+import fin.phoenix.flix.data.MessageContentItem
+import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.ui.colors.RoseRed
-import fin.phoenix.flix.ui.message.components.ReceiverMessageBubble
-import fin.phoenix.flix.ui.message.components.SenderMessageBubble
-import fin.phoenix.flix.ui.message.components.SystemMessageItem
-import fin.phoenix.flix.util.Resource
+import fin.phoenix.flix.util.formatTime
+import fin.phoenix.flix.util.imageUrl
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(navController: NavController, partnerUserId: String) {
+fun ChatScreen(
+    navController: NavController, partnerUserId: String
+) {
     val context = LocalContext.current
-    val viewModel: MessageViewModel = viewModel(
-        factory = MessageViewModelFactory(context)
-    )
-
-    // 当前聊天状态
-    val messagesState by viewModel.messagesState.collectAsState()
-    val sendMessageState by viewModel.sendMessageState.collectAsState()
-
-    var messageText by remember { mutableStateOf("") }
-
-    // 滚动状态
+    val viewModel: MessageViewModel = viewModel()
+    val chatState by viewModel.chatState.collectAsState()
+    val connectionState by viewModel.connectionState.collectAsState()
+    var message by remember { mutableStateOf("") }
+    var showImagePicker by remember { mutableStateOf(false) }
+    var showWithdrawDialog by remember { mutableStateOf<Message?>(null) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    val keyboardController = LocalSoftwareKeyboardController.current
+    val currentUser by UserManager.getInstance(context).currentUser.collectAsState()
 
-    // 加载与特定用户的消息历史
+    // 图片选择器
+//    val imagePicker = rememberLauncherForActivityResult(
+//        contract = ActivityResultContracts.GetContent()
+//    ) { uri: Uri? ->
+//        uri?.let {
+//            viewModel.sendMessage(
+//                conversationId = partnerUserId,
+//                content = listOf(MessageContentItem("image", it.toString()))
+//            )
+//            showImagePicker = false
+//        }
+//    }
+
+    // 加载会话信息
     LaunchedEffect(partnerUserId) {
-        Toast.makeText(context, "加载与用户 $partnerUserId 的消息", Toast.LENGTH_SHORT).show()
-        viewModel.loadMessages(partnerUserId)
+        viewModel.loadChat(partnerUserId)
     }
 
-// 观察消息发送状态
-    LaunchedEffect(sendMessageState) {
-        when (sendMessageState) {
-            is Resource.Success -> {
-                messageText = ""
-                viewModel.clearSendMessageState()
+    Scaffold(topBar = {
+        TopAppBar(title = {
+            Column {
+                Text(currentUser?.userName ?: "用户")
+                if (connectionState != ConnectionState.CONNECTED) {
+                    Text(
+                        text = when (connectionState) {
+                            ConnectionState.CONNECTING -> "正在连接..."
+                            ConnectionState.DISCONNECTED -> "连接已断开"
+                            ConnectionState.CONNECTION_ERROR -> "连接失败"
+                            else -> ""
+                        }, fontSize = 12.sp, color = Color.Gray
+                    )
+                }
+            }
+        }, navigationIcon = {
+            IconButton(onClick = { navController.navigateUp() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            }
+        })
+    }, bottomBar = {
+        Surface(
+            modifier = Modifier.fillMaxWidth(), tonalElevation = 3.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+//                    IconButton(onClick = { imagePicker.launch("image/*") }) {
+//                        Icon(Icons.Default.Image, contentDescription = "发送图片")
+//                    }
 
-                // 滚动到底部
-                coroutineScope.launch {
-                    val messageCount = (messagesState as? Resource.Success)?.data?.size ?: 0
-                    if (messageCount > 0) {
-                        listState.scrollToItem(messageCount - 1)
+                TextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("输入消息...") },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        disabledContainerColor = Color.White,
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = {
+                        if (message.isNotBlank()) {
+                            viewModel.sendMessage(
+                                sender = currentUser!!.uid,
+                                conversationId = partnerUserId,
+                                content = listOf(MessageContentItem(ContentTypes.TEXT, message))
+                            )
+                            message = ""
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        }
+                    })
+                )
+
+                IconButton(
+                    onClick = {
+                        if (message.isNotBlank()) {
+                            viewModel.sendMessage(
+                                sender = currentUser!!.uid,
+                                conversationId = partnerUserId,
+                                content = listOf(MessageContentItem(ContentTypes.TEXT, message))
+                            )
+                            message = ""
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        }
+                    }) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+                }
+            }
+        }
+    }) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(Color(0xFFF5F5F5))
+        ) {
+            when (val state = chatState) {
+                is MessageViewModel.ChatState.Loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center), color = RoseRed
+                    )
+                }
+
+                is MessageViewModel.ChatState.Success -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        reverseLayout = true,
+                        state = listState,
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.messages) { message ->
+                            MessageItem(
+                                message = message,
+                                isOutgoing = message.senderId == currentUser?.uid,
+                                onWithdrawClick = { showWithdrawDialog = message })
+                        }
+                    }
+
+                    // 显示错误提示
+                    state.error?.let { error ->
+                        Snackbar(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .align(Alignment.BottomCenter),
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ) {
+                            Text(error)
+                        }
+                    }
+                }
+
+                is MessageViewModel.ChatState.Error -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = state.message, color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.loadChat(partnerUserId) },
+                            colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+                        ) {
+                            Text("重试")
+                        }
                     }
                 }
             }
+        }
 
-            is Resource.Error -> {
-                // 显示错误提示
-                Toast.makeText(
-                    context,
-                    "发送失败: ${(sendMessageState as Resource.Error).message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-                viewModel.clearSendMessageState()
-            }
-
-            else -> {} // 处理加载状态或空状态
+        // 撤回消息确认对话框
+        showWithdrawDialog?.let { message ->
+            AlertDialog(
+                onDismissRequest = { showWithdrawDialog = null },
+                title = { Text("撤回消息") },
+                text = { Text("确定要撤回这条消息吗？") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.withdrawMessage(message.id)
+                            showWithdrawDialog = null
+                        }) {
+                        Text("撤回")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showWithdrawDialog = null }) {
+                        Text("取消")
+                    }
+                })
         }
     }
+}
 
-    // 在离开页面时清除当前聊天状态
-    DisposableEffect(key1 = Unit) {
-        onDispose {
-            viewModel.clearCurrentChat()
-        }
-    }
+@Composable
+fun MessageItem(
+    message: Message, isOutgoing: Boolean, onWithdrawClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start
+    ) {
+        // 时间戳
+        Text(
+            text = formatTime(message.serverTimestamp ?: message.clientTimestamp),
+            fontSize = 12.sp,
+            color = Color.Gray,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
 
-    // 聊天伙伴的名称
-    var partnerName by remember { mutableStateOf("") }
-
-    // 当消息加载成功时，更新伙伴名称
-    LaunchedEffect(messagesState) {
-        if (messagesState is Resource.Success) {
-            val messages = (messagesState as Resource.Success<List<Message>>).data
-            if (messages.isNotEmpty()) {
-                messages.firstOrNull { it.senderId == partnerUserId && it.sender != null }?.let {
-                    partnerName = it.sender?.userName ?: "wtf"
-                }
-            }
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                Text(
-                    text = partnerName.ifEmpty { "聊天" })
-            }, navigationIcon = {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
-                    )
-                }
-            }, colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.White
+        Row(
+            verticalAlignment = Alignment.Top, modifier = Modifier.padding(
+                start = if (isOutgoing) 64.dp else 0.dp, end = if (isOutgoing) 0.dp else 64.dp
             )
-            )
-        }) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(Color(0xFFF5F5F5))
         ) {
-            // 消息列表
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+            if (!isOutgoing) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        // TODO
+                        .data(imageUrl(message.sender)).crossfade(true).build(),
+                    contentDescription = "头像",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color.LightGray),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            Surface(
+                shape = RoundedCornerShape(
+                    topStart = if (isOutgoing) 8.dp else 0.dp,
+                    topEnd = if (isOutgoing) 0.dp else 8.dp,
+                    bottomStart = 8.dp,
+                    bottomEnd = 8.dp
+                ), color = if (isOutgoing) RoseRed else Color.White
             ) {
-                when (val state = messagesState) {
-                    is Resource.Loading -> {
-                        // 加载状态
-                        Box(
-                            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                Column(
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    for (content in message.content) {
+                        when (content.type) {
+                            "text" -> {
+                                Text(
+                                    text = content.payload as String,
+                                    color = if (isOutgoing) Color.White else Color.Black
+                                )
+                            }
+
+                            "image" -> {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(content.payload).crossfade(true).build(),
+                                    contentDescription = "图片消息",
+                                    modifier = Modifier
+                                        .size(200.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+
+                            else -> {
+                                Text(
+                                    text = "[不支持的消息类型]",
+                                    color = Color.Gray,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    if (message.status == "withdrawn") {
+                        Text(
+                            text = "消息已撤回",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    } else if (message.errorMessage != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
                         ) {
-                            CircularProgressIndicator(
-                                color = RoseRed, modifier = Modifier.size(48.dp)
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "发送失败",
+                                tint = Color.Red,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "发送失败，点击重试", color = Color.Red, fontSize = 12.sp
                             )
                         }
                     }
-
-                    is Resource.Error -> {
-                        // 错误状态
-                        Box(
-                            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "加载失败",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.Gray
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = state.message,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    }
-
-                    is Resource.Success -> {
-                        val messages = state.data
-
-                        if (messages.isEmpty()) {
-                            // 空数据状态
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "开始聊天吧",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = Color.Gray,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        } else {
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
-                                reverseLayout = false
-                            ) {
-                                items(messages) { message ->
-                                    when {
-                                        message.messageType == MessageTypes.SYSTEM_NOTIFICATION -> {
-                                            SystemMessageItem(message = message)
-                                        }
-
-                                        message.senderId == partnerUserId -> {
-                                            ReceiverMessageBubble(message = message)
-                                        }
-
-                                        else -> {
-                                            SenderMessageBubble(message = message)
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 初始滚动到底部
-                            LaunchedEffect(messages.size) {
-                                if (messages.isNotEmpty()) {
-                                    listState.scrollToItem(messages.size - 1)
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
-            // 消息输入区域
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .navigationBarsPadding()
-                    .imePadding(), verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 消息输入框
-                OutlinedTextField(
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    placeholder = { Text("输入消息...") },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp),
-                    maxLines = 4,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = RoseRed,
-                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f)
-                    )
-                )
-
-                // 发送按钮
+            if (isOutgoing && message.status != "withdrawn") {
+                Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
-                    onClick = {
-                        if (messageText.isNotBlank()) {
-                            viewModel.sendMessage(partnerUserId, messageText)
-                            keyboardController?.hide()
-                        }
-                    }, modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = if (messageText.isBlank()) Color.Gray.copy(alpha = 0.3f) else RoseRed,
-                            shape = MaterialTheme.shapes.medium
-                        )
+                    onClick = onWithdrawClick, modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "发送",
-                        tint = Color.White
+                        Icons.AutoMirrored.Filled.Undo,
+                        contentDescription = "撤回消息",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

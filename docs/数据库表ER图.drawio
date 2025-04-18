@@ -1,0 +1,297 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.1.1 Chrome/132.0.6834.210 Electron/34.5.0 Safari/537.36" version="26.1.1">
+  <diagram id="er-diagram" name="数据库表ER图">
+    <mxGraphModel dx="1894" dy="1001" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Account Table -->
+        <mxCell id="account-table" value="Account" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="40" y="40" width="200" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="account-pk" value="PK id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="account-table" vertex="1">
+          <mxGeometry y="26" width="200" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="account-fk-user" value="FK user_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="account-table" vertex="1">
+          <mxGeometry y="52" width="200" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="account-fields" value="phone_number: string&#xa;hashed_password: string&#xa;role: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="account-table" vertex="1">
+          <mxGeometry y="78" width="200" height="72" as="geometry" />
+        </mxCell>
+
+        <!-- User Table -->
+        <mxCell id="user-table" value="User" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="370" y="40" width="240" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="user-pk" value="PK uid: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="user-table" vertex="1">
+          <mxGeometry y="26" width="240" height="26" as="geometry" />
+        </mxCell>
+         <mxCell id="user-fk-school" value="FK school_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="user-table" vertex="1">
+          <mxGeometry y="52" width="240" height="26" as="geometry" />
+        </mxCell>
+         <mxCell id="user-fk-campus" value="FK campus_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="user-table" vertex="1">
+          <mxGeometry y="78" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="user-fields" value="phone_number: string&#xa;user_name: string&#xa;avatar_url: string&#xa;addresses: text (json array)&#xa;current_address: string&#xa;balance: integer&#xa;published_product_ids: text (json array)&#xa;sold_product_ids: text (json array)&#xa;purchased_product_ids: text (json array)&#xa;favorite_product_ids: text (json array)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="user-table" vertex="1">
+          <mxGeometry y="104" width="240" height="246" as="geometry" />
+        </mxCell>
+
+        <!-- School Table -->
+         <mxCell id="school-table" value="School" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="40" y="240" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="school-pk" value="PK id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="school-table" vertex="1">
+          <mxGeometry y="26" width="200" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="school-fields" value="name: string&#xa;code: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="school-table" vertex="1">
+          <mxGeometry y="52" width="200" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Campus Table -->
+        <mxCell id="campus-table" value="Campus" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="40" y="400" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="campus-pk" value="PK id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="campus-table" vertex="1">
+          <mxGeometry y="26" width="200" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="campus-fk-school" value="FK school_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="campus-table" vertex="1">
+          <mxGeometry y="52" width="200" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="campus-fields" value="name: string&#xa;address: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="campus-table" vertex="1">
+          <mxGeometry y="78" width="200" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- Product Table -->
+        <mxCell id="product-table" value="Product" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="740" y="40" width="240" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="product-pk" value="PK id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="product-table" vertex="1">
+          <mxGeometry y="26" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="product-fk-seller" value="FK seller_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="product-table" vertex="1">
+          <mxGeometry y="52" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="product-fields" value="title: string&#xa;description: string&#xa;price: float&#xa;images: text (json array)&#xa;category: string&#xa;condition: string&#xa;location: string&#xa;post_time: integer&#xa;status: ProductStatus (enum/string)&#xa;view_count: integer&#xa;favorite_count: integer&#xa;tags: text (json array)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="product-table" vertex="1">
+          <mxGeometry y="78" width="240" height="272" as="geometry" />
+        </mxCell>
+
+        <!-- Order Table -->
+        <mxCell id="order-table" value="Order" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="740" y="460" width="240" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="order-pk" value="PK order_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="order-table" vertex="1">
+          <mxGeometry y="26" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="order-fk-buyer" value="FK buyer_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="order-table" vertex="1">
+          <mxGeometry y="52" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="order-fk-seller" value="FK seller_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="order-table" vertex="1">
+          <mxGeometry y="78" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="order-fk-product" value="FK product_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="order-table" vertex="1">
+          <mxGeometry y="104" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="order-fields" value="order_time: integer&#xa;price: float&#xa;status: OrderStatus (enum/string)&#xa;delivery_method: string&#xa;delivery_address: string&#xa;delivery_time: integer&#xa;delivery_fee: float&#xa;payment_method: string&#xa;payment_time: integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="order-table" vertex="1">
+          <mxGeometry y="130" width="240" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- Message Table -->
+        <mxCell id="message-table" value="Message" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="370" y="460" width="240" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="message-pk" value="PK id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="message-table" vertex="1">
+          <mxGeometry y="26" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="message-fk-conversation" value="FK conversation_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="message-table" vertex="1">
+          <mxGeometry y="52" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="message-fk-sender" value="FK sender_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="message-table" vertex="1">
+          <mxGeometry y="78" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="message-fk-receiver" value="FK receiver_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="message-table" vertex="1">
+          <mxGeometry y="104" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="message-fk-reference" value="FK reference_id: binary_id (nullable)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="message-table" vertex="1">
+          <mxGeometry y="130" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="message-fields" value="client_message_id: binary_id&#xa;content: text (json map)&#xa;message_type: MessageType (enum/string)&#xa;status: MessageStatus (enum/string)&#xa;server_timestamp: utc_datetime&#xa;client_timestamp: utc_datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="message-table" vertex="1">
+          <mxGeometry y="156" width="240" height="144" as="geometry" />
+        </mxCell>
+
+        <!-- Conversation Table -->
+        <mxCell id="conversation-table" value="Conversation" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="40" y="600" width="240" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="conversation-pk" value="PK id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="conversation-table" vertex="1">
+          <mxGeometry y="26" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="conversation-fk-last-message" value="FK last_message_id: binary_id (nullable)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="conversation-table" vertex="1">
+          <mxGeometry y="52" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="conversation-fields" value="conversation_id: string (unique index?)&#xa;type: string (enum: single/group)&#xa;participant_ids: text (json array)&#xa;last_message_content: string&#xa;last_message_timestamp: utc_datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="conversation-table" vertex="1">
+          <mxGeometry y="78" width="240" height="122" as="geometry" />
+        </mxCell>
+
+        <!-- UserConversation Table -->
+        <mxCell id="userconversation-table" value="UserConversation" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="370" y="820" width="240" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="userconversation-pk" value="PK id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" parent="userconversation-table" vertex="1">
+          <mxGeometry y="26" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="userconversation-fk-user" value="FK user_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="userconversation-table" vertex="1">
+          <mxGeometry y="52" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="userconversation-fk-conversation" value="FK conversation_id: binary_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="userconversation-table" vertex="1">
+          <mxGeometry y="78" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="userconversation-fk-last-read" value="FK last_read_message_id: binary_id (nullable)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="userconversation-table" vertex="1">
+          <mxGeometry y="104" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="userconversation-fields" value="unread_count: integer&#xa;is_pinned: boolean&#xa;is_muted: boolean&#xa;draft: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="userconversation-table" vertex="1">
+          <mxGeometry y="130" width="240" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Relationships -->
+        <mxCell id="rel-account-user" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERone;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="account-table" target="user-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="250" y="80" as="sourcePoint" />
+            <mxPoint x="350" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-user-school" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="user-table" target="school-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="260" y="290" as="sourcePoint" />
+            <mxPoint x="360" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+         <mxCell id="rel-user-campus" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0;exitY=0.9;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="user-table" target="campus-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="260" y="400" as="sourcePoint" />
+            <mxPoint x="360" y="300" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="300" y="355"/>
+              <mxPoint x="300" y="490"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-campus-school" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="campus-table" target="school-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="140" y="390" as="sourcePoint" />
+            <mxPoint x="240" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-product-seller" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="product-table" target="user-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="630" y="130" as="sourcePoint" />
+            <mxPoint x="730" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-order-buyer" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="order-table" target="user-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="630" y="550" as="sourcePoint" />
+            <mxPoint x="730" y="300" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="680" y="548"/>
+              <mxPoint x="680" y="303"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+         <mxCell id="rel-order-seller" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0.9;entryDx=0;entryDy=0;" parent="1" source="order-table" target="user-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="630" y="650" as="sourcePoint" />
+            <mxPoint x="730" y="400" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="660" y="673"/>
+              <mxPoint x="660" y="355"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-order-product" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="order-table" target="product-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="840" y="450" as="sourcePoint" />
+            <mxPoint x="940" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-message-conversation" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="message-table" target="conversation-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="260" y="600" as="sourcePoint" />
+            <mxPoint x="360" y="500" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="320" y="533"/>
+              <mxPoint x="320" y="673"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-message-sender" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="message-table" target="user-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="490" y="450" as="sourcePoint" />
+            <mxPoint x="590" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+         <mxCell id="rel-message-receiver" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=1;exitY=0.1;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" parent="1" source="message-table" target="user-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="620" y="500" as="sourcePoint" />
+            <mxPoint x="620" y="400" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="640" y="486"/>
+              <mxPoint x="640" y="410"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+         <mxCell id="rel-message-reference" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERzeroToOne;html=1;exitX=1;exitY=0.9;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="message-table" target="message-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="630" y="700" as="sourcePoint" />
+            <mxPoint x="730" y="600" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="640" y="730"/>
+              <mxPoint x="680" y="730"/>
+              <mxPoint x="680" y="670"/>
+              <mxPoint x="640" y="670"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-conversation-lastmessage" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERzeroToOne;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="conversation-table" target="message-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="290" y="700" as="sourcePoint" />
+            <mxPoint x="390" y="600" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="320" y="750"/>
+              <mxPoint x="320" y="685"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-userconv-user" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="userconversation-table" target="user-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="490" y="810" as="sourcePoint" />
+            <mxPoint x="590" y="400" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="490" y="400"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-userconv-conversation" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmandOne;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.9;entryDx=0;entryDy=0;" parent="1" source="userconversation-table" target="conversation-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="260" y="900" as="sourcePoint" />
+            <mxPoint x="360" y="800" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="320" y="925"/>
+              <mxPoint x="320" y="760"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-userconv-lastread" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERzeroToOne;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.9;entryDx=0;entryDy=0;" parent="1" source="userconversation-table" target="message-table" edge="1">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="260" y="950" as="sourcePoint" />
+            <mxPoint x="360" y="700" as="targetPoint" />
+             <Array as="points">
+              <mxPoint x="300" y="985"/>
+              <mxPoint x="300" y="730"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

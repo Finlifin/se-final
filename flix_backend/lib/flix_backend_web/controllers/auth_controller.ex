@@ -1,6 +1,7 @@
 defmodule FlixBackendWeb.AuthController do
   use FlixBackendWeb, :controller
 
+  alias FlixBackend.ProfileService
   alias FlixBackend.Data.User
   alias FlixBackend.Guardian
   alias FlixBackend.Accounts.VerifyCode
@@ -15,9 +16,10 @@ defmodule FlixBackendWeb.AuthController do
   def login_with_sms(conn, %{"phone_number" => phone_number, "sms_code" => sms_code}) do
     case Guardian.authenticate(phone_number, :sms_code, sms_code) do
       {:ok, token, account} ->
+        {:ok, user} = ProfileService.get_user_abstract(account.user_id)
         conn
         |> put_status(:ok)
-        |> json(ApiResponse.login_success_response(token, account)) # Use ApiResponse
+        |> json(ApiResponse.login_success_response(token, account, user)) # Use ApiResponse
 
       {:error, reason} ->
         conn

@@ -20,7 +20,7 @@ defmodule FlixBackend.Data.Conversation do
            ]}
   schema "conversations" do
     field :conversation_id, :string
-    field :type, :string  # private, group
+    field :type, :string  # private, announcement
     field :participant_ids, {:array, :binary_id}
     field :last_message_id, :binary_id
     field :last_message_content, :string

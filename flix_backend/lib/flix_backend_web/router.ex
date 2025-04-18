@@ -107,6 +107,22 @@ defmodule FlixBackendWeb.Router do
       delete "/:id", CampusController, :delete
     end
 
+    # 会话相关路由
+    scope "/conversations" do
+      # 获取所有会话列表
+      get "/", ConversationController, :index
+      # 获取指定会话详情
+      get "/:id", ConversationController, :show
+      # 创建新会话
+      post "/", ConversationController, :create
+      # 更新会话设置（用户级别：置顶、静音等）
+      put "/:id", ConversationController, :update
+      # 删除会话（对当前用户）
+      delete "/:id", ConversationController, :delete
+      # 标记会话为已读
+      put "/:id/read", ConversationController, :mark_read
+    end
+
     # 消息相关路由
     scope "/messages" do
       # 查询消息列表（支持分页、过滤消息类型和状态）

@@ -1,0 +1,82 @@
+2025-04-16 16:47:05.469 CST [21886] LOG:  starting PostgreSQL 17.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 14.2.1 20250207, 64-bit
+2025-04-16 16:47:05.470 CST [21886] LOG:  listening on IPv6 address "::1", port 5432
+2025-04-16 16:47:05.470 CST [21886] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2025-04-16 16:47:05.470 CST [21886] FATAL:  could not create lock file "/run/postgresql/.s.PGSQL.5432.lock": No such file or directory
+2025-04-16 16:47:05.472 CST [21886] LOG:  database system is shut down
+2025-04-16 16:47:12.177 CST [21927] LOG:  starting PostgreSQL 17.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 14.2.1 20250207, 64-bit
+2025-04-16 16:47:12.178 CST [21927] LOG:  listening on IPv6 address "::1", port 5432
+2025-04-16 16:47:12.178 CST [21927] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2025-04-16 16:47:12.178 CST [21927] LOG:  listening on Unix socket "/run/postgresql/.s.PGSQL.5432"
+2025-04-16 16:47:12.181 CST [21930] LOG:  database system was shut down at 2025-04-16 16:46:55 CST
+2025-04-16 16:47:12.184 CST [21927] LOG:  database system is ready to accept connections
+2025-04-16 16:48:16.069 CST [22120] FATAL:  role "postgres" does not exist
+2025-04-16 16:49:28.578 CST [22309] FATAL:  role "postgres" does not exist
+2025-04-16 16:49:28.585 CST [22310] FATAL:  role "postgres" does not exist
+2025-04-16 16:49:44.931 CST [22369] FATAL:  role "postgres" does not exist
+2025-04-16 16:50:12.869 CST [22471] FATAL:  role "postgres" is not permitted to log in
+2025-04-16 16:50:12.875 CST [22472] FATAL:  role "postgres" is not permitted to log in
+2025-04-16 16:50:18.373 CST [22501] ERROR:  syntax error at or near "ls" at character 1
+2025-04-16 16:50:18.373 CST [22501] STATEMENT:  ls
+2025-04-16 16:51:12.386 CST [22570] FATAL:  role "postgres" is not permitted to log in
+2025-04-16 16:52:12.280 CST [21928] LOG:  checkpoint starting: time
+2025-04-16 16:52:17.002 CST [21928] LOG:  checkpoint complete: wrote 50 buffers (0.3%); 0 WAL file(s) added, 0 removed, 0 recycled; write=4.711 s, sync=0.008 s, total=4.723 s; sync files=15, longest=0.002 s, average=0.001 s; distance=274 kB, estimate=274 kB; lsn=0/15317B8, redo lsn=0/1531760
+2025-04-16 16:52:33.411 CST [22600] ERROR:  role "postgres" does not exist
+2025-04-16 16:52:33.411 CST [22600] STATEMENT:  drop user postgres
+2025-04-16 16:52:49.958 CST [22990] ERROR:  permission denied to create database
+2025-04-16 16:52:49.958 CST [22990] STATEMENT:  CREATE DATABASE "flix_backend_dev" ENCODING 'UTF8'
+2025-04-16 16:54:28.793 CST [23143] ERROR:  role "rolcreatedb" does not exist
+2025-04-16 16:54:28.793 CST [23143] STATEMENT:  grant rolcreatedb to postgres
+2025-04-16 16:54:37.216 CST [23143] ERROR:  role "createdb" does not exist
+2025-04-16 16:54:37.216 CST [23143] STATEMENT:  grant createdb to postgres
+2025-04-16 16:56:22.502 CST [23301] ERROR:  syntax error at or near "admin" at character 8
+2025-04-16 16:56:22.502 CST [23301] STATEMENT:  create admin postgres
+2025-04-16 16:57:12.102 CST [21928] LOG:  checkpoint starting: time
+2025-04-16 16:58:45.799 CST [21928] LOG:  checkpoint complete: wrote 935 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=93.612 s, sync=0.061 s, total=93.698 s; sync files=303, longest=0.002 s, average=0.001 s; distance=4270 kB, estimate=4270 kB; lsn=0/195D390, redo lsn=0/195D300
+2025-04-16 17:05:08.268 CST [24929] ERROR:  permission denied for schema public at character 28
+2025-04-16 17:05:08.268 CST [24929] STATEMENT:  CREATE TABLE IF NOT EXISTS "schema_migrations" ("version" bigint, "inserted_at" timestamp(0), PRIMARY KEY ("version"))
+2025-04-16 17:05:28.154 CST [21928] LOG:  checkpoint starting: immediate force wait
+2025-04-16 17:05:28.159 CST [21928] LOG:  checkpoint complete: wrote 1 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.002 s, sync=0.001 s, total=0.006 s; sync files=1, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=3843 kB; lsn=0/195D820, redo lsn=0/195D7C8
+2025-04-16 17:05:34.351 CST [25070] FATAL:  database "flix_backend_dev" does not exist
+2025-04-16 17:05:34.352 CST [25069] FATAL:  database "flix_backend_dev" does not exist
+2025-04-16 17:05:36.842 CST [25072] FATAL:  database "flix_backend_dev" does not exist
+2025-04-16 17:05:36.853 CST [25073] FATAL:  database "flix_backend_dev" does not exist
+2025-04-16 17:05:44.737 CST [25163] ERROR:  permission denied to create database
+2025-04-16 17:05:44.737 CST [25163] STATEMENT:  CREATE DATABASE "flix_backend_dev" ENCODING 'UTF8'
+2025-04-16 17:10:06.200 CST [25688] ERROR:  permission denied to create database
+2025-04-16 17:10:06.200 CST [25688] STATEMENT:  CREATE DATABASE "flix_backend_dev" ENCODING 'UTF8'
+2025-04-16 17:10:12.941 CST [25793] ERROR:  permission denied to create database
+2025-04-16 17:10:12.941 CST [25793] STATEMENT:  CREATE DATABASE "flix_backend_dev" ENCODING 'UTF8'
+2025-04-16 17:10:28.259 CST [21928] LOG:  checkpoint starting: time
+2025-04-16 17:10:28.467 CST [21928] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.201 s, sync=0.003 s, total=0.208 s; sync files=3, longest=0.002 s, average=0.001 s; distance=0 kB, estimate=3459 kB; lsn=0/195D9F0, redo lsn=0/195D998
+2025-04-16 17:10:55.338 CST [23301] ERROR:  role "admins" does not exist
+2025-04-16 17:10:55.338 CST [23301] STATEMENT:  grant admins to postgres
+2025-04-16 17:11:28.892 CST [23301] ERROR:  syntax error at or near "to" at character 22
+2025-04-16 17:11:28.892 CST [23301] STATEMENT:  grant all privileges to postgres
+2025-04-16 17:13:38.033 CST [23301] ERROR:  relation "database" does not exist
+2025-04-16 17:13:38.033 CST [23301] STATEMENT:  grant all privileges on database to postgres
+2025-04-16 17:15:12.162 CST [26457] ERROR:  cannot drop table accounts because other objects depend on it
+2025-04-16 17:15:12.162 CST [26457] DETAIL:  constraint users_account_id_fkey on table users depends on table accounts
+2025-04-16 17:15:12.162 CST [26457] HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+2025-04-16 17:15:12.162 CST [26457] STATEMENT:  DROP TABLE IF EXISTS "accounts"
+2025-04-16 17:15:28.566 CST [21928] LOG:  checkpoint starting: time
+2025-04-16 17:15:48.157 CST [26508] ERROR:  syntax error at or near "ls" at character 1
+2025-04-16 17:15:48.157 CST [26508] STATEMENT:  ls
+2025-04-16 17:16:05.832 CST [26508] ERROR:  cannot drop table accounts because other objects depend on it
+2025-04-16 17:16:05.832 CST [26508] DETAIL:  constraint users_account_id_fkey on table users depends on table accounts
+2025-04-16 17:16:05.832 CST [26508] HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+2025-04-16 17:16:05.832 CST [26508] STATEMENT:  drop table accounts
+2025-04-16 17:16:49.605 CST [26604] ERROR:  cannot drop the currently open database
+2025-04-16 17:16:49.605 CST [26604] STATEMENT:  drop database flix_backend_dev
+2025-04-16 17:16:56.129 CST [21928] LOG:  checkpoint complete: wrote 877 buffers (5.4%); 1 WAL file(s) added, 0 removed, 0 recycled; write=87.535 s, sync=0.002 s, total=87.563 s; sync files=8, longest=0.001 s, average=0.001 s; distance=4434 kB, estimate=4434 kB; lsn=0/1DC2C28, redo lsn=0/1DB21A0
+2025-04-16 17:16:56.129 CST [21928] LOG:  checkpoint starting: immediate force wait
+2025-04-16 17:16:56.134 CST [21928] LOG:  checkpoint complete: wrote 4 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.003 s, total=0.005 s; sync files=4, longest=0.001 s, average=0.001 s; distance=66 kB, estimate=3997 kB; lsn=0/1DC2CF8, redo lsn=0/1DC2CA0
+2025-04-16 17:21:56.234 CST [21928] LOG:  checkpoint starting: time
+2025-04-16 17:23:33.108 CST [21928] LOG:  checkpoint complete: wrote 967 buffers (5.9%); 0 WAL file(s) added, 0 removed, 1 recycled; write=96.827 s, sync=0.043 s, total=96.875 s; sync files=376, longest=0.001 s, average=0.001 s; distance=4598 kB, estimate=4598 kB; lsn=0/2240DA8, redo lsn=0/22406B0
+2025-04-16 17:46:22.642 CST [27804] ERROR:  invalid byte sequence for encoding "UTF8": 0x8b
+2025-04-16 17:46:22.642 CST [27804] CONTEXT:  unnamed portal parameter $2
+2025-04-16 17:46:22.642 CST [27804] STATEMENT:  INSERT INTO "messages" ("status","conversation_id","client_message_id","client_timestamp","content","message_type","sender_id","server_timestamp","inserted_at","updated_at","id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+2025-04-16 17:46:39.576 CST [27803] ERROR:  invalid byte sequence for encoding "UTF8": 0x8b
+2025-04-16 17:46:39.576 CST [27803] CONTEXT:  unnamed portal parameter $2
+2025-04-16 17:46:39.576 CST [27803] STATEMENT:  INSERT INTO "messages" ("status","conversation_id","client_message_id","client_timestamp","content","message_type","sender_id","server_timestamp","inserted_at","updated_at","id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+2025-04-16 17:46:56.444 CST [21928] LOG:  checkpoint starting: time
+2025-04-16 17:46:59.765 CST [21928] LOG:  checkpoint complete: wrote 34 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.308 s, sync=0.010 s, total=3.322 s; sync files=21, longest=0.002 s, average=0.001 s; distance=5 kB, estimate=4139 kB; lsn=0/2241C00, redo lsn=0/2241BA8

@@ -56,7 +56,6 @@ defmodule FlixBackend.Data.Message do
     ])
   end
 
-  @spec get_messages_for_user(any(), keyword()) :: any()
   def get_messages_for_user(user_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
     offset = Keyword.get(opts, :offset, 0)

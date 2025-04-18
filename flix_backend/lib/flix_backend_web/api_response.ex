@@ -88,13 +88,14 @@ defmodule FlixBackendWeb.ApiResponse do
 
   # --- 认证相关响应 ---
 
-  def login_success_response(token, account) do
+  def login_success_response(token, account, user) do
     %{
       success: true,
       message: "登录成功",
       data: %{
         token: token,
-        account: account
+        account: account,
+        user: user,
       }
     }
   end
