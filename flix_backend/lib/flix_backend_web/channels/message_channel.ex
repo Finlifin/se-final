@@ -76,6 +76,8 @@ defmodule FlixBackendWeb.MessageChannel do
         {:ok, dt, _} -> dt
         {:error, _} -> server_timestamp
       end
+      {:ok, content} = Jason.encode(content)
+      {:ok, content} = Jason.decode(content)
 
       # 查找会话和接收者
       conversation = Repo.get_by(Conversation, id: conversation_id)
@@ -341,7 +343,7 @@ defmodule FlixBackendWeb.MessageChannel do
 
     conversations = Repo.all(query)
 
-    {:reply, {:ok, conversations}, socket}
+    {:reply, {:ok, %{conversations: conversations}}, socket}
   end
 
   # 辅助函数：创建并广播事件
