@@ -1,6 +1,5 @@
 package fin.phoenix.flix.ui.home
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,9 +64,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import fin.phoenix.flix.data.ProductStatus
+import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.ui.message.MessageCenterScreen
+import fin.phoenix.flix.ui.myprofile.MyFavoritesViewModel
 import fin.phoenix.flix.ui.myprofile.MyProfileContent
 import kotlinx.coroutines.launch
 
@@ -127,11 +131,9 @@ fun HomeScreen(navController: NavController) {
                 BrowseScreen(navController)
             }
 
-            // 你可能会问，主播主播，为什么不统一传递上下文呢
-
             composable(Screen.Favorites.route) {
-                // Navigate to external favorites screen
-                LaunchedEffectNavigation(navController, "/favorites")
+                // Update navigation to go to the my favorites screen
+                FavoriteContent(navController)
             }
 
             composable(Screen.Inbox.route) {
@@ -139,12 +141,13 @@ fun HomeScreen(navController: NavController) {
             }
 
             composable(Screen.Profile.route) {
-                // Get the current user ID from shared preferences
+                // 获取UserManager实例
                 val context = LocalContext.current
-                val sharedPref = context.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
-                val userId = sharedPref.getString("user_id", null) ?: ""
+                val userManager = UserManager.getInstance(context)
+                // 获取当前用户ID
+                val userId by userManager.currentUserId.observeAsState("")
 
-                MyProfileContent(navController = navController, userId = userId)
+                MyProfileContent(navController = navController, userId = userId ?: "")
             }
         }
     }
@@ -186,7 +189,9 @@ private fun BrowseContent(
             isRefreshing = false
         }
     }
-
+    
+    // 将collectAsLazyPagingItems调用移到这里，Composable函数的顶层
+    val lazyProductItems = viewModel.productsFlow.collectAsLazyPagingItems()
 
     Column(
         modifier = Modifier
@@ -202,10 +207,8 @@ private fun BrowseContent(
             searchQuery = uiState.searchQuery,
             onSearchQueryChange = { viewModel.updateSearchQuery(it) },
             onSearch = {
-                viewModel.fetchProducts(
-                    category = if (uiState.selectedCategory == "全部") null else uiState.selectedCategory,
-                    searchQuery = uiState.searchQuery
-                )
+                // 导航到搜索页面，并传入当前搜索词
+                navController.navigate("/search?query=${uiState.searchQuery}")
             },
             categories = categories,
             selectedCategory = uiState.selectedCategory,
@@ -267,55 +270,145 @@ private fun BrowseContent(
                         }
                     }
 
-                    item {
-                        Text(
-                            text = "所有商品",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-
-                    if (availableProducts.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "暂无商品", color = Color.Gray
-                                )
+                    // 使用前面已经创建好的lazyProductItems，而不是在这里调用collectAsLazyPagingItems
+                    when (lazyProductItems.loadState.refresh) {
+                        is LoadState.Loading -> {
+                            // 显示加载中状态
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = RoseRed)
+                                }
                             }
                         }
-                    } else {
-                        items(availableProducts.chunked(2)) { rowItems ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                rowItems.forEach { product ->
-                                    ProductCard(
-                                        product = product,
-                                        modifier = Modifier.weight(1f),
-                                        onClick = { navController.navigate("/product/${product.id}") })
-                                }
 
-                                // If we have an odd number of items, add an empty space
-                                if (rowItems.size < 2) {
-                                    Spacer(modifier = Modifier.weight(1f))
+                        is LoadState.Error -> {
+                            // 显示加载错误
+                            item {
+                                val error = lazyProductItems.loadState.refresh as LoadState.Error
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(
+                                            text = "加载失败",
+                                            color = Color.Gray,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = error.error.localizedMessage ?: "未知错误",
+                                            color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "点击重试",
+                                            color = RoseRed,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.clickable { lazyProductItems.retry() })
+                                    }
+                                }
+                            }
+                        }
+
+                        is LoadState.NotLoading -> {
+                            if (lazyProductItems.itemCount == 0) {
+                                // 没有商品时显示空状态
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "暂无商品", color = Color.Gray
+                                        )
+                                    }
+                                }
+                            } else {
+                                // 分页显示产品
+                                // 使用按索引进行循环，每次处理一组产品
+                                val itemCount = lazyProductItems.itemCount / 2 + lazyProductItems.itemCount % 2
+                                repeat(itemCount) { rowIndex ->
+                                    val firstIndex = rowIndex * 2
+                                    val secondIndex = firstIndex + 1
+                                    
+                                    item {
+                                        ProductRow(
+                                            firstProduct = lazyProductItems[firstIndex],
+                                            secondProduct = if (secondIndex < lazyProductItems.itemCount) lazyProductItems[secondIndex] else null,
+                                            onProductClick = { productId ->
+                                                navController.navigate("/product/$productId")
+                                            }
+                                        )
+                                    }
+                                }
+                                
+                                // 添加页脚加载状态
+                                item {
+                                    when (lazyProductItems.loadState.append) {
+                                        is LoadState.Loading -> {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(32.dp), color = RoseRed
+                                                )
+                                            }
+                                        }
+
+                                        is LoadState.Error -> {
+                                            val error =
+                                                lazyProductItems.loadState.append as LoadState.Error
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "加载更多失败，点击重试",
+                                                    color = RoseRed,
+                                                    modifier = Modifier.clickable { lazyProductItems.retry() })
+                                            }
+                                        }
+
+                                        is LoadState.NotLoading -> {
+                                            // 当没有更多数据时不显示任何内容
+                                            if (lazyProductItems.loadState.append.endOfPaginationReached) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(16.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = "已加载全部商品", color = Color.Gray
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-
-//            PullToRefreshContainer(
-//                state = state,
-//                modifier = Modifier.align(Alignment.TopCenter)
-//            )
         }
     }
 }
@@ -345,7 +438,8 @@ private fun HomeTopBar(
                 placeholder = { Text(text = "搜索商品、商家") },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp),
+                    .height(48.dp)
+                    .clickable { onSearch() },  // 点击整个搜索框时导航到搜索页面
                 shape = RoundedCornerShape(24.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color(0xFFF5F5F5),
@@ -370,7 +464,9 @@ private fun HomeTopBar(
                             tint = RoseRed,
                             modifier = Modifier.clickable { onSearch() })
                     }
-                })
+                },
+                enabled = false  // 禁用实际的输入功能，因为我们使用整个TextField作为按钮
+            )
 
             Spacer(modifier = Modifier.width(8.dp))
 
@@ -406,3 +502,166 @@ private fun HomeTopBar(
         }
     }
 }
+
+@Composable
+private fun FavoriteContent(navController: NavController) {
+    // 获取UserManager实例
+    val context = LocalContext.current
+    val userManager = UserManager.getInstance(context)
+    // 获取当前用户ID
+    val userId by userManager.currentUserId.observeAsState("")
+
+    val viewModel: MyFavoritesViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(userId) {
+        if (!userId.isNullOrEmpty()) {
+            viewModel.loadFavorites(userId!!)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (userId.isNullOrEmpty()) {
+            // 用户未登录
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "请先登录",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "登录后查看您收藏的商品", color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "去登录",
+                    color = RoseRed,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable {
+                        navController.navigate("/login")
+                    })
+            }
+        } else if (uiState.isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center), color = RoseRed
+            )
+        } else if (uiState.error != null) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "加载失败", color = Color.Gray, fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = uiState.error ?: "未知错误", color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "点击重试",
+                    color = RoseRed,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { viewModel.loadFavorites(userId!!) })
+            }
+        } else if (uiState.favorites.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "暂无收藏",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "浏览商品并收藏你喜欢的商品", color = Color.Gray
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF8F8F8)),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Text(
+                        text = "我的收藏",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                items(uiState.favorites.chunked(2)) { rowItems ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        rowItems.forEach { product ->
+                            ProductCard(
+                                product = product.toAbstract(),
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("/product/${product.id}") })
+                        }
+
+                        // 如果一行中只有一个商品，添加空白填充
+                        if (rowItems.size < 2) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 产品行组件，显示一行中的两个产品
+ */
+@Composable
+private fun ProductRow(
+    firstProduct: fin.phoenix.flix.data.ProductAbstract?,
+    secondProduct: fin.phoenix.flix.data.ProductAbstract?,
+    onProductClick: (String) -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()
+    ) {
+        // 第一个商品
+        if (firstProduct != null) {
+            ProductCard(
+                product = firstProduct,
+                modifier = Modifier.weight(1f),
+                onClick = { onProductClick(firstProduct.id) })
+        } else {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        // 第二个商品
+        if (secondProduct != null) {
+            ProductCard(
+                product = secondProduct,
+                modifier = Modifier.weight(1f),
+                onClick = { onProductClick(secondProduct.id) })
+        } else {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+

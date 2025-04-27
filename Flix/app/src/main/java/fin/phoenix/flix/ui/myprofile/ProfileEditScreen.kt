@@ -1,6 +1,7 @@
 package fin.phoenix.flix.ui.myprofile
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -31,6 +32,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import fin.phoenix.flix.api.ProfileUpdateRequest
+import fin.phoenix.flix.api.toUpdateRequest
 import fin.phoenix.flix.data.User
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource
@@ -43,6 +46,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     val viewModel: ProfileEditViewModel = viewModel()
     val userState by viewModel.userState.observeAsState(initial = Resource.Loading)
     val updateState by viewModel.updateState.observeAsState(initial = null)
+    val avatarUpdateState by viewModel.avatarUpdateState.observeAsState(initial = null)
     
     var userName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -52,6 +56,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     var campusId by remember { mutableStateOf("") }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var isAvatarUploading by remember { mutableStateOf(false) }
 
     // 预定义的学校和校区列表 (实际应用中应该从API获取)
     val schoolOptions = listOf("未设置", "复旦大学", "上海交通大学", "同济大学", "华东师范大学")
@@ -61,6 +66,8 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+
     // Load user data when screen is first displayed
     LaunchedEffect(userId) {
         viewModel.getUserProfile(userId)
@@ -68,8 +75,8 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
 
     // Initialize fields when user data is loaded
     LaunchedEffect(userState) {
-        if (userState is Resource.Success<User>) {
-            val user = (userState as Resource.Success<User>).data
+        if (userState is Resource.Success<ProfileUpdateRequest>) {
+            val user = (userState as Resource.Success<ProfileUpdateRequest>).data
             userName = user.userName
             phone = user.phoneNumber
             addresses = user.addresses
@@ -94,6 +101,28 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
             else -> {}
         }
     }
+    
+    // Handle avatar update state changes
+    LaunchedEffect(avatarUpdateState) {
+        when (avatarUpdateState) {
+            is Resource.Success<*> -> {
+                isAvatarUploading = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("头像上传成功")
+                }
+            }
+            is Resource.Error -> {
+                isAvatarUploading = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("头像上传失败: ${(avatarUpdateState as Resource.Error).message}")
+                }
+            }
+            is Resource.Loading -> {
+                isAvatarUploading = true
+            }
+            else -> {}
+        }
+    }
 
     // Image picker
     val imagePicker = rememberLauncherForActivityResult(
@@ -101,7 +130,17 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     ) { uri: Uri? ->
         uri?.let { 
             avatarUri = it
-            // TODO: Upload avatar image to server
+            // 上传头像到服务器
+            if (userState is Resource.Success<ProfileUpdateRequest>) {
+                val user = (userState as Resource.Success<ProfileUpdateRequest>).data
+                viewModel.updateAvatar(user.uid, it) { success ->
+                    if (!success) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("头像更新失败，请重试")
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -118,8 +157,8 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                     TextButton(
                         onClick = {
                             isLoading = true
-                            if (userState is Resource.Success<User>) {
-                                val currentUser = (userState as Resource.Success<User>).data
+                            if (userState is Resource.Success<ProfileUpdateRequest>) {
+                                val currentUser = (userState as Resource.Success<ProfileUpdateRequest>).data
                                 val updatedUser = currentUser.copy(
                                     userName = userName,
                                     addresses = addresses,
@@ -129,7 +168,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                                 )
                                 viewModel.updateProfile(updatedUser) { success ->
                                     if (success) {
-                                        navController.popBackStack()
+                                        Toast.makeText(context, "保存成功", Toast.LENGTH_SHORT).show()
                                     } else {
                                         isLoading = false
                                         scope.launch {
@@ -139,7 +178,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                                 }
                             }
                         },
-                        enabled = !isLoading && userName.isNotBlank()
+                        enabled = !isLoading && !isAvatarUploading && userName.isNotBlank()
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
@@ -189,7 +228,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                 }
                 
                 is Resource.Success -> {
-                    val user = (userState as Resource.Success<User>).data
+                    val user = (userState as Resource.Success<ProfileUpdateRequest>).data
                     
                     // Avatar section
                     Box(
@@ -218,24 +257,36 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                                 
                                 // Edit icon overlay
                                 IconButton(
-                                    onClick = { imagePicker.launch("image/*") },
+                                    onClick = { if (!isAvatarUploading) imagePicker.launch("image/*") },
                                     modifier = Modifier
                                         .size(36.dp)
                                         .align(Alignment.BottomEnd)
                                         .clip(CircleShape)
                                         .background(RoseRed)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "更换头像",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    if (isAvatarUploading) {
+                                        CircularProgressIndicator(
+                                            color = Color.White,
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "更换头像",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
                             }
                             
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("点击更换头像", color = Color.Gray, fontSize = 14.sp)
+                            Text(
+                                if (isAvatarUploading) "正在上传..." else "点击更换头像", 
+                                color = Color.Gray, 
+                                fontSize = 14.sp
+                            )
                         }
                     }
                     

@@ -2,6 +2,8 @@ package fin.phoenix.flix.ui.orders
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,7 +17,7 @@ import kotlinx.coroutines.launch
 
 class OrderViewModel(application: Application) : AndroidViewModel(application) {
     private val orderRepository = OrderRepository(application.applicationContext)
-    
+
     // 订单列表状态
     private val _ordersState = MutableStateFlow<OrdersState>(OrdersState.Loading)
     val ordersState: StateFlow<OrdersState> = _ordersState
@@ -55,6 +57,7 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val result = orderRepository.getOrderDetails(orderId)
                 if (result is Resource.Success) {
+                    Log.d("OrderViewModel", "Order details loaded successfully: ${result.data}")
                     _orderDetailsState.value = OrderDetailsState.Success(result.data)
                 } else {
                     _orderDetailsState.value = OrderDetailsState.Error(
@@ -78,6 +81,21 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (e: Exception) {
                 // 处理错误
+            }
+        }
+    }
+
+    // 取消订单
+    fun cancelOrder(orderId: String) {
+        viewModelScope.launch {
+            try {
+                val result = orderRepository.cancelOrder(orderId)
+                if (result is Resource.Success) {
+                    // 取消成功后重新加载订单列表
+                    loadOrders()
+                }
+            } catch (e: Exception) {
+                Log.e("OrderViewModel", "Error cancelling order: ${e.message}")
             }
         }
     }

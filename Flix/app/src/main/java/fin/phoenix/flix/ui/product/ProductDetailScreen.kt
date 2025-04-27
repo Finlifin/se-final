@@ -42,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,12 +55,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import fin.phoenix.flix.api.navigateToChat
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.ui.colors.VeryLightRoseRed
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.imageUrl
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProductDetailScreen(navController: NavController, productId: String) {
@@ -69,6 +72,7 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
     val isFavorited by viewModel.isProductFavorite.observeAsState(false)
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val showPaymentOptions = remember { mutableStateOf(false) }
 
@@ -89,7 +93,13 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
                     isMyProduct = product.sellerId == viewModel.currentUserId,
                     onEditClick = { navController.navigate("/product/edit/${product.id}") },
                     onFavoriteClick = { viewModel.toggleFavorite() },
-                    onContactClick = { navController.navigate("/messages/${product.sellerId}") },
+                    onContactClick = {
+                        scope.launch {
+                            navigateToChat(product.sellerId) {
+                                 navController.navigate(it)
+                            }
+                        }
+                    },
                     onBuyClick = { showPaymentOptions.value = true })
             }
 
@@ -381,12 +391,11 @@ private fun ProductDetailContent(
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Image(
-                                painter = rememberAsyncImagePainter(model = seller.avatarUrl?.let {
-                                    imageUrl(
-                                        it
-                                    )
-                                } ?: "https://randomuser.me/api/portraits/lego/1.jpg"),
+                            Image(painter = rememberAsyncImagePainter(model = seller.avatarUrl?.let {
+                                imageUrl(
+                                    it
+                                )
+                            } ?: "https://randomuser.me/api/portraits/lego/1.jpg"),
                                 contentDescription = "User avatar",
                                 modifier = Modifier
                                     .size(60.dp)

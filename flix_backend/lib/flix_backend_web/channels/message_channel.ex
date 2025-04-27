@@ -12,6 +12,7 @@ defmodule FlixBackendWeb.MessageChannel do
       {:ok, claims} ->
         account_id = claims["sub"]
         account = Account.get_account!(account_id)
+
         if user_id == account.user_id do
           {:ok, socket |> assign(:user_id, user_id)}
         else
@@ -33,29 +34,32 @@ defmodule FlixBackendWeb.MessageChannel do
   # 处理同步请求
   def handle_in("sync", %{"last_sync_timestamp" => last_sync_timestamp}, socket) do
     user_id = socket.assigns.user_id
-    IO.inspect(user_id, label: "User ID")
 
     # 解析时间戳
-    timestamp = case DateTime.from_iso8601(last_sync_timestamp) do
-      {:ok, datetime, _} -> datetime
-      {:error, _} -> DateTime.now("Etc/UTC")
-    end
+    timestamp =
+      case DateTime.from_iso8601(last_sync_timestamp) do
+        {:ok, datetime, _} -> datetime
+        {:error, _} -> DateTime.now("Etc/UTC")
+      end
 
     # 获取该用户的新事件
     events = Event.get_events_since(user_id, timestamp)
 
     # 确定新的同步时间戳
-    new_last_sync_timestamp = if Enum.empty?(events) do
-      DateTime.utc_now() |> DateTime.to_iso8601()
-    else
-      latest_event = Enum.max_by(events, &(&1.event_timestamp))
-      latest_event.event_timestamp |> DateTime.to_iso8601()
-    end
+    new_last_sync_timestamp =
+      if Enum.empty?(events) do
+        DateTime.utc_now() |> DateTime.to_iso8601()
+      else
+        latest_event = Enum.max_by(events, & &1.event_timestamp)
+        latest_event.event_timestamp |> DateTime.to_iso8601()
+      end
 
-    {:reply, {:ok, %{
-      events: events,
-      new_last_sync_timestamp: new_last_sync_timestamp
-    }}, socket}
+    {:reply,
+     {:ok,
+      %{
+        events: events,
+        new_last_sync_timestamp: new_last_sync_timestamp
+      }}, socket}
   end
 
   # 发送消息
@@ -68,19 +72,18 @@ defmodule FlixBackendWeb.MessageChannel do
          {:ok, content} <- Map.fetch(payload, "content"),
          {:ok, message_type} <- Map.fetch(payload, "message_type"),
          {:ok, client_timestamp} <- Map.fetch(payload, "client_timestamp") do
-
       # 生成服务器端消息ID和时间戳
       message_id = Ecto.UUID.generate()
       server_timestamp = DateTime.utc_now()
-      parsed_client_timestamp = case DateTime.from_iso8601(client_timestamp) do
-        {:ok, dt, _} -> dt
-        {:error, _} -> server_timestamp
-      end
-      {:ok, content} = Jason.encode(content)
-      {:ok, content} = Jason.decode(content)
+
+      parsed_client_timestamp =
+        case DateTime.from_iso8601(client_timestamp) do
+          {:ok, dt, _} -> dt
+          {:error, _} -> server_timestamp
+        end
 
       # 查找会话和接收者
-      conversation = Repo.get_by(Conversation, id: conversation_id)
+      conversation = Repo.get_by(Conversation, conversation_id: conversation_id)
 
       if conversation do
         # 创建消息记录
@@ -96,8 +99,6 @@ defmodule FlixBackendWeb.MessageChannel do
           client_timestamp: parsed_client_timestamp
         }
 
-        # 插入消息
-        IO.inspect(message_params, label: "Message Params")
         changeset = Message.changeset(%Message{}, message_params)
 
         case Repo.insert(changeset) do
@@ -113,15 +114,16 @@ defmodule FlixBackendWeb.MessageChannel do
             end)
 
             # 回复发送方确认
-            {:reply, {:ok, %{
-              client_message_id: client_message_id,
-              message_id: message_id,
-              server_timestamp: DateTime.to_iso8601(server_timestamp),
-              status: "sent"
-            }}, socket}
+            {:reply,
+             {:ok,
+              %{
+                client_message_id: client_message_id,
+                message_id: message_id,
+                server_timestamp: DateTime.to_iso8601(server_timestamp),
+                status: "sent"
+              }}, socket}
 
           {:error, changeset} ->
-            IO.inspect(changeset, label: "Message Insert Error")
             {:reply, {:error, %{errors: error_messages(changeset)}}, socket}
         end
       else
@@ -134,7 +136,11 @@ defmodule FlixBackendWeb.MessageChannel do
   end
 
   # 标记消息已读
-  def handle_in("mark_read", %{"conversation_id" => conversation_id, "last_read_message_id" => last_read_message_id}, socket) do
+  def handle_in(
+        "mark_read",
+        %{"conversation_id" => conversation_id, "last_read_message_id" => last_read_message_id},
+        socket
+      ) do
     user_id = socket.assigns.user_id
 
     # 查找会话
@@ -142,41 +148,52 @@ defmodule FlixBackendWeb.MessageChannel do
 
     if conversation do
       # 更新用户会话关系中的已读消息ID
-      user_conversation = Repo.get_by(UserConversation,
-        user_id: user_id, conversation_id: conversation_id)
+      user_conversation =
+        Repo.get_by(UserConversation, user_id: user_id, conversation_id: conversation_id)
 
       if user_conversation do
         # 更新用户会话的已读状态
-        Repo.update(UserConversation.changeset(user_conversation, %{
-          last_read_message_id: last_read_message_id,
-          unread_count: 0
-        }))
+        Repo.update(
+          UserConversation.changeset(user_conversation, %{
+            last_read_message_id: last_read_message_id,
+            unread_count: 0
+          })
+        )
       end
 
       # 查找需要更新状态的消息
-      message_query = from m in Message,
-        where: m.conversation_id == ^conversation_id and
-               m.message_id <= ^last_read_message_id and
-               m.status == :unread and
-               m.receiver_id == ^user_id
+      message_query =
+        from m in Message,
+          where:
+            m.conversation_id == ^conversation_id and
+              m.id <= ^last_read_message_id and
+              m.status == :unread and
+              m.receiver_id == ^user_id
 
-      {updated_count, updated_messages} = Repo.update_all(
-        message_query,
-        [set: [status: :read, updated_at: DateTime.utc_now()]],
-        returning: true
-      )
+      {updated_count, updated_messages} =
+        Repo.update_all(
+          message_query,
+          [set: [status: :read, updated_at: DateTime.utc_now()]],
+          returning: true
+        )
 
       # 为每条更新的消息创建状态更新事件
-      Enum.each(updated_messages, fn message ->
-        if message.sender_id && message.sender_id != user_id do
-          create_and_broadcast_event("message_status_update", %{
-            message_id: message.message_id,
-            conversation_id: conversation_id,
-            status: "read",
-            updated_at: DateTime.utc_now()
-          }, message.sender_id)
-        end
-      end)
+      if is_list(updated_messages) && length(updated_messages) > 0 do
+        Enum.each(updated_messages, fn message ->
+          if message && message.sender_id && message.sender_id != user_id do
+            create_and_broadcast_event(
+              "message_status_update",
+              %{
+                message_id: message.message_id,
+                conversation_id: conversation_id,
+                status: "read",
+                updated_at: DateTime.utc_now()
+              },
+              message.sender_id
+            )
+          end
+        end)
+      end
 
       {:reply, {:ok, %{updated_count: updated_count}}, socket}
     else
@@ -196,12 +213,16 @@ defmodule FlixBackendWeb.MessageChannel do
         if conversation do
           # 为会话中的每个参与者创建撤回事件
           Enum.each(conversation.participant_ids, fn participant_id ->
-            create_and_broadcast_event("message_recalled", %{
-              message_id: message_id,
-              conversation_id: updated_message.conversation_id,
-              status: "withdrawn",
-              updated_at: DateTime.utc_now()
-            }, participant_id)
+            create_and_broadcast_event(
+              "message_recalled",
+              %{
+                message_id: message_id,
+                conversation_id: updated_message.conversation_id,
+                status: "withdrawn",
+                updated_at: DateTime.utc_now()
+              },
+              participant_id
+            )
           end)
         end
 
@@ -232,14 +253,15 @@ defmodule FlixBackendWeb.MessageChannel do
       if conversation && Enum.member?(conversation.participant_ids, user_id) do
         query_opts = [limit: limit]
 
-        query_opts = if before_timestamp do
-          case DateTime.from_iso8601(before_timestamp) do
-            {:ok, datetime, _} -> Keyword.put(query_opts, :before_timestamp, datetime)
-            {:error, _} -> query_opts
+        query_opts =
+          if before_timestamp do
+            case DateTime.from_iso8601(before_timestamp) do
+              {:ok, datetime, _} -> Keyword.put(query_opts, :before_timestamp, datetime)
+              {:error, _} -> query_opts
+            end
+          else
+            query_opts
           end
-        else
-          query_opts
-        end
 
         messages = Message.get_conversation_messages(conversation_id, query_opts)
 
@@ -259,60 +281,89 @@ defmodule FlixBackendWeb.MessageChannel do
 
     with {:ok, type} <- Map.fetch(params, "type"),
          {:ok, participant_ids} <- Map.fetch(params, "participant_ids") do
-
       # 验证会话类型
       if type not in ["private", "group"] do
         {:reply, {:error, %{reason: "invalid conversation type"}}, socket}
       else
         # 为私聊添加当前用户到参与者列表
-        all_participants = if type == "private" do
-          # 确保参与者列表是正确的格式且包含当前用户
-          [other_user_id] = participant_ids
-          [user_id, other_user_id] |> Enum.uniq() |> Enum.sort()
-        else
-          # 群聊，确保当前用户在参与者中
-          (participant_ids ++ [user_id]) |> Enum.uniq()
-        end
+        all_participants =
+          if type == "private" do
+            # 确保参与者列表是正确的格式且包含当前用户
+            # 安全地获取其他参与者，考虑到列表可能已经包含了当前用户
+            other_participants = Enum.filter(participant_ids, fn id -> id != user_id end)
+            ([user_id] ++ other_participants) |> Enum.uniq() |> Enum.sort()
+          else
+            # 群聊，确保当前用户在参与者中
+            (participant_ids ++ [user_id]) |> Enum.uniq()
+          end
 
-        # 为私聊生成标准化的conversation_id
-        conversation_id = case type do
-          "private" ->
+        # 检查是否已存在会话
+        existing_conversation =
+          if type == "private" do
             [first_id, second_id] = all_participants
-            "private:#{first_id}:#{second_id}"
-          "group" ->
-            # 对于群聊使用UUID
-            "group:#{Ecto.UUID.generate()}"
-        end
 
-        # 检查会话是否已存在
-        case Repo.get_by(Conversation, conversation_id: conversation_id) do
-          nil ->
-            # 创建新会话
-            conversation_params = %{
-              conversation_id: conversation_id,
-              type: type,
-              participant_ids: all_participants,
-              updated_at: DateTime.utc_now()
-            }
+            # 检查两个可能的会话ID
+            conversation_id1 = "private:#{first_id}:#{second_id}"
+            conversation_id2 = "private:#{second_id}:#{first_id}"
 
-            # 事务：创建会话并为所有参与者创建用户会话关系
-            result = Ecto.Multi.new()
-              |> Ecto.Multi.insert(:conversation, Conversation.changeset(%Conversation{}, conversation_params))
-              |> create_user_conversations(all_participants, conversation_id)
-              |> Repo.transaction()
+            Repo.get_by(Conversation, conversation_id: conversation_id1) ||
+              Repo.get_by(Conversation, conversation_id: conversation_id2)
+          else
+            nil
+          end
 
-            case result do
-              {:ok, %{conversation: conversation}} ->
-                # 返回新建的会话信息
-                {:reply, {:ok, %{conversation: conversation}}, socket}
+        # 如果私聊已存在会话，则直接返回
+        if existing_conversation do
+          {:reply, {:ok, %{conversation: existing_conversation, already_exists: true}}, socket}
+        else
+          # 为新会话生成ID
+          conversation_id =
+            case type do
+              "private" ->
+                [first_id, second_id] = all_participants
+                "private:#{first_id}:#{second_id}"
 
-              {:error, failed_operation, failed_value, _changes} ->
-                {:reply, {:error, %{reason: "failed to create conversation: #{failed_operation}", details: error_messages(failed_value)}}, socket}
+              "system_notification" ->
+                "system_notification:#{user_id}"
+
+              "system_announcement" ->
+                "system_announcement:#{user_id}"
+
+              "interaction" ->
+                "interaction:#{user_id}"
             end
 
-          conversation ->
-            # 会话已存在，直接返回
-            {:reply, {:ok, %{conversation: conversation, already_exists: true}}, socket}
+          # 创建新会话
+          conversation_params = %{
+            conversation_id: conversation_id,
+            type: type,
+            participant_ids: all_participants,
+            updated_at: DateTime.utc_now()
+          }
+
+          # 事务：创建会话并为所有参与者创建用户会话关系
+          result =
+            Ecto.Multi.new()
+            |> Ecto.Multi.insert(
+              :conversation,
+              Conversation.changeset(%Conversation{}, conversation_params)
+            )
+            |> create_user_conversations(all_participants, conversation_id)
+            |> Repo.transaction()
+
+          case result do
+            {:ok, %{conversation: conversation}} ->
+              # 返回新建的会话信息
+              {:reply, {:ok, %{conversation: conversation}}, socket}
+
+            {:error, failed_operation, failed_value, _changes} ->
+              {:reply,
+               {:error,
+                %{
+                  reason: "failed to create conversation: #{failed_operation}",
+                  details: error_messages(failed_value)
+                }}, socket}
+          end
         end
       end
     else
@@ -323,27 +374,77 @@ defmodule FlixBackendWeb.MessageChannel do
 
   # 获取用户的会话列表
   def handle_in("get_conversations", params, socket) do
-    IO.puts "Fetching conversations for user: #{socket.assigns.user_id}"
+    IO.puts("Fetching conversations for user: #{socket.assigns.user_id}")
     user_id = socket.assigns.user_id
     limit = Map.get(params, "limit", 20)
 
-    query = from c in Conversation,
-      join: uc in UserConversation,
-      on: c.conversation_id == uc.conversation_id,
-      where: uc.user_id == ^user_id,
-      order_by: [desc: c.updated_at],
-      limit: ^limit,
-      select: %{
-        conversation: c,
-        unread_count: uc.unread_count,
-        is_pinned: uc.is_pinned,
-        is_muted: uc.is_muted,
-        last_read_message_id: uc.last_read_message_id
-      }
+    query =
+      from c in Conversation,
+        join: uc in UserConversation,
+        on: c.conversation_id == uc.conversation_id,
+        where: uc.user_id == ^user_id,
+        order_by: [desc: c.updated_at],
+        limit: ^limit,
+        select: %{
+          conversation: c,
+          unread_count: uc.unread_count,
+          is_pinned: uc.is_pinned,
+          is_muted: uc.is_muted,
+          last_read_message_id: uc.last_read_message_id
+        }
 
     conversations = Repo.all(query)
 
     {:reply, {:ok, %{conversations: conversations}}, socket}
+  end
+
+  # 获取单个会话信息
+  def handle_in("get_conversation_info", params, socket) do
+    with {:ok, conversation_id} <- Map.fetch(params, "conversation_id") do
+      user_id = socket.assigns.user_id
+
+      # 验证用户是否在会话中
+      conversation = Repo.get_by(Conversation, conversation_id: conversation_id)
+
+      if conversation && Enum.member?(conversation.participant_ids, user_id) do
+        {:reply, {:ok, %{conversation: conversation}}, socket}
+      else
+        {:reply, {:error, %{reason: "unauthorized"}}, socket}
+      end
+    else
+      :error ->
+        {:reply, {:error, %{reason: "missing conversation_id"}}, socket}
+    end
+  end
+
+  # 清楚会话中的所有消息
+  def handle_in("clear_conversation", params, socket) do
+    with {:ok, conversation_id} <- Map.fetch(params, "conversation_id") do
+      user_id = socket.assigns.user_id
+
+      # 验证用户是否在会话中
+      conversation = Repo.get_by(Conversation, conversation_id: conversation_id)
+
+      if conversation && Enum.member?(conversation.participant_ids, user_id) do
+        # 清除会话中的所有消息
+        Message.clear_conversation_messages(conversation_id)
+
+        case UserConversation.reset_unread_count(conversation_id, user_id) do
+          {:ok, _} ->
+            {}
+
+          {:error, _} ->
+            {:reply, {:error, %{reason: "failed to reset unread count"}}, socket}
+        end
+
+        {:reply, {:ok, %{status: "cleared"}}, socket}
+      else
+        {:reply, {:error, %{reason: "unauthorized"}}, socket}
+      end
+    else
+      :error ->
+        {:reply, {:error, %{reason: "missing conversation_id"}}, socket}
+    end
   end
 
   # 辅助函数：创建并广播事件
@@ -379,24 +480,29 @@ defmodule FlixBackendWeb.MessageChannel do
   # 辅助函数：更新会话的最后一条消息
   defp update_conversation_last_message(conversation_id, message) do
     # 获取消息内容的文本表示
-    message_preview = get_message_preview(message.content, message.content_type)
+    message_preview = get_message_preview(message.content)
 
     conversation = Repo.get(Conversation, conversation_id)
 
     if conversation do
       # 更新会话信息
-      Repo.update(Conversation.changeset(conversation, %{
-        last_message_id: message.message_id,
-        last_message_content: message_preview,
-        last_message_timestamp: message.server_timestamp,
-        updated_at: DateTime.utc_now()
-      }))
+      Repo.update(
+        Conversation.changeset(conversation, %{
+          last_message_id: message.id,
+          last_message_content: message_preview,
+          last_message_timestamp: message.server_timestamp,
+          updated_at: DateTime.utc_now()
+        })
+      )
 
       # 更新用户会话关系中的未读消息数量
       Enum.each(conversation.participant_ids, fn participant_id ->
         if participant_id != message.sender_id do
-          user_conversation = Repo.get_by(UserConversation,
-            user_id: participant_id, conversation_id: conversation.conversation_id)
+          user_conversation =
+            Repo.get_by(UserConversation,
+              user_id: participant_id,
+              conversation_id: conversation.conversation_id
+            )
 
           if user_conversation do
             UserConversation.increment_unread(user_conversation)
@@ -424,28 +530,56 @@ defmodule FlixBackendWeb.MessageChannel do
   end
 
   # 辅助函数：获取消息预览文本
-  defp get_message_preview(content, content_type) do
-    # 解析JSON字符串到Map
-    content_map = case Jason.decode(content) do
-      {:ok, map} -> map
-      {:error, _} -> %{}
-    end
+  defp get_message_preview(content) do
+    # 处理内容数组，提取第一个内容元素
+    first_content = List.first(content) || %{}
+    message_type = first_content["type"] || :unknown
 
-    case content_type do
+    case message_type do
       :text ->
-        Map.get(content_map, "text", "")
-        |> String.slice(0, 50)  # 限制预览长度
+        # 从第一个内容元素中获取文本
+        text = Map.get(first_content, "payload", "")
+        # 限制预览长度
+        String.slice(text, 0, 50)
 
-      :image -> "[图片消息]"
-      :audio -> "[语音消息]"
-      :video -> "[视频消息]"
-      :product -> "[商品]" <> Map.get(content_map, "product_name", "")
-      :order -> "[订单]" <> Map.get(content_map, "order_id", "")
-      :comment -> "[评论]" <> Map.get(content_map, "text", "")
-      :like -> "[点赞]"
-      :favorite -> "[收藏]"
-      :system -> Map.get(content_map, "title", "系统消息")
-      _ -> "[消息]"
+      :image ->
+        "[图片消息]"
+
+      :audio ->
+        "[语音消息]"
+
+      :video ->
+        "[视频消息]"
+
+      :product ->
+        payload = Map.get(first_content, "payload", %{})
+        product_name = Map.get(payload, "product_name", "")
+        "[商品]" <> product_name
+
+      :order ->
+        payload = Map.get(first_content, "payload", %{})
+        order_id = Map.get(payload, "order_id", "")
+        "[订单]" <> order_id
+
+      :comment ->
+        payload = Map.get(first_content, "payload", %{})
+        text = Map.get(payload, "text", "")
+        "[评论]" <> text
+
+      :like ->
+        "[点赞]"
+
+      :favorite ->
+        "[收藏]"
+
+      :system ->
+        payload = Map.get(first_content, "payload", %{})
+        title = Map.get(payload, "title", "")
+        title
+
+      _ ->
+        IO.inspect(content, label: "Unknown message type")
+        "[消息]"
     end
   end
 

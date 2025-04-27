@@ -25,7 +25,7 @@ interface ProductService {
         @Query("max_price") maxPrice: Double? = null,
         @Query("sort_by") sortBy: String? = null,
         @Query("sort_order") sortOrder: String? = null
-    ): Response<GenericApiResponse<List<Product>>>
+    ): Response<ProductListResponse>
 
     @GET("products/{id}")
     suspend fun getProductById(@Path("id") productId: String): Response<GenericApiResponse<Product>>
@@ -50,13 +50,25 @@ interface ProductService {
     @DELETE("products/{id}/favorite")
     suspend fun unfavoriteProduct(@Path("id") productId: String): Response<GenericApiResponse<Unit>>
 
-    @GET("products/favorites")
+    @GET("profile/favorites")
     suspend fun getFavoriteProducts(
         @Query("user_id") userId: String,
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 10
-    ): Response<GenericApiResponse<List<Product>>>
+    ): Response<ProductListResponse>
 }
+
+/**
+ * 商品列表响应
+ */
+data class ProductListResponse(
+    val data: List<Product>,
+    val message: String,
+    val success: Boolean,
+    val currentPage: Int,
+    val totalPages: Int,
+    val totalCount: Int
+)
 
 /**
  * 商品列表数据

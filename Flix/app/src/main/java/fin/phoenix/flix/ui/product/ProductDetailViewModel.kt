@@ -65,7 +65,7 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
         _sellerState.value = Resource.Loading
         viewModelScope.launch {
             try {
-                val sellerResponse = userRepository.getUserById(sellerId)
+                val sellerResponse = userRepository.getUserAbstract(sellerId)
                 Log.d(TAG, sellerResponse.toString())
                 _sellerState.value = sellerResponse
             } catch (e: Exception) {

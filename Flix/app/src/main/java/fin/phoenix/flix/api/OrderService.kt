@@ -45,7 +45,7 @@ interface OrderService {
      * 取消订单
      */
     @DELETE("orders/{id}")
-    suspend fun cancelOrder(@Path("id") orderId: String): Response<GenericApiResponse<Boolean>>
+    suspend fun cancelOrder(@Path("id") orderId: String): Response<GenericApiResponse<Order>>
 }
 
 /**

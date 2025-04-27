@@ -3,6 +3,7 @@ package fin.phoenix.flix.repository
 import android.content.Context
 import fin.phoenix.flix.api.CalculateDeliveryFeeRequest
 import fin.phoenix.flix.api.CreatePaymentRequest
+import fin.phoenix.flix.api.PaymentCallbackRequest
 import fin.phoenix.flix.api.PaymentService
 import fin.phoenix.flix.api.RetrofitClient
 import fin.phoenix.flix.data.DeliveryMethod
@@ -39,8 +40,12 @@ class PaymentRepository(context: Context) {
     /**
      * 获取支付状态
      */
-    suspend fun getPaymentStatus(orderId: String): Resource<PaymentStatus> = withContext(Dispatchers.IO) {
-        paymentService.getPaymentStatus(orderId).toResource("获取支付状态失败")
+    suspend fun getPaymentStatus(orderId: String): Resource<PaymentStatus> {
+        return paymentService.getPaymentStatus(orderId).toResource("获取支付状态失败")
+    }
+
+    suspend fun confirmPayment(orderId: String): Resource<Unit> {
+        return paymentService.confirmPayment(PaymentCallbackRequest(orderId, "success", "test transaction")).toResource("无法模拟确认支付")
     }
     
     /**

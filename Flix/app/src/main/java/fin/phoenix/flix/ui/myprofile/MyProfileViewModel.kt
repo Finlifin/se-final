@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import fin.phoenix.flix.api.ProfileUpdateRequest
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.User
 import fin.phoenix.flix.repository.ProfileRepository
@@ -88,7 +89,7 @@ class MyProfileViewModel(application: Application) : AndroidViewModel(applicatio
     /**
      * 更新用户个人资料
      */
-    fun updateUserProfile(user: User, onComplete: (Boolean) -> Unit) {
+    fun updateUserProfile(user: ProfileUpdateRequest, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = repository.updateUserProfile(user)
             when (result) {

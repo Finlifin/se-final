@@ -52,6 +52,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fin.phoenix.flix.data.UserAbstract
+import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.repository.AuthRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource
@@ -66,6 +68,8 @@ fun SignInSignUpScreen(onLoginSuccess: () -> Unit = {}) {
     // 获取协程作用域
     val coroutineScope = rememberCoroutineScope()
 
+    // 获取UserManager实例
+    val userManager = UserManager.getInstance(context)
 
     // Login form states
     var isPasswordLogin by remember { mutableStateOf(true) }
@@ -274,14 +278,21 @@ fun SignInSignUpScreen(onLoginSuccess: () -> Unit = {}) {
 
                                 when (result) {
                                     is Resource.Success -> {
-                                        // 保存 token 和用户信息到 SharedPreferences
+                                        // 使用UserManager保存用户信息，替代SharedPreferences
+                                        val user = UserAbstract(
+                                            uid = result.data.user.uid,
+                                            userName = result.data.user.userName,
+                                            avatarUrl = result.data.user.avatarUrl
+                                        )
+                                        userManager.setCurrentUser(user)
+                                        
+                                        // 保存token到SharedPreferences（UserManager不管理token）
                                         val sharedPref = context.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
                                         with(sharedPref.edit()) {
                                             putString("auth_token", result.data.token)
-                                            putString("user_id", result.data.user.uid)
-                                            putString("user_name", result.data.user.userName)
                                             apply()
                                         }
+                                        
                                         Log.d("Login", "Login successful for user: ${result.data.user.userName}")
                                         onLoginSuccess()
                                     }

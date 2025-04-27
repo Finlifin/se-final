@@ -29,6 +29,20 @@ defmodule FlixBackend.Data.Conversation do
     timestamps()
   end
 
+  @spec changeset(
+          {map(),
+           %{
+             optional(atom()) =>
+               atom()
+               | {:array | :assoc | :embed | :in | :map | :parameterized | :supertype | :try,
+                  any()}
+           }}
+          | %{
+              :__struct__ => atom() | %{:__changeset__ => any(), optional(any()) => any()},
+              optional(atom()) => any()
+            },
+          :invalid | %{optional(:__struct__) => none(), optional(atom() | binary()) => any()}
+        ) :: Ecto.Changeset.t()
   def changeset(conversation, attrs) do
     conversation
     |> cast(attrs, [
@@ -45,7 +59,7 @@ defmodule FlixBackend.Data.Conversation do
       :type,
       :participant_ids
     ])
-    |> validate_inclusion(:type, ["private", "group", "system"])
+    |> validate_inclusion(:type, ["private", "interaction", "system_announcement", "system_notification"])
     |> unique_constraint(:conversation_id)
   end
 
@@ -115,13 +129,13 @@ defmodule FlixBackend.Data.Conversation do
   end
 
   # 确保系统会话存在
-  def ensure_system_conversation(conversation_id, type, participant_ids) do
+  def ensure_conversation(conversation_id, type, participant_ids) do
     case Repo.get_by(__MODULE__, conversation_id: conversation_id) do
       nil ->
         # 创建系统会话
         params = %{
           conversation_id: conversation_id,
-          type: "system",
+          type: type,
           participant_ids: participant_ids,
           updated_at: DateTime.utc_now()
         }

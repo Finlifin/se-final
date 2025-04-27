@@ -39,6 +39,8 @@ defmodule FlixBackend.Data.Product do
     field :tags, {:array, :string}, default: []
     field :available_delivery_methods, {:array, :string}, default: []
 
+    # 不需要在模型中定义 search_vector 字段，由PostgreSQL在后台管理
+
     timestamps()
 
     belongs_to :user, FlixBackend.Data.User,

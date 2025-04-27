@@ -48,6 +48,10 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.compose.material:material-icons-extended")
     
+    // Paging3
+    implementation("androidx.paging:paging-runtime:3.2.1")
+    implementation("androidx.paging:paging-compose:3.2.1")
+    
     // Room
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")

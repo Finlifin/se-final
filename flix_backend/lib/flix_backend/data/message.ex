@@ -23,7 +23,7 @@ defmodule FlixBackend.Data.Message do
            ]}
   schema "messages" do
     field :client_message_id, :binary_id
-    field :conversation_id, :binary_id
+    field :conversation_id, :string
     field :sender_id, :binary_id
     field :receiver_id, :binary_id
     field :content, {:array, :map}, default: []
@@ -38,6 +38,7 @@ defmodule FlixBackend.Data.Message do
 
   def changeset(message, attrs) do
     message
+    # 过滤掉不需要的字段
     |> cast(attrs, [
       :client_message_id,
       :conversation_id,
@@ -194,7 +195,7 @@ defmodule FlixBackend.Data.Message do
 
   # 撤回消息
   def withdraw_message(message_id, user_id) do
-    case FlixBackend.Repo.get_by(__MODULE__, message_id: message_id, sender_id: user_id) do
+    case FlixBackend.Repo.get_by(__MODULE__, id: message_id, sender_id: user_id) do
       nil -> {:error, :not_found}
       message ->
         # 检查是否在可撤回时间范围内（例如2分钟）
@@ -204,14 +205,13 @@ defmodule FlixBackend.Data.Message do
           # 替换内容为占位符
           withdrawn_content = %{
             "text" => "此消息已被撤回",
-            "original_type" => Atom.to_string(message.content_type)
+            "original_type" => Atom.to_string(message.message_type),
           }
 
           message
           |> changeset(%{
             status: :withdrawn,
             content: withdrawn_content,
-            content_type: :text,
             updated_at: DateTime.utc_now()
           })
           |> FlixBackend.Repo.update()
@@ -219,6 +219,12 @@ defmodule FlixBackend.Data.Message do
           {:error, :time_expired}
         end
     end
+  end
+
+  # 清空会话中的所有消息
+  def clear_conversation_messages(conversation_id) do
+    from(m in __MODULE__, where: m.conversation_id == ^conversation_id)
+    |> FlixBackend.Repo.delete_all()
   end
 
   # 根据客户端消息ID获取消息

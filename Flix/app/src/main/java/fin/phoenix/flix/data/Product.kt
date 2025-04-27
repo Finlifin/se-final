@@ -40,4 +40,15 @@ data class Product(
     @SerializedName("favorite_count") val favoriteCount: Int = 0, // Product favorite count, default 0
     @SerializedName("tags") val tags: List<String> = emptyList(), // Product tags
     @SerializedName("available_delivery_methods") val availableDeliveryMethods: List<String> = listOf("express", "pickup") // Available delivery methods
-)
+) {
+    fun toAbstract(): ProductAbstract {
+        return ProductAbstract(
+            id = id,
+            title = title,
+            price = price,
+            image = images.first(),
+            condition = condition,
+            status = status,
+        )
+    }
+}

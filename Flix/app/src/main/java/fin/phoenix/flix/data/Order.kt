@@ -42,9 +42,12 @@ data class Order(
  */
 data class OrderDetails(
     @SerializedName("order_id") val orderId: String,
-    @SerializedName("buyer") val buyer: UserAbstract,
-    @SerializedName("seller") val seller: UserAbstract,
-    @SerializedName("product") val product: ProductAbstract,
+    @SerializedName("buyer_id") val buyerId: String,
+    @SerializedName("buyer") var buyer: UserAbstract,
+    @SerializedName("seller_id") val sellerId: String,
+    @SerializedName("seller") var seller: UserAbstract,
+    @SerializedName("product_id") val productId: String,
+    @SerializedName("product") var product: Product,
     @SerializedName("order_time") val orderTime: Long,
     @SerializedName("price") val price: Double,
     @SerializedName("status") val status: OrderStatus,

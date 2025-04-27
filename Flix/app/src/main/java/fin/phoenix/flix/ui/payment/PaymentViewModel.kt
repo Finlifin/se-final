@@ -83,6 +83,15 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun confirmPayment(orderId: String) = viewModelScope.launch {
+        try {
+            paymentRepository.confirmPayment(orderId)
+            getPaymentStatus(orderId)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     // 支付状态的密封类
     sealed class PaymentState {
         data object Loading : PaymentState()

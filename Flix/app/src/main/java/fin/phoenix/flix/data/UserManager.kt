@@ -3,17 +3,17 @@ package fin.phoenix.flix.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 
 class UserManager private constructor(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
     
-    private val _currentUserId = MutableStateFlow<String?>(null)
-    val currentUserId: StateFlow<String?> = _currentUserId
+    private val _currentUserId = MutableLiveData<String?>(null)
+    val currentUserId: LiveData<String?> = _currentUserId
     
-    private val _currentUser = MutableStateFlow<UserAbstract?>(null)
-    val currentUser: StateFlow<UserAbstract?> = _currentUser
+    private val _currentUser = MutableLiveData<UserAbstract?>(null)
+    val currentUser: LiveData<UserAbstract?> = _currentUser
 
     init {
         _currentUserId.value = prefs.getString(KEY_USER_ID, null)

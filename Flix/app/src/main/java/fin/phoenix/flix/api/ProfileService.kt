@@ -1,8 +1,10 @@
 package fin.phoenix.flix.api
 
+import com.google.gson.annotations.SerializedName
 import fin.phoenix.flix.data.Seller
 import fin.phoenix.flix.data.User
 import fin.phoenix.flix.data.UserAbstract
+import fin.phoenix.flix.util.Resource
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -38,7 +40,7 @@ interface ProfileService {
      * 更新用户资料
      */
     @PUT("profile/update")
-    suspend fun updateUserProfile(@Body user: User): Response<GenericApiResponse<User>>
+    suspend fun updateUserProfile(@Body user: ProfileUpdateRequest): Response<GenericApiResponse<User>>
     
     /**
      * 充值余额
@@ -55,7 +57,7 @@ interface ProfileService {
     @POST("profile/avatar")
     suspend fun updateAvatar(
         @Query("userId") userId: String,
-        @Body avatarUrl: String
+        @Query("avatarUrl") avatarUrl: String
     ): Response<GenericApiResponse<User>>
     
     /**
@@ -81,4 +83,37 @@ interface ProfileService {
      */
     @GET("profile/{userId}/favorites")
     suspend fun getUserFavorites(@Path("userId") userId: String): Response<GenericApiResponse<List<String>>>
+}
+
+
+data class ProfileUpdateRequest(
+    @SerializedName("uid") val uid: String, // User ID, unique identifier (primary key)
+    @SerializedName("phone_number") val phoneNumber: String, // User's phone number
+    @SerializedName("user_name") val userName: String, // Username
+    @SerializedName("avatar_url") val avatarUrl: String? = null, // User avatar image URL
+    @SerializedName("addresses") val addresses: List<String> = emptyList(), // List of user addresses
+    @SerializedName("current_address") val currentAddress: String? = null, // Current selected address
+    @SerializedName("school_id") val schoolId: String? = null, // User's school ID
+    @SerializedName("campus_id") val campusId: String? = null  // User's campus ID
+)
+
+fun User.toUpdateRequest(): ProfileUpdateRequest {
+    return ProfileUpdateRequest(
+        uid = uid,
+        phoneNumber = phoneNumber,
+        userName = userName,
+        avatarUrl = avatarUrl,
+        addresses = addresses,
+        currentAddress = currentAddress,
+        schoolId = schoolId,
+        campusId = campusId
+    )
+}
+
+fun Resource<User>.toProfileUpdateRequestResource(): Resource<ProfileUpdateRequest> {
+    return when (this) {
+        is Resource.Success -> Resource.Success(data.toUpdateRequest())
+        is Resource.Error -> Resource.Error(message)
+        is Resource.Loading -> Resource.Loading
+    }
 }

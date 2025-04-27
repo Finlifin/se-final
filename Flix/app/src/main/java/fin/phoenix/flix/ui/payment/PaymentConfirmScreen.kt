@@ -168,17 +168,17 @@ fun PaymentConfirmScreen(navController: NavController, orderId: String) {
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // 显示支付网页
-                            AndroidView(
-                                factory = { context ->
-                                    WebView(context).apply {
-                                        webViewClient = WebViewClient()
-                                        settings.javaScriptEnabled = true
-                                        paymentDetails.paymentUrl?.let { loadUrl(it) }
-                                    }
-                                }, modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                            )
+//                            AndroidView(
+//                                factory = { context ->
+//                                    WebView(context).apply {
+//                                        webViewClient = WebViewClient()
+//                                        settings.javaScriptEnabled = true
+//                                        paymentDetails.paymentUrl?.let { loadUrl(it) }
+//                                    }
+//                                }, modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .weight(1f)
+//                            )
 
                             // 底部按钮
                             Row(
@@ -207,6 +207,15 @@ fun PaymentConfirmScreen(navController: NavController, orderId: String) {
                                 ) {
                                     Text("刷新状态")
                                 }
+                            }
+
+                            // 测试需要，模拟支付
+                            Button(
+                                onClick = { viewModel.confirmPayment(orderId) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+                            ) {
+                                Text("模拟支付")
                             }
                         }
                     } else if (paymentDetails.status == "paid") {

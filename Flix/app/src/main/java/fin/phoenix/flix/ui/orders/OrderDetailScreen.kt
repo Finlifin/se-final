@@ -218,7 +218,7 @@ fun ProductInfoCard(orderDetails: OrderDetails, navController: NavController) {
                 // 商品图片
                 Image(
                     painter = rememberAsyncImagePainter(
-                        model = imageUrl(orderDetails.product.image)
+                        model = imageUrl(orderDetails.product.images.first() ?: "test_img.png")
                     ),
                     contentDescription = "商品图片",
                     modifier = Modifier

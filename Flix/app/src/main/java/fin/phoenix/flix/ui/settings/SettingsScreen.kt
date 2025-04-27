@@ -150,7 +150,7 @@ fun SettingsScreen(navController: NavController) {
                         onClick = { navController.navigate("/settings/privacy") }
                     )
                     SettingsClickItem(
-                        title = "注销账号",
+                        title = "退出登录",
                         textColor = MaterialTheme.colorScheme.error,
                         onClick = { showLogoutDialog = true }
                     )

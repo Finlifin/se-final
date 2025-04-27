@@ -21,8 +21,8 @@ data class Message(
     @SerializedName("inserted_at") val insertedAt: Date,
     @SerializedName("updated_at") val updatedAt: Date,
     // Additional UI fields
-    @SerializedName("sender") var sender: String = "<unknown>",
-    @SerializedName("receiver") val receiver: String? = null,
+    @SerializedName("sender") var sender: UserAbstract? = null,
+    @SerializedName("receiver") val receiver: UserAbstract? = null,
     // Local fields (not from server)
     var isSending: Boolean = false,
     var sendAttempts: Int = 0,
@@ -100,27 +100,6 @@ object InteractionTypes {
     const val SHARE = "share"
     const val MENTION = "mention"
 }
-
-/**
- * 商品信息负载
- */
-data class ProductPayload(
-    @SerializedName("product_id") val productId: String,
-    @SerializedName("product_name") val productName: String,
-    @SerializedName("price") val price: Double,
-    @SerializedName("image_url") val imageUrl: String?
-)
-
-/**
- * 订单信息负载
- */
-data class OrderPayload(
-    @SerializedName("order_id") val orderId: String,
-    @SerializedName("order_status") val orderStatus: String,
-    @SerializedName("product_name") val productName: String,
-    @SerializedName("amount") val amount: Double,
-    @SerializedName("image_url") val imageUrl: String?
-)
 
 /**
  * 未读消息计数

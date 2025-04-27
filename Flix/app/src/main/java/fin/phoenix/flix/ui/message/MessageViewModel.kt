@@ -1,50 +1,42 @@
 package fin.phoenix.flix.ui.message
 
 import android.app.Application
+import android.icu.util.Calendar
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import fin.phoenix.flix.api.MessageStatusChange
-import fin.phoenix.flix.api.PhoenixMessageClient
-import fin.phoenix.flix.data.Conversation
 import fin.phoenix.flix.data.ConversationDetail
 import fin.phoenix.flix.data.Message
 import fin.phoenix.flix.data.MessageContentItem
+import fin.phoenix.flix.data.MessageStatus
 import fin.phoenix.flix.data.MessageTypes
+import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.data.repository.MessageRepository
-import fin.phoenix.flix.repository.ConversationRepository
-import fin.phoenix.flix.util.Resource
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import java.util.Date
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class MessageViewModel(application: Application) : AndroidViewModel(application) {
-    private val conversationRepository = ConversationRepository(application)
-    private val messageRepository = MessageRepository(application)
-    private val messageClient = PhoenixMessageClient.instance
-
-    private val currentUserId = application.applicationContext.getSharedPreferences("flix_prefs", 0)
-        .getString("user_id", null) ?: ""
+    private val messageRepository = MessageRepository.getInstance(application)
+    private val currentUser = UserManager.getInstance(application)
+    private val currentUserId = currentUser.currentUserId.value ?: ""
 
     // 会话列表状态
     private val _conversationListState =
-        MutableStateFlow<ConversationListState>(ConversationListState.Loading)
-    val conversationListState: StateFlow<ConversationListState> = _conversationListState
+        MutableLiveData<ConversationListState>(ConversationListState.Loading)
+    val conversationListState: LiveData<ConversationListState> = _conversationListState
 
     // 聊天状态
-    private val _chatState = MutableStateFlow<ChatState>(ChatState.Loading)
-    val chatState: StateFlow<ChatState> = _chatState
+    private val _chatState = MutableLiveData<ChatState>(ChatState.Loading)
+    val chatState: LiveData<ChatState> = _chatState
 
-    // 连接状态
-    private val _connectionState = messageClient.connectionState
-    val connectionState = _connectionState
+    // 连接状态 - 直接从Repository获取
+    val connectionState = messageRepository.connectionState
 
-    // 未读消息计数
-    val unreadCounts = messageClient.unreadCounts
+    // 未读消息计数 - 直接从Repository获取
+    val unreadCounts = messageRepository.unreadCounts
 
     init {
         // 加载会话列表
@@ -52,29 +44,54 @@ class MessageViewModel(application: Application) : AndroidViewModel(application)
 
         // 监听新消息
         viewModelScope.launch {
-            messageClient.newMessages.collect { message ->
-                handleNewMessage(message)
+            messageRepository.newMessages.collect { message ->
+                // 更新当前聊天状态
+                updateChatState(message)
+                // 更新会话列表状态
+                updateConversationList()
             }
         }
 
-        // 监听消息状态变更
+        // 启动同步
         viewModelScope.launch {
-            messageClient.messageStatusChanges.collect { statusChange ->
-                handleMessageStatusChange(statusChange)
+            messageRepository.sync()
+        }
+    }
+
+    private suspend fun updateChatState(message: Message) {
+        val currentState = _chatState.value
+        if (currentState is ChatState.Success && currentState.conversationId == message.conversationId) {
+            _chatState.postValue(
+                ChatState.Success(
+                    messages = listOf(message) + currentState.messages,
+                    conversationId = currentState.conversationId
+                )
+            )
+            
+            // 如果收到新消息且不是自己发送的，自动标记为已读
+            if (message.senderId != currentUserId) {
+                markMessageAsRead(message.id)
             }
+        }
+    }
+
+    private suspend fun updateConversationList() {
+        messageRepository.getAllConversations().collect { conversations ->
+            _conversationListState.postValue(ConversationListState.Success(conversations))
         }
     }
 
     fun loadConversations() {
         viewModelScope.launch {
             try {
-                _conversationListState.value = ConversationListState.Loading
-                messageRepository.getAllConversations().collect { conversations ->
-                    _conversationListState.value = ConversationListState.Success(conversations)
-                }
+                _conversationListState.postValue(ConversationListState.Loading)
+                updateConversationList()
             } catch (e: Exception) {
-                _conversationListState.value =
-                    ConversationListState.Error(e.message ?: "加载会话列表失败")
+                _conversationListState.postValue(
+                    ConversationListState.Error(
+                        e.message ?: "加载会话列表失败"
+                    )
+                )
             }
         }
     }
@@ -82,40 +99,157 @@ class MessageViewModel(application: Application) : AndroidViewModel(application)
     fun loadChat(conversationId: String) {
         viewModelScope.launch {
             try {
-                _chatState.value = ChatState.Loading
+                _chatState.postValue(ChatState.Loading)
                 messageRepository.getMessagesForConversation(conversationId).collect { messages ->
-                    _chatState.value = ChatState.Success(messages)
+                    _chatState.postValue(ChatState.Success(messages, conversationId))
+                    
+                    // 加载成功后标记会话已读
+                    markConversationAsRead(conversationId)
                 }
             } catch (e: Exception) {
-                _chatState.value = ChatState.Error(e.message ?: "加载聊天记录失败")
+                _chatState.postValue(ChatState.Error(e.message ?: "加载聊天记录失败"))
             }
         }
     }
 
-    fun loadSystemMessages(messageType: String) {
+    @OptIn(ExperimentalUuidApi::class)
+    fun sendMessage(
+        conversationId: String,
+        content: List<MessageContentItem>,
+        messageType: String = MessageTypes.PRIVATE_MESSAGE,
+        clientMessageId: String = Uuid.random().toString(),
+    ) {
         viewModelScope.launch {
             try {
-                _chatState.value = ChatState.Loading
-                messageRepository.getMessagesForConversation(messageType).collect { messages ->
-                    // 根据消息类型过滤和分组
-                    val filteredMessages = messages.filter { it.messageType == messageType }
-                        .sortedByDescending { it.insertedAt }.groupBy {
-                            when {
-                                isToday(it.insertedAt) -> "今天"
-                                isYesterday(it.insertedAt) -> "昨天"
-                                isThisWeek(it.insertedAt) -> "本周"
-                                isThisMonth(it.insertedAt) -> "本月"
-                                else -> "更早"
-                            }
-                        }
-                    _chatState.value = ChatState.Success(messages)
-                }
+                val now = Date()
+                val message = Message(
+                    id = clientMessageId,
+                    conversationId = conversationId,
+                    content = content,
+                    messageType = messageType,
+                    status = MessageStatus.SENDING,
+                    insertedAt = now,
+                    updatedAt = now,
+                    clientMessageId = clientMessageId,
+                    senderId = currentUserId,
+                    receiverId = null,
+                    referenceId = null,
+                    clientTimestamp = now,
+                    serverTimestamp = now,
+                    sender = currentUser.currentUser.value,
+                    receiver = null,
+                    isSending = true,
+                    sendAttempts = 0,
+                    errorMessage = null
+                )
+                messageRepository.sendMessage(message)
             } catch (e: Exception) {
-                _chatState.value = ChatState.Error(e.message ?: "加载消息失败")
+                val currentChatState = _chatState.value
+                if (currentChatState is ChatState.Success) {
+                    _chatState.postValue(
+                        ChatState.Success(
+                            currentChatState.messages,
+                            currentChatState.conversationId,
+                            error = e.message ?: "发送消息失败"
+                        )
+                    )
+                }
             }
         }
     }
 
+    fun retryMessage(message: Message) {
+        viewModelScope.launch {
+            messageRepository.retryFailedMessage(message)
+        }
+    }
+
+    fun withdrawMessage(messageId: String) {
+        viewModelScope.launch {
+            messageRepository.withdrawMessage(messageId)
+        }
+    }
+
+    fun markMessageAsRead(messageId: String) {
+        viewModelScope.launch {
+            messageRepository.markMessageAsRead(messageId)
+        }
+    }
+    
+    // 标记整个会话为已读
+    fun markConversationAsRead(conversationId: String) {
+        viewModelScope.launch {
+            messageRepository.markConversationAsRead(conversationId)
+        }
+    }
+
+    fun markSystemMessageRead(conversationId: String, messageId: String) {
+        viewModelScope.launch {
+            try {
+                messageRepository.markMessageAsRead(messageId)
+            } catch (e: Exception) {
+                val currentChatState = _chatState.value
+                if (currentChatState is ChatState.Success) {
+                    _chatState.postValue(
+                        ChatState.Success(
+                            currentChatState.messages,
+                            currentChatState.conversationId,
+                            error = "标记已读失败"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun togglePin(conversationId: String, isPinned: Boolean) {
+        viewModelScope.launch {
+            messageRepository.toggleConversationPin(conversationId, isPinned)
+        }
+    }
+
+    fun toggleMute(conversationId: String, isMuted: Boolean) {
+        viewModelScope.launch {
+            messageRepository.toggleConversationMute(conversationId, isMuted)
+        }
+    }
+
+    fun deleteConversation(conversationId: String) {
+        viewModelScope.launch {
+            messageRepository.deleteConversation(conversationId)
+        }
+    }
+
+    fun clearConversation(conversationId: String) {
+        viewModelScope.launch {
+            messageRepository.clearConversation(conversationId)
+        }
+    }
+
+    fun loadSystemMessages(conversationId: String) {
+        viewModelScope.launch {
+            try {
+                _chatState.postValue(ChatState.Loading)
+                messageRepository.getMessagesForConversation(conversationId).collect { messages ->
+                    // 根据消息类型过滤和分组
+                    val filteredMessages = messages.sortedByDescending { it.insertedAt }.groupBy {
+                        when {
+                            isToday(it.insertedAt) -> "今天"
+                            isYesterday(it.insertedAt) -> "昨天"
+                            isThisWeek(it.insertedAt) -> "本周"
+                            isThisMonth(it.insertedAt) -> "本月"
+                            else -> "更早"
+                        }
+                    }
+                    _chatState.postValue(ChatState.Success(messages, conversationId))
+                }
+            } catch (e: Exception) {
+                _chatState.postValue(ChatState.Error(e.message ?: "加载消息失败"))
+            }
+        }
+    }
+    
+    // 辅助函数，用于判断时间
     private fun isToday(date: Date): Boolean {
         val calendar = Calendar.getInstance()
         val today = calendar.get(Calendar.DAY_OF_YEAR)
@@ -153,156 +287,6 @@ class MessageViewModel(application: Application) : AndroidViewModel(application)
             .get(Calendar.YEAR)
     }
 
-    @OptIn(ExperimentalUuidApi::class)
-    fun sendMessage(
-        sender: String,
-        conversationId: String,
-        content: List<MessageContentItem>,
-        messageType: String = MessageTypes.PRIVATE_MESSAGE,
-        clientMessageId: String = Uuid.random().toString(),
-    ) {
-        viewModelScope.launch {
-            try {
-                val now = Date()
-                val message = Message(
-                    id = clientMessageId, // Use clientMessageId as temporary id
-                    conversationId = conversationId,
-                    content = content,
-                    messageType = messageType,
-                    status = "sending",
-                    insertedAt = now,
-                    updatedAt = now,
-                    clientMessageId = clientMessageId,
-                    senderId = currentUserId, // Use the current user's ID
-                    receiverId = null, // Will be set by server
-                    referenceId = null, // Optional reference
-                    clientTimestamp = now,
-                    serverTimestamp = now,
-                    sender = sender,
-                    receiver = null, // Will be set by server
-                    isSending = true,
-                    sendAttempts = 0,
-                    errorMessage = null
-                )
-                messageRepository.sendMessage(message)
-            } catch (e: Exception) {
-                _chatState.update { currentState ->
-                    if (currentState is ChatState.Success) {
-                        ChatState.Success(
-                            currentState.messages,
-                            error = e.message ?: "发送消息失败"
-                        )
-                    } else {
-                        currentState
-                    }
-                }
-            }
-        }
-    }
-
-    fun retryMessage(message: Message) {
-        viewModelScope.launch {
-            messageRepository.retryFailedMessage(message)
-        }
-    }
-
-    fun withdrawMessage(messageId: String) {
-        viewModelScope.launch {
-            messageRepository.withdrawMessage(messageId)
-        }
-    }
-
-    fun markMessageAsRead(messageId: String) {
-        viewModelScope.launch {
-            messageRepository.markMessageAsRead(messageId)
-        }
-    }
-
-    fun markSystemMessageRead(conversationId: String, messageId: String) {
-        viewModelScope.launch {
-            try {
-                messageRepository.markMessageAsRead(messageId)
-                // 更新未读计数
-                when (conversationId) {
-                    "system_notification" -> {
-                        messageClient.updateUnreadCounts(MessageTypes.SYSTEM_NOTIFICATION)
-                    }
-
-                    "system_announcement" -> {
-                        messageClient.updateUnreadCounts(MessageTypes.SYSTEM_ANNOUNCEMENT)
-                    }
-
-                    "interaction" -> {
-                        messageClient.updateUnreadCounts(MessageTypes.INTERACTION)
-                    }
-                }
-            } catch (e: Exception) {
-                // 处理错误
-                _chatState.update { currentState ->
-                    if (currentState is ChatState.Success) {
-                        ChatState.Success(currentState.messages, error = "标记已读失败")
-                    } else {
-                        currentState
-                    }
-                }
-            }
-        }
-    }
-
-    fun togglePin(conversationId: String, isPinned: Boolean) {
-        viewModelScope.launch {
-            messageRepository.toggleConversationPin(conversationId, isPinned)
-        }
-    }
-
-    fun toggleMute(conversationId: String, isMuted: Boolean) {
-        viewModelScope.launch {
-            messageRepository.toggleConversationMute(conversationId, isMuted)
-        }
-    }
-
-    fun deleteConversation(conversationId: String) {
-        viewModelScope.launch {
-            messageRepository.deleteConversation(conversationId)
-        }
-    }
-
-    private fun handleNewMessage(message: Message) {
-        viewModelScope.launch {
-            when(val result = conversationRepository.getConversation(message.conversationId)) {
-                is Resource.Success -> {
-                    val conversationDetail = result.data
-                    _conversationListState.update { currentState ->
-                        if (currentState is ConversationListState.Success) {
-                            val updatedConversations = currentState.conversations.toMutableList()
-                            updatedConversations.add(conversationDetail)
-                            ConversationListState.Success(updatedConversations)
-                        } else {
-                            currentState
-                        }
-                    }
-                }
-                is Resource.Error -> {
-                    // 处理错误
-                    _chatState.update { currentState ->
-                        if (currentState is ChatState.Success) {
-                            ChatState.Success(currentState.messages, error = "获取会话失败")
-                        } else {
-                            currentState
-                        }
-                    }
-                }
-                else -> {}
-            }
-        }
-    }
-
-    private fun handleMessageStatusChange(statusChange: MessageStatusChange) {
-        viewModelScope.launch {
-            messageRepository.markMessageAsRead(statusChange.messageId)
-        }
-    }
-
     // 状态类
     sealed class ConversationListState {
         object Loading : ConversationListState()
@@ -313,9 +297,9 @@ class MessageViewModel(application: Application) : AndroidViewModel(application)
     sealed class ChatState {
         object Loading : ChatState()
         data class Success(
-            val messages: List<Message>, val error: String? = null
+            val messages: List<Message>, val conversationId: String, val error: String? = null
         ) : ChatState()
-
         data class Error(val message: String) : ChatState()
     }
 }
+

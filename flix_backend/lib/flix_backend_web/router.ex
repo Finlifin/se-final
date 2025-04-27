@@ -52,9 +52,6 @@ defmodule FlixBackendWeb.Router do
       get "/abstract/:userId", ProfileController, :get_user_abstract
       get "/seller/:userId", ProfileController, :get_seller_profile
       get "/popular", ProfileController, :get_popular_sellers
-      put "/update", ProfileController, :update_user_profile
-      post "/recharge", ProfileController, :recharge_balance
-      post "/avatar", ProfileController, :update_avatar
       get "/:userId/products", ProfileController, :get_user_products
       get "/:userId/sold", ProfileController, :get_user_sold_products
       get "/:userId/purchased", ProfileController, :get_user_purchased_products
@@ -87,11 +84,14 @@ defmodule FlixBackendWeb.Router do
       post "/:id/favorite", ProductController, :favorite
       delete "/:id/favorite", ProductController, :unfavorite
       get "/:id/is_favorite", ProductController, :is_favorite
-      get "/favorites", ProductController, :favorites
     end
 
     scope "/profile" do
+      post "/recharge", ProfileController, :recharge_balance
+      put "/update", ProfileController, :update_user_profile
+      post "/avatar", ProfileController, :update_avatar
       get "/user/:userId", ProfileController, :get_user_profile
+      get "/favorites", ProductController, :favorites
     end
 
     # 学校与校区相关需认证API
@@ -121,6 +121,7 @@ defmodule FlixBackendWeb.Router do
       delete "/:id", ConversationController, :delete
       # 标记会话为已读
       put "/:id/read", ConversationController, :mark_read
+
     end
 
     # 消息相关路由

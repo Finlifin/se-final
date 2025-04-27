@@ -2,7 +2,9 @@ package fin.phoenix.flix.repository
 
 import android.content.Context
 import android.util.Log
+import com.google.gson.annotations.SerializedName
 import fin.phoenix.flix.api.ProfileService
+import fin.phoenix.flix.api.ProfileUpdateRequest
 import fin.phoenix.flix.api.RetrofitClient
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.Seller
@@ -31,7 +33,7 @@ class ProfileRepository(private val context: Context) {
     /**
      * 根据用户ID获取用户简要信息
      */
-    suspend fun getUserById(userId: String): Resource<UserAbstract> = withContext(Dispatchers.IO) {
+    suspend fun getUserAbstract(userId: String): Resource<UserAbstract> = withContext(Dispatchers.IO) {
         userService.getUserAbstract(userId).toResource("获取用户信息失败")
     }
 
@@ -52,7 +54,7 @@ class ProfileRepository(private val context: Context) {
     /**
      * 更新用户信息
      */
-    suspend fun updateUserProfile(user: User): Resource<User> = withContext(Dispatchers.IO) {
+    suspend fun updateUserProfile(user: ProfileUpdateRequest): Resource<User> = withContext(Dispatchers.IO) {
         userService.updateUserProfile(user).toResource("更新用户信息失败")
     }
 

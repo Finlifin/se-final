@@ -57,12 +57,11 @@ defmodule FlixBackend.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:haystack, "~> 0.1.0"},
       {:guardian, "~> 2.3.2"},
       {:joken, "~> 2.6.1"},
       {:bcrypt_elixir, "~> 3.2.1"},
       {:ecto_enum, "~> 1.4"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
     ]
   end
 

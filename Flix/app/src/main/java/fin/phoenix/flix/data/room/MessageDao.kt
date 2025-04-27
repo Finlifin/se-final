@@ -8,7 +8,7 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY serverTimestamp DESC LIMIT :limit")
     fun getMessagesForConversation(conversationId: String, limit: Int = 20): Flow<List<MessageEntity>>
     
-    @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND serverTimestamp < :before ORDER BY serverTimestamp DESC LIMIT :limit")
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND insertedAt < :before ORDER BY serverTimestamp DESC LIMIT :limit")
     fun getMessagesForConversationBefore(conversationId: String, before: Long, limit: Int = 20): Flow<List<MessageEntity>>
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -16,12 +16,18 @@ interface MessageDao {
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessages(messages: List<MessageEntity>)
-    
+
+    @Query("DELETE FROM messages WHERE conversationId = :conversationId")
+    suspend fun clearConversation(conversationId: String)
+
     @Update
     suspend fun updateMessage(message: MessageEntity)
     
     @Query("UPDATE messages SET status = :newStatus WHERE id = :messageId")
     suspend fun updateMessageStatus(messageId: String, newStatus: String)
+    
+    @Query("UPDATE messages SET status = :newStatus WHERE conversationId = :conversationId AND status = 'unread' AND senderId != :userId")
+    suspend fun updateAllUnreadMessagesInConversation(conversationId: String, newStatus: String, userId: String? = null)
     
     @Query("DELETE FROM messages WHERE conversationId = :conversationId")
     suspend fun deleteMessagesForConversation(conversationId: String)

@@ -1,6 +1,7 @@
 defmodule FlixBackend.Data.UserConversation do
   use Ecto.Schema
   import Ecto.Changeset
+  alias FlixBackend.Data.Conversation
   alias FlixBackend.Repo
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -63,7 +64,9 @@ defmodule FlixBackend.Data.UserConversation do
   # 更新会话设置
   def update_settings(user_id, conversation_id, settings) do
     case Repo.get_by(__MODULE__, user_id: user_id, conversation_id: conversation_id) do
-      nil -> {:error, :not_found}
+      nil ->
+        {:error, :not_found}
+
       user_conversation ->
         user_conversation
         |> changeset(settings)
@@ -75,10 +78,24 @@ defmodule FlixBackend.Data.UserConversation do
   def list_for_user(user_id) do
     import Ecto.Query
 
-    query = from uc in __MODULE__,
-      where: uc.user_id == ^user_id,
-      order_by: [desc: uc.updated_at]
+    query =
+      from uc in __MODULE__,
+        where: uc.user_id == ^user_id,
+        order_by: [desc: uc.updated_at]
 
     Repo.all(query)
+  end
+
+  def reset_unread_count(conversation_id, user_id) do
+    conversation = Conversation.get_conversation(conversation_id)
+    case Repo.get_by(__MODULE__, conversation_id: conversation.conversation_id, user_id: user_id) do
+      nil ->
+        {:error, :not_found}
+
+      user_conversation ->
+        user_conversation
+        |> changeset(%{unread_count: 0})
+        |> Repo.update()
+    end
   end
 end

@@ -3,22 +3,49 @@ package fin.phoenix.flix.ui.orders
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,24 +57,25 @@ import fin.phoenix.flix.data.Order
 import fin.phoenix.flix.data.OrderStatus
 import fin.phoenix.flix.ui.colors.RoseRed
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderListScreen(navController: NavController) {
     val viewModel: OrderViewModel = viewModel()
     val ordersState by viewModel.ordersState.collectAsState()
-    
+
     // 角色选择（买家/卖家）
     val roleOptions = listOf("买家", "卖家")
     val selectedRole = remember { mutableStateOf(roleOptions[0]) }
-    
+
     // 订单状态筛选
     val statusOptions = listOf(
         "全部", "待处理", "等待支付", "已支付", "已发货", "已完成", "已取消", "已退款"
     )
     val selectedStatus = remember { mutableStateOf(statusOptions[0]) }
-    
+
     // 加载订单
     LaunchedEffect(selectedRole.value, selectedStatus.value) {
         val role = if (selectedRole.value == "买家") "buyer" else "seller"
@@ -63,19 +91,15 @@ fun OrderListScreen(navController: NavController) {
         }
         viewModel.loadOrders(role = role, status = status)
     }
-    
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("我的订单") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
+            TopAppBar(title = { Text("我的订单") }, navigationIcon = {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
-            )
-        }
-    ) { paddingValues ->
+            })
+        }) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -85,32 +109,29 @@ fun OrderListScreen(navController: NavController) {
             RoleSelector(
                 options = roleOptions,
                 selectedOption = selectedRole.value,
-                onOptionSelected = { selectedRole.value = it }
-            )
-            
-            // 状态筛选器
-            StatusFilterChips(
-                options = statusOptions,
-                selectedOption = selectedStatus.value,
-                onOptionSelected = { selectedStatus.value = it }
-            )
-            
+                onOptionSelected = { selectedRole.value = it })
+
+            // // 状态筛选器
+            // StatusFilterChips(
+            //     options = statusOptions,
+            //     selectedOption = selectedStatus.value,
+            //     onOptionSelected = { selectedStatus.value = it }
+            // )
+
             // 订单列表
             when (ordersState) {
                 is OrderViewModel.OrdersState.Loading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = RoseRed)
                     }
                 }
-                
+
                 is OrderViewModel.OrdersState.Error -> {
                     val errorMessage = (ordersState as OrderViewModel.OrdersState.Error).message
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -122,13 +143,13 @@ fun OrderListScreen(navController: NavController) {
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = errorMessage,
-                                color = Color.Red
+                                text = errorMessage, color = Color.Red
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { 
-                                    val role = if (selectedRole.value == "买家") "buyer" else "seller"
+                                onClick = {
+                                    val role =
+                                        if (selectedRole.value == "买家") "buyer" else "seller"
                                     val status = when (selectedStatus.value) {
                                         "待处理" -> "pending"
                                         "等待支付" -> "payment_pending"
@@ -140,18 +161,17 @@ fun OrderListScreen(navController: NavController) {
                                         else -> null
                                     }
                                     viewModel.loadOrders(role = role, status = status)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+                                }, colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
                             ) {
                                 Text("重试")
                             }
                         }
                     }
                 }
-                
+
                 is OrderViewModel.OrdersState.Success -> {
                     val orders = (ordersState as OrderViewModel.OrdersState.Success).orders
-                    
+
                     if (orders.isEmpty()) {
                         EmptyState(
                             icon = Icons.Default.ShoppingBag,
@@ -164,17 +184,20 @@ fun OrderListScreen(navController: NavController) {
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp)
                         ) {
-items(
-    items = orders,
-    key = { order -> order.orderId }
-) { order ->
-    OrderItem(
-        order = order,
-        isSellerMode = selectedRole.value == "卖家",
-        onClick = { navController.navigate("/orders/${order.orderId}") }
-    )
-}
-                            
+                            items(
+                                items = orders, key = { order -> order.orderId }) { order ->
+                                OrderItem(
+                                    order = order,
+                                    isSellerMode = selectedRole.value == "卖家",
+                                    onClick = { navController.navigate("/orders/${order.orderId}") },
+                                    onGotoPayment = {
+                                        navController.navigate("/payment/confirm/${order.orderId}")
+                                    },
+                                    onCancelOrder = {
+                                        viewModel.cancelOrder(order.orderId)
+                                    })
+                            }
+
                             // 添加底部空间以防止底部导航栏遮挡
                             item {
                                 Spacer(modifier = Modifier.height(80.dp))
@@ -191,7 +214,7 @@ items(
 fun RoleSelector(
     options: List<String>,
     selectedOption: String,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -201,7 +224,7 @@ fun RoleSelector(
     ) {
         options.forEach { option ->
             val isSelected = option == selectedOption
-            
+
             OutlinedButton(
                 onClick = { onOptionSelected(option) },
                 modifier = Modifier.weight(1f),
@@ -211,13 +234,12 @@ fun RoleSelector(
                     contentColor = if (isSelected) RoseRed else Color.Gray
                 ),
                 border = BorderStroke(
-                    width = 1.dp,
-                    color = if (isSelected) RoseRed else Color.Gray
+                    width = 1.dp, color = if (isSelected) RoseRed else Color.Gray
                 )
             ) {
                 Text(option)
             }
-            
+
             if (option != options.last()) {
                 Spacer(modifier = Modifier.width(16.dp))
             }
@@ -227,9 +249,7 @@ fun RoleSelector(
 
 @Composable
 fun StatusFilterChips(
-    options: List<String>,
-    selectedOption: String,
-    onOptionSelected: (String) -> Unit
+    options: List<String>, selectedOption: String, onOptionSelected: (String) -> Unit
 ) {
     LazyRow(
         modifier = Modifier
@@ -239,7 +259,7 @@ fun StatusFilterChips(
     ) {
         items(options) { option ->
             val isSelected = option == selectedOption
-            
+
             FilterChip(
                 selected = isSelected,
                 onClick = { onOptionSelected(option) },
@@ -269,7 +289,9 @@ fun StatusFilterChips(
 fun OrderItem(
     order: Order,
     isSellerMode: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onGotoPayment: () -> Unit = {},
+    onCancelOrder: () -> Unit = {},
 ) {
     Card(
         modifier = Modifier
@@ -294,35 +316,32 @@ fun OrderItem(
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
-                
+
                 StatusChip(
                     status = order.status
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             // 占位图片和订单基本信息
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
             ) {
                 // 占位图片，实际应用中应该是产品图片
                 Box(
                     modifier = Modifier
                         .size(60.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
+                        .background(Color.LightGray), contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "商品",
-                        color = Color.White
+                        text = "商品", color = Color.White
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
@@ -332,36 +351,33 @@ fun OrderItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
+
                     Spacer(modifier = Modifier.height(4.dp))
-                    
+
                     Text(
                         text = formatOrderTime(order.orderTime),
                         fontSize = 12.sp,
                         color = Color.Gray
                     )
                 }
-                
+
                 Text(
-                    text = "¥${order.price}",
-                    fontWeight = FontWeight.Bold,
-                    color = RoseRed
+                    text = "¥${order.price}", fontWeight = FontWeight.Bold, color = RoseRed
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             // 操作按钮
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
             ) {
                 // 根据订单状态和角色显示不同的操作按钮
                 when (order.status) {
                     OrderStatus.PENDING, OrderStatus.PAYMENT_PENDING -> {
                         if (!isSellerMode) {
                             OutlinedButton(
-                                onClick = { /* 去支付 */ },
+                                onClick = onGotoPayment,
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = RoseRed
                                 ),
@@ -370,9 +386,9 @@ fun OrderItem(
                                 Text("去支付")
                             }
                         }
-                        
+
                         OutlinedButton(
-                            onClick = { /* 取消订单 */ },
+                            onClick = onCancelOrder,
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = Color.Gray
                             )
@@ -380,12 +396,11 @@ fun OrderItem(
                             Text("取消订单")
                         }
                     }
-                    
+
                     OrderStatus.PAID -> {
                         if (isSellerMode) {
                             Button(
-                                onClick = { /* 发货 */ },
-                                colors = ButtonDefaults.buttonColors(
+                                onClick = { /* 发货 */ }, colors = ButtonDefaults.buttonColors(
                                     containerColor = RoseRed
                                 )
                             ) {
@@ -402,12 +417,11 @@ fun OrderItem(
                             }
                         }
                     }
-                    
+
                     OrderStatus.SHIPPING -> {
                         if (!isSellerMode) {
                             Button(
-                                onClick = { /* 确认收货 */ },
-                                colors = ButtonDefaults.buttonColors(
+                                onClick = { /* 确认收货 */ }, colors = ButtonDefaults.buttonColors(
                                     containerColor = RoseRed
                                 )
                             ) {
@@ -415,7 +429,7 @@ fun OrderItem(
                             }
                         }
                     }
-                    
+
                     OrderStatus.COMPLETED -> {
                         if (!isSellerMode) {
                             OutlinedButton(
@@ -428,19 +442,17 @@ fun OrderItem(
                             }
                         }
                     }
-                    
+
                     else -> {
                         // 对于已取消或已退款的订单，不显示操作按钮
                     }
                 }
-                
+
                 // 所有状态都显示查看详情按钮
                 OutlinedButton(
-                    onClick = onClick,
-                    colors = ButtonDefaults.outlinedButtonColors(
+                    onClick = onClick, colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color.Gray
-                    ),
-                    modifier = Modifier.padding(start = 8.dp)
+                    ), modifier = Modifier.padding(start = 8.dp)
                 ) {
                     Text("查看详情")
                 }
@@ -460,10 +472,9 @@ fun StatusChip(status: OrderStatus) {
         OrderStatus.CANCELLED -> Triple(Color(0xFFF5F5F5), Color.Gray, "已取消")
         OrderStatus.REFUNDED -> Triple(Color(0xFFFFF1F0), Color(0xFFF5222D), "已退款")
     }
-    
+
     Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = backgroundColor
+        shape = RoundedCornerShape(4.dp), color = backgroundColor
     ) {
         Text(
             text = statusText,
@@ -476,17 +487,13 @@ fun StatusChip(status: OrderStatus) {
 
 @Composable
 fun EmptyState(
-    icon: ImageVector,
-    message: String,
-    subMessage: String? = null
+    icon: ImageVector, message: String, subMessage: String? = null
 ) {
     Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
+            horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)
         ) {
             Icon(
                 imageVector = icon,
@@ -494,22 +501,18 @@ fun EmptyState(
                 modifier = Modifier.size(64.dp),
                 tint = Color.Gray.copy(alpha = 0.6f)
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Text(
-                text = message,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                text = message, fontSize = 18.sp, fontWeight = FontWeight.Bold
             )
-            
+
             if (subMessage != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Text(
-                    text = subMessage,
-                    fontSize = 14.sp,
-                    color = Color.Gray
+                    text = subMessage, fontSize = 14.sp, color = Color.Gray
                 )
             }
         }

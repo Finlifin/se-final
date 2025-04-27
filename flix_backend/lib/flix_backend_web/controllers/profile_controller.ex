@@ -66,8 +66,9 @@ defmodule FlixBackendWeb.ProfileController do
   更新用户资料
   """
   def update_user_profile(conn, user_params) do
-    # Assuming authentication happens elsewhere (e.g., a plug)
-    # and user_params contains the user ID to update or it's derived from auth
+    account = Guardian.Plug.current_resource(conn)
+    IO.inspect(account, label: "Account")
+    user_params = Map.put(user_params, "userId", account.user_id)
     case ProfileService.update_user_profile(user_params) do
       {:ok, updated_user} ->
         json(conn, ApiResponse.success_response("用户资料更新成功", updated_user)) # Use ApiResponse

@@ -1,11 +1,13 @@
 package fin.phoenix.flix.api
 
+import com.google.gson.annotations.SerializedName
 import fin.phoenix.flix.data.DeliveryMethod
 import fin.phoenix.flix.data.PaymentDetails
 import fin.phoenix.flix.data.PaymentMethod
 import fin.phoenix.flix.data.PaymentStatus
 import retrofit2.Response
 import retrofit2.http.*
+import java.io.Serial
 
 /**
  * 支付API服务接口
@@ -46,8 +48,17 @@ interface PaymentService {
      */
     @DELETE("payment/{orderId}")
     suspend fun cancelPayment(@Path("orderId") orderId: String): Response<GenericApiResponse<Boolean>>
+
+    // 用于测试
+    @POST("payment/callback")
+    suspend fun confirmPayment(@Body request: PaymentCallbackRequest): Response<GenericApiResponse<Unit>>
 }
 
+data class PaymentCallbackRequest(
+    @SerializedName("order_id") val orderId: String,
+    @SerializedName("payment_status") val paymentStatus: String = "success",
+    @SerializedName("transaction_id") val transactionId: String
+)
 /**
  * 配送费用数据
  */

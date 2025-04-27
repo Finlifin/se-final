@@ -1,7 +1,21 @@
 package fin.phoenix.flix.ui.message
 
+import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -13,9 +27,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +62,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -33,8 +72,13 @@ import fin.phoenix.flix.api.ConnectionState
 import fin.phoenix.flix.data.ContentTypes
 import fin.phoenix.flix.data.Message
 import fin.phoenix.flix.data.MessageContentItem
+import fin.phoenix.flix.data.Product
+import fin.phoenix.flix.data.Order
+import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
+import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
+import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.formatTime
 import fin.phoenix.flix.util.imageUrl
 import kotlinx.coroutines.launch
@@ -42,18 +86,18 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    navController: NavController, partnerUserId: String
+    navController: NavController, conversationId: String
 ) {
     val context = LocalContext.current
     val viewModel: MessageViewModel = viewModel()
-    val chatState by viewModel.chatState.collectAsState()
-    val connectionState by viewModel.connectionState.collectAsState()
+    val chatState by viewModel.chatState.observeAsState()
+    val connectionState by viewModel.connectionState.observeAsState()
     var message by remember { mutableStateOf("") }
     var showImagePicker by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf<Message?>(null) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    val currentUser by UserManager.getInstance(context).currentUser.collectAsState()
+    val currentUser by UserManager.getInstance(context).currentUser.observeAsState()
 
     // 图片选择器
 //    val imagePicker = rememberLauncherForActivityResult(
@@ -69,33 +113,50 @@ fun ChatScreen(
 //    }
 
     // 加载会话信息
-    LaunchedEffect(partnerUserId) {
-        viewModel.loadChat(partnerUserId)
+    LaunchedEffect(conversationId) {
+        viewModel.loadChat(conversationId)
     }
 
     Scaffold(topBar = {
-        TopAppBar(title = {
-            Column {
-                Text(currentUser?.userName ?: "用户")
-                if (connectionState != ConnectionState.CONNECTED) {
-                    Text(
-                        text = when (connectionState) {
-                            ConnectionState.CONNECTING -> "正在连接..."
-                            ConnectionState.DISCONNECTED -> "连接已断开"
-                            ConnectionState.CONNECTION_ERROR -> "连接失败"
-                            else -> ""
-                        }, fontSize = 12.sp, color = Color.Gray
-                    )
+        TopAppBar(
+            title = {
+                Column {
+                    Text(currentUser?.userName ?: "用户")
+                    if (connectionState != ConnectionState.CONNECTED) {
+                        Text(
+                            text = when (connectionState) {
+                                ConnectionState.CONNECTING -> "正在连接..."
+                                ConnectionState.DISCONNECTED -> "连接已断开"
+                                ConnectionState.CONNECTION_ERROR -> "连接失败"
+                                else -> ""
+                            }, fontSize = 12.sp, color = Color.Gray
+                        )
+                    }
+                }
+            }, 
+            navigationIcon = {
+                IconButton(onClick = { navController.navigateUp() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                }
+            },
+            actions = {
+                // 添加设置按钮
+                IconButton(onClick = { 
+                    // 当chatState可用且为Success状态时，跳转到聊天设置页面
+                    chatState?.let { state ->
+                        if (state is MessageViewModel.ChatState.Success) {
+                            navController.navigate("/messages/settings/${state.conversationId}")
+                        }
+                    }
+                }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "聊天设置")
                 }
             }
-        }, navigationIcon = {
-            IconButton(onClick = { navController.navigateUp() }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-            }
-        })
+        )
     }, bottomBar = {
         Surface(
-            modifier = Modifier.fillMaxWidth(), tonalElevation = 3.dp
+            modifier = Modifier.fillMaxWidth().imePadding(),
+            tonalElevation = 3.dp
         ) {
             Row(
                 modifier = Modifier
@@ -121,8 +182,7 @@ fun ChatScreen(
                     keyboardActions = KeyboardActions(onSend = {
                         if (message.isNotBlank()) {
                             viewModel.sendMessage(
-                                sender = currentUser!!.uid,
-                                conversationId = partnerUserId,
+                                conversationId = conversationId,
                                 content = listOf(MessageContentItem(ContentTypes.TEXT, message))
                             )
                             message = ""
@@ -137,8 +197,7 @@ fun ChatScreen(
                     onClick = {
                         if (message.isNotBlank()) {
                             viewModel.sendMessage(
-                                sender = currentUser!!.uid,
-                                conversationId = partnerUserId,
+                                conversationId = conversationId,
                                 content = listOf(MessageContentItem(ContentTypes.TEXT, message))
                             )
                             message = ""
@@ -159,7 +218,7 @@ fun ChatScreen(
                 .background(Color(0xFFF5F5F5))
         ) {
             when (val state = chatState) {
-                is MessageViewModel.ChatState.Loading -> {
+                is MessageViewModel.ChatState.Loading, null -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center), color = RoseRed
                     )
@@ -208,7 +267,7 @@ fun ChatScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { viewModel.loadChat(partnerUserId) },
+                            onClick = { viewModel.loadChat(conversationId) },
                             colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
                         ) {
                             Text("重试")
@@ -246,6 +305,28 @@ fun ChatScreen(
 fun MessageItem(
     message: Message, isOutgoing: Boolean, onWithdrawClick: () -> Unit
 ) {
+    val _sender = MutableLiveData(message.sender)
+    val sender: LiveData<UserAbstract?> = _sender
+    val context = LocalContext.current
+    LaunchedEffect(message.senderId) {
+        if (sender.value == null) {
+            val profileRepository = ProfileRepository(context)
+            when(val result = profileRepository.getUserAbstract(message.senderId!!)) {
+                is Resource.Success -> {
+                    _sender.postValue(result.data)
+                }
+                is Resource.Error -> {
+                    Log.e("MessageItem", "Failed to load sender info: ${result.message}")
+                }
+                is Resource.Loading -> {
+                    // Do nothing, just wait for the data to load
+                }
+            }
+        }
+
+        Log.d("MessageItem", "Displaying message: ${message}")
+    }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start
@@ -266,8 +347,8 @@ fun MessageItem(
             if (!isOutgoing) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        // TODO
-                        .data(imageUrl(message.sender)).crossfade(true).build(),
+                        .data(imageUrl(sender.value?.avatarUrl ?: "loading_avatar.png")).crossfade(true)
+                        .build(),
                     contentDescription = "头像",
                     modifier = Modifier
                         .size(32.dp)
@@ -308,6 +389,211 @@ fun MessageItem(
                                         .clip(RoundedCornerShape(4.dp)),
                                     contentScale = ContentScale.Crop
                                 )
+                            }
+                            
+                            "product" -> {
+                                val payload = content.payload as? Product
+                                if (payload != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth(0.8f),
+                                        color = Color(0xFFF5F5F5)
+                                    ) {
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            Text(
+                                                text = "[商品]",
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                            
+                                            Row(
+                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                if (payload.images.first() != null) {
+                                                    AsyncImage(
+                                                        model = ImageRequest.Builder(LocalContext.current)
+                                                            .data(payload.images.first()).crossfade(true).build(),
+                                                        contentDescription = "商品图片",
+                                                        modifier = Modifier
+                                                            .size(60.dp)
+                                                            .clip(RoundedCornerShape(4.dp)),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                }
+
+                                                Column {
+                                                    Text(
+                                                        text = payload.title,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                        maxLines = 2,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                    )
+                                                    
+                                                    Text(
+                                                        text = "¥${payload.price}",
+                                                        color = RoseRed,
+                                                        fontSize = 14.sp,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Text(
+                                        text = "[商品信息]",
+                                        color = if (isOutgoing) Color.White else Color.Gray
+                                    )
+                                }
+                            }
+                            
+                            "order" -> {
+                                val payload = content.payload as? Order
+                                if (payload != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth(0.8f),
+                                        color = Color(0xFFF5F5F5)
+                                    ) {
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            Text(
+                                                text = "[订单]",
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                            
+                                            Row(
+                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+//                                                if (payload. != null) {
+//                                                    AsyncImage(
+//                                                        model = ImageRequest.Builder(LocalContext.current)
+//                                                            .data(payload.imageUrl).crossfade(true).build(),
+//                                                        contentDescription = "商品图片",
+//                                                        modifier = Modifier
+//                                                            .size(60.dp)
+//                                                            .clip(RoundedCornerShape(4.dp)),
+//                                                        contentScale = ContentScale.Crop
+//                                                    )
+//                                                    Spacer(modifier = Modifier.width(8.dp))
+//                                                }
+                                                
+                                                Column {
+                                                    Text(
+                                                        text = payload.productId,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                        maxLines = 2,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                    )
+                                                    
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = "¥${payload.price}",
+                                                            color = RoseRed,
+                                                            fontSize = 14.sp,
+                                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                                        )
+                                                        
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        
+                                                        Surface(
+                                                            shape = RoundedCornerShape(4.dp),
+                                                            color = getOrderStatusColor(payload.status.toString()).first
+                                                        ) {
+                                                            Text(
+                                                                text = getOrderStatusText(payload.status.toString()),
+                                                                color = getOrderStatusColor(payload.status.toString()).second,
+                                                                fontSize = 12.sp,
+                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Text(
+                                        text = "[订单信息]",
+                                        color = if (isOutgoing) Color.White else Color.Gray
+                                    )
+                                }
+                            }
+                            
+                            "favorite" -> {
+                                val payload = content.payload as? Map<*, *>
+                                if (payload != null) {
+                                    val user = payload["user"] as? Map<*, *>
+                                    val product = payload["product"] as? Map<*, *>
+                                    
+                                    if (user != null && product != null) {
+                                        val userName = user["userName"] as? String ?: "未知用户"
+                                        val productName = product["title"] as? String ?: "未知商品"
+                                        val productImage = product["image"] as? String
+                                        
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth(0.8f),
+                                            color = Color(0xFFF5F5F5)
+                                        ) {
+                                            Column(modifier = Modifier.padding(8.dp)) {
+                                                Text(
+                                                    text = "[收藏信息]",
+                                                    fontSize = 12.sp,
+                                                    color = Color.Gray
+                                                )
+                                                
+                                                Row(
+                                                    modifier = Modifier.padding(vertical = 8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    if (productImage != null) {
+                                                        AsyncImage(
+                                                            model = ImageRequest.Builder(LocalContext.current)
+                                                                .data(productImage).crossfade(true).build(),
+                                                            contentDescription = "商品图片",
+                                                            modifier = Modifier
+                                                                .size(60.dp)
+                                                                .clip(RoundedCornerShape(4.dp)),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                    }
+                                                    
+                                                    Column {
+                                                        Text(
+                                                            text = "$userName 收藏了商品",
+                                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                            maxLines = 1,
+                                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                        )
+                                                        
+                                                        Text(
+                                                            text = productName,
+                                                            maxLines = 2,
+                                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Text(
+                                            text = "[收藏信息]",
+                                            color = if (isOutgoing) Color.White else Color.Gray
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = "[收藏信息]",
+                                        color = if (isOutgoing) Color.White else Color.Gray
+                                    )
+                                }
                             }
 
                             else -> {
@@ -361,5 +647,31 @@ fun MessageItem(
                 }
             }
         }
+    }
+}
+
+fun getOrderStatusColor(status: String): Pair<Color, Color> {
+    return when (status.lowercase()) {
+        "pending" -> Pair(Color(0xFFF9F9F9), Color(0xFF666666))
+        "payment_pending" -> Pair(Color(0xFFFFF7E6), Color(0xFFD46B08))
+        "paid" -> Pair(Color(0xFFE6F7FF), Color(0xFF1890FF))
+        "shipping" -> Pair(Color(0xFFE6F7FF), Color(0xFF1890FF))
+        "completed" -> Pair(Color(0xFFF6FFED), Color(0xFF52C41A))
+        "cancelled" -> Pair(Color(0xFFFFF1F0), Color(0xFFF5222D))
+        "refunded" -> Pair(Color(0xFFFFF1F0), Color(0xFFF5222D))
+        else -> Pair(Color(0xFFF9F9F9), Color(0xFF666666))
+    }
+}
+
+fun getOrderStatusText(status: String): String {
+    return when (status.lowercase()) {
+        "pending" -> "待处理"
+        "payment_pending" -> "待支付"
+        "paid" -> "已支付"
+        "shipping" -> "配送中"
+        "completed" -> "已完成"
+        "cancelled" -> "已取消"
+        "refunded" -> "已退款"
+        else -> status
     }
 }

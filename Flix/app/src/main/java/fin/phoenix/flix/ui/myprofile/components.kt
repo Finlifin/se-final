@@ -75,31 +75,9 @@ fun ProfileContent(user: User, navController: NavController) {
         // My Transactions section
         MenuSection(
             title = "我的交易", items = listOf(
-                MenuItem("交易记录") { navController.navigate("/my_profile/transactions") },
+                MenuItem("我的订单") { navController.navigate("/orders") },
                 MenuItem("收藏夹") { navController.navigate("/my_profile/favorites") },
                 MenuItem("消息中心") { navController.navigate("/profile/messages") })
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        MenuSection(
-            title = "设置与帮助", items = listOf(
-                MenuItem("设置") { navController.navigate("/settings") },
-                MenuItem("关于我们") { navController.navigate("/about") },
-                MenuItem("隐私政策") { navController.navigate("/privacy_policy") },
-
-                // Logout, red
-                MenuItem("退出登录", fontColor = WarnRoseRed) {
-                    // clear user data and navigate to login screen
-                    val sharedPref = ctx.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
-                    with(sharedPref.edit()) {
-                        remove("auth_token")
-                        remove("user_id")
-                        apply()
-                    }
-                    navController.navigate("/login")
-                }
-            )
         )
     }
 }

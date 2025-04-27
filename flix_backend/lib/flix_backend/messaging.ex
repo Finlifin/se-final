@@ -42,7 +42,6 @@ defmodule FlixBackend.Messaging do
       sender_id: nil,
       receiver_id: recipient_id,
       content: content_map,
-      content_type: :system,
       message_type: :system_notification,
       reference_id: reference_id,
       server_timestamp: DateTime.utc_now(),
@@ -75,17 +74,21 @@ defmodule FlixBackend.Messaging do
   - {:ok, message} on success
   - {:error, changeset} on failure
   """
-  def send_interaction_message(recipient_id, interaction_type, content_map, sender_id \\ nil, reference_id \\ nil) do
+  def send_interaction_message(
+        recipient_id,
+        interaction_type,
+        content_map,
+        sender_id \\ nil,
+        reference_id \\ nil
+      ) do
     # 构建包含交互类型的内容Map
-    content = Map.put(content_map, "interaction_type", Atom.to_string(interaction_type))
-
-    # 确定合适的content_type
-    content_type = determine_content_type(interaction_type)
+    content = [%{type: interaction_type, payload: content_map}]
 
     # 为交互消息创建专用的会话ID
     conversation_id = "interaction:#{recipient_id}"
 
     # 确保交互消息会话存在
+    IO.inspect(conversation_id, label: "Conversation ID")
     ensure_system_conversation(conversation_id, "interaction", [recipient_id])
 
     message_params = %{
@@ -95,7 +98,6 @@ defmodule FlixBackend.Messaging do
       sender_id: sender_id,
       receiver_id: recipient_id,
       content: content,
-      content_type: content_type,
       message_type: :interaction,
       reference_id: reference_id,
       server_timestamp: DateTime.utc_now(),
@@ -141,7 +143,6 @@ defmodule FlixBackend.Messaging do
       sender_id: nil,
       receiver_id: recipient_id,
       content: content_map,
-      content_type: :system,
       message_type: :system_announcement,
       reference_id: reference_id,
       server_timestamp: DateTime.utc_now(),
@@ -170,43 +171,47 @@ defmodule FlixBackend.Messaging do
   def send_system_announcement(content_map, target_user_ids \\ nil, reference_id \\ nil) do
     # 如果没有指定目标用户，此处应实现获取所有有效用户ID的逻辑
     # 这里仅为示例，实际实现可能需要分批处理大量用户
-    users = case target_user_ids do
-      nil ->
-        # 这里应该调用获取所有活跃用户的函数
-        # 例如: FlixBackend.Accounts.list_active_users()
-        []
-      ids -> ids
-    end
+    users =
+      case target_user_ids do
+        nil ->
+          # 这里应该调用获取所有活跃用户的函数
+          # 例如: FlixBackend.Accounts.list_active_users()
+          []
+
+        ids ->
+          ids
+      end
 
     # 创建批量插入的参数
     timestamp = DateTime.utc_now()
-    multi = Enum.reduce(users, Ecto.Multi.new(), fn user_id, multi ->
-      # 为系统公告创建一个专用的会话ID
-      conversation_id = "system:announcement:#{user_id}"
 
-      # 确保系统公告会话存在
-      ensure_system_conversation(conversation_id, "system_announcement", [user_id])
+    multi =
+      Enum.reduce(users, Ecto.Multi.new(), fn user_id, multi ->
+        # 为系统公告创建一个专用的会话ID
+        conversation_id = "system:announcement:#{user_id}"
 
-      message_params = %{
-        message_id: Ecto.UUID.generate(),
-        client_message_id: Ecto.UUID.generate(),
-        conversation_id: conversation_id,
-        sender_id: nil,
-        receiver_id: user_id,
-        content: content_map,
-        content_type: :system,
-        message_type: :system_announcement,
-        reference_id: reference_id,
-        server_timestamp: timestamp,
-        client_timestamp: timestamp,
-        status: :sent,
-        inserted_at: timestamp,
-        updated_at: timestamp
-      }
+        # 确保系统公告会话存在
+        ensure_system_conversation(conversation_id, "system_announcement", [user_id])
 
-      changeset = Message.changeset(%Message{}, message_params)
-      Ecto.Multi.insert(multi, {:message, user_id}, changeset)
-    end)
+        message_params = %{
+          message_id: Ecto.UUID.generate(),
+          client_message_id: Ecto.UUID.generate(),
+          conversation_id: conversation_id,
+          sender_id: nil,
+          receiver_id: user_id,
+          content: content_map,
+          message_type: :system_announcement,
+          reference_id: reference_id,
+          server_timestamp: timestamp,
+          client_timestamp: timestamp,
+          status: :sent,
+          inserted_at: timestamp,
+          updated_at: timestamp
+        }
+
+        changeset = Message.changeset(%Message{}, message_params)
+        Ecto.Multi.insert(multi, {:message, user_id}, changeset)
+      end)
 
     # 执行批量插入
     case Repo.transaction(multi) do
@@ -235,7 +240,6 @@ defmodule FlixBackend.Messaging do
   - sender_id: 发送者ID
   - receiver_id: 接收者ID
   - content: 消息内容
-  - content_type: 消息内容类型
   - reference_id: 可选的关联ID
 
   ## Returns
@@ -243,10 +247,11 @@ defmodule FlixBackend.Messaging do
   - {:ok, message} 成功
   - {:error, reason} 失败
   """
-  def send_private_message(sender_id, receiver_id, content, content_type, reference_id \\ nil) do
+  def send_private_message(sender_id, receiver_id, content, reference_id \\ nil) do
     # 获取或创建私聊会话
     case Conversation.get_or_create_private_conversation(sender_id, receiver_id) do
       {:ok, conversation} ->
+        IO.inspect(conversation.conversation_id, label: "Conversation Id")
         # 创建消息参数
         message_params = %{
           message_id: Ecto.UUID.generate(),
@@ -255,7 +260,6 @@ defmodule FlixBackend.Messaging do
           sender_id: sender_id,
           receiver_id: receiver_id,
           content: content,
-          content_type: content_type,
           message_type: :private_message,
           reference_id: reference_id,
           server_timestamp: DateTime.utc_now(),
@@ -271,32 +275,36 @@ defmodule FlixBackend.Messaging do
 
             {:ok, message}
 
-          error -> error
+          error ->
+            error
         end
 
-      error -> error
+      error ->
+        error
     end
   end
 
   # 私有方法：创建消息并广播
   defp create_and_broadcast_message(params) do
+    conversation = Repo.get_by(Conversation, conversation_id: params.conversation_id)
     changeset = Message.changeset(%Message{}, params)
 
     case Repo.insert(changeset) do
       {:ok, message} ->
-        # 仅当有接收者ID时才创建事件和广播
-        if message.receiver_id do
-          # 创建事件
-          {:ok, event} = Event.create_new_message_event(message, message.receiver_id)
+        # 获取会话信息
+        if conversation do
+          # 广播消息到会话所有成员
+          for participant_id <- conversation.participant_ids do
+            {:ok, event} = Event.create_new_message_event(message, participant_id)
+            FlixBackendWeb.Endpoint.broadcast!(
+              "user:#{participant_id}",
+              "event",
+              event
+            )
+          end
 
-          # 广播事件
-          FlixBackendWeb.Endpoint.broadcast!(
-            "user:#{message.receiver_id}",
-            "event",
-            event
-          )
-
-          # TODO: 如果用户不在线，触发外部推送通知
+          # 更新会话的最后消息信息
+          update_conversation_last_message(conversation, message)
         end
 
         {:ok, message}
@@ -309,24 +317,25 @@ defmodule FlixBackend.Messaging do
   # 私有方法：更新会话的最后一条消息
   defp update_conversation_last_message(conversation, message) do
     # 获取消息预览
-    preview = case message.content_type do
-      :text -> Map.get(message.content, "text", "")
-      :image -> "[图片消息]"
-      :audio -> "[语音消息]"
-      :video -> "[视频消息]"
-      :product -> "[商品]" <> Map.get(message.content, "product_name", "")
-      :order -> "[订单]" <> Map.get(message.content, "order_id", "")
-      :comment -> "[评论]" <> Map.get(message.content, "text", "")
-      :like -> "[点赞]"
-      :favorite -> "[收藏]"
-      :system -> Map.get(message.content, "title", "系统消息")
-      _ -> "[消息]"
-    end
+    preview = "[消息预览]"
+    # case message.content_type do
+    #   :text -> Map.get(message.content, "text", "")
+    #   :image -> "[图片消息]"
+    #   :audio -> "[语音消息]"
+    #   :video -> "[视频消息]"
+    #   :product -> "[商品]" <> Map.get(message.content, "product_name", "")
+    #   :order -> "[订单]" <> Map.get(message.content, "order_id", "")
+    #   :comment -> "[评论]" <> Map.get(message.content, "text", "")
+    #   :like -> "[点赞]"
+    #   :favorite -> "[收藏]"
+    #   :system -> Map.get(message.content, "title", "系统消息")
+    #   _ -> "[消息]"
+    # end
 
     # 更新会话
     conversation
     |> Conversation.changeset(%{
-      last_message_id: message.message_id,
+      last_message_id: message.id,
       last_message_content: String.slice(preview, 0, 50),
       last_message_timestamp: message.server_timestamp,
       updated_at: DateTime.utc_now()
@@ -336,9 +345,11 @@ defmodule FlixBackend.Messaging do
     # 增加接收者的未读消息计数
     if message.receiver_id do
       case Repo.get_by(UserConversation,
-        user_id: message.receiver_id,
-        conversation_id: conversation.conversation_id) do
-        nil -> nil  # 忽略不存在的用户会话关系
+             user_id: message.receiver_id,
+             conversation_id: conversation.conversation_id
+           ) do
+        # 忽略不存在的用户会话关系
+        nil -> nil
         uc -> UserConversation.increment_unread(uc)
       end
     end
@@ -346,19 +357,7 @@ defmodule FlixBackend.Messaging do
 
   # 私有方法：确保系统会话存在
   defp ensure_system_conversation(conversation_id, type, participant_ids) do
-    Conversation.ensure_system_conversation(conversation_id, type, participant_ids)
-  end
-
-  # 私有方法：根据交互类型确定内容类型
-  defp determine_content_type(interaction_type) do
-    case interaction_type do
-      :new_comment -> :comment
-      :new_comment_reply -> :comment
-      :new_order -> :order
-      :like -> :like
-      :favorite -> :favorite
-      _ -> :system  # 默认为系统类型
-    end
+    Conversation.ensure_conversation(conversation_id, type, participant_ids)
   end
 
   @doc """
@@ -374,17 +373,18 @@ defmodule FlixBackend.Messaging do
   """
   def list_conversations(user_id) do
     # 查询用户的所有会话，按照更新时间降序排序
-    query = from c in Conversation,
-      join: uc in UserConversation,
-      on: c.conversation_id == uc.conversation_id,
-      where: uc.user_id == ^user_id,
-      order_by: [desc: c.updated_at],
-      select: %{
-        conversation: c,
-        unread_count: uc.unread_count,
-        is_pinned: uc.is_pinned,
-        is_muted: uc.is_muted
-      }
+    query =
+      from c in Conversation,
+        join: uc in UserConversation,
+        on: c.conversation_id == uc.conversation_id,
+        where: uc.user_id == ^user_id,
+        order_by: [desc: c.updated_at],
+        select: %{
+          conversation: c,
+          unread_count: uc.unread_count,
+          is_pinned: uc.is_pinned,
+          is_muted: uc.is_muted
+        }
 
     Repo.all(query)
   end

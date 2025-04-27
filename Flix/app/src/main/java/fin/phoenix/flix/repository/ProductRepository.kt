@@ -3,6 +3,7 @@ package fin.phoenix.flix.repository
 import android.content.Context
 import android.net.Uri
 import fin.phoenix.flix.api.CreateProductRequest
+import fin.phoenix.flix.api.ProductListData
 import fin.phoenix.flix.api.ProductService
 import fin.phoenix.flix.api.RetrofitClient
 import fin.phoenix.flix.api.UpdateProductRequest
@@ -34,25 +35,39 @@ class ProductRepository(context: Context) {
         priceRange: Pair<Double?, Double?>? = null,
         sortBy: String? = null,
         sortOrder: String? = null
-    ): Resource<List<Product>> = withContext(Dispatchers.IO) {
-        val response = productService.getProducts(
-            page = page,
-            limit = limit,
-            category = category,
-            sellerId = sellerId,
-            searchQuery = searchQuery,
-            minPrice = priceRange?.first,
-            maxPrice = priceRange?.second,
-            sortBy = sortBy,
-            sortOrder = sortOrder
-        ).toResource("获取商品失败")
-        
-        if (response is Resource.Success) {
-            Resource.Success(response.data)
-        } else if (response is Resource.Error) {
-            response
-        } else {
-            Resource.Error("获取商品失败")
+    ): Resource<ProductListData> = withContext(Dispatchers.IO) {
+        try {
+            val response = productService.getProducts(
+                page = page,
+                limit = limit,
+                category = category,
+                sellerId = sellerId,
+                searchQuery = searchQuery,
+                minPrice = priceRange?.first,
+                maxPrice = priceRange?.second,
+                sortBy = sortBy,
+                sortOrder = sortOrder
+            )
+            
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.success) {
+                    return@withContext Resource.Success(
+                        ProductListData(
+                            products = body.data,
+                            totalCount = body.totalCount,
+                            currentPage = body.currentPage,
+                            totalPages = body.totalPages
+                        )
+                    )
+                } else {
+                    return@withContext Resource.Error(body.message)
+                }
+            } else {
+                return@withContext Resource.Error("获取商品失败: ${response.message()}")
+            }
+        } catch (e: Exception) {
+            return@withContext Resource.Error("获取商品失败: ${e.message}")
         }
     }
 
@@ -199,14 +214,29 @@ class ProductRepository(context: Context) {
         userId: String,
         page: Int = 1,
         limit: Int = 10
-    ): Resource<List<Product>> = withContext(Dispatchers.IO) {
-        val response = productService.getFavoriteProducts(userId, page, limit).toResource("获取收藏商品失败")
-        if (response is Resource.Success) {
-            Resource.Success(response.data)
-        } else if (response is Resource.Error) {
-            response
-        } else {
-            Resource.Error("获取收藏商品失败")
+    ): Resource<ProductListData> = withContext(Dispatchers.IO) {
+        try {
+            val response = productService.getFavoriteProducts(userId, page, limit)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.success) {
+                    return@withContext Resource.Success(
+                        ProductListData(
+                            products = body.data,
+                            totalCount = body.totalCount,
+                            currentPage = body.currentPage,
+                            totalPages = body.totalPages
+                        )
+                    )
+                } else {
+                    return@withContext Resource.Error(body.message)
+                }
+            } else {
+                return@withContext Resource.Error("获取收藏商品失败: ${response.message()}")
+            }
+        } catch (e: Exception) {
+            return@withContext Resource.Error("获取收藏商品失败: ${e.message}")
         }
     }
 }
