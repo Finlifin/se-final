@@ -28,7 +28,6 @@ defmodule FlixBackend.Messaging do
   - {:error, changeset} on failure
   """
   def send_system_notification(recipient_id, content_map, reference_id \\ nil) do
-    # 为系统通知创建一个专用的会话ID (如果不存在)
     conversation_id = "system:notification:#{recipient_id}"
 
     # 确保系统通知会话存在
@@ -39,7 +38,7 @@ defmodule FlixBackend.Messaging do
       message_id: Ecto.UUID.generate(),
       client_message_id: Ecto.UUID.generate(),
       conversation_id: conversation_id,
-      sender_id: nil,
+      sender_id: "a84719d1-78d8-438a-917b-ecf935edb1ab",
       receiver_id: recipient_id,
       content: content_map,
       message_type: :system_notification,

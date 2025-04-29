@@ -13,7 +13,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
 
       account ->
         user = User.get_user_by_uid(account.user_id)
@@ -31,7 +31,7 @@ defmodule FlixBackendWeb.MessageController do
 
         conn
         |> put_status(:ok)
-        |> json(ApiResponse.message_list_response(messages)) # Use ApiResponse
+        |> json(ApiResponse.message_list_response(messages))
     end
   end
 
@@ -41,7 +41,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
       account ->
         user = User.get_user_by_uid(account.user_id)
 
@@ -49,17 +49,17 @@ defmodule FlixBackendWeb.MessageController do
           nil ->
             conn
             |> put_status(:not_found)
-            |> json(ApiResponse.not_found_response("消息未找到")) # Use ApiResponse
+            |> json(ApiResponse.not_found_response("消息未找到"))
 
           message ->
             if message.receiver_id == user.uid do
               conn
               |> put_status(:ok)
-              |> json(ApiResponse.message_response(message)) # Use ApiResponse
+              |> json(ApiResponse.message_response(message))
             else
               conn
               |> put_status(:forbidden)
-              |> json(ApiResponse.forbidden_response("您无权查看此消息")) # Use ApiResponse
+              |> json(ApiResponse.forbidden_response("您无权查看此消息"))
             end
         end
     end
@@ -71,7 +71,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
       account ->
         user = User.get_user_by_uid(account.user_id)
 
@@ -94,12 +94,12 @@ defmodule FlixBackendWeb.MessageController do
 
             conn
             |> put_status(:created)
-            |> json(ApiResponse.message_response(message, "消息创建成功")) # Use ApiResponse
+            |> json(ApiResponse.message_response(message, "消息创建成功"))
 
           {:error, changeset} ->
             conn
             |> put_status(:unprocessable_entity)
-            |> json(ApiResponse.validation_error_response(changeset)) # Use ApiResponse
+            |> json(ApiResponse.validation_error_response(changeset))
         end
     end
   end
@@ -110,7 +110,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
       account ->
         user = User.get_user_by_uid(account.user_id)
 
@@ -118,7 +118,7 @@ defmodule FlixBackendWeb.MessageController do
           nil ->
             conn
             |> put_status(:not_found)
-            |> json(ApiResponse.not_found_response("消息未找到")) # Use ApiResponse
+            |> json(ApiResponse.not_found_response("消息未找到"))
 
           message ->
             if message.receiver_id == user.uid do
@@ -133,17 +133,17 @@ defmodule FlixBackendWeb.MessageController do
 
                   conn
                   |> put_status(:ok)
-                  |> json(ApiResponse.message_response(updated_message, "消息已标记为已读")) # Use ApiResponse
+                  |> json(ApiResponse.message_response(updated_message, "消息已标记为已读"))
 
                 {:error, _reason} ->
                   conn
                   |> put_status(:internal_server_error)
-                  |> json(ApiResponse.internal_server_error_response("标记消息为已读失败")) # Use ApiResponse
+                  |> json(ApiResponse.internal_server_error_response("标记消息为已读失败"))
               end
             else
               conn
               |> put_status(:forbidden)
-              |> json(ApiResponse.forbidden_response("您无权修改此消息")) # Use ApiResponse
+              |> json(ApiResponse.forbidden_response("您无权修改此消息"))
             end
         end
     end
@@ -155,7 +155,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
       account ->
         user = User.get_user_by_uid(account.user_id)
 
@@ -168,7 +168,7 @@ defmodule FlixBackendWeb.MessageController do
 
         conn
         |> put_status(:ok)
-        |> json(ApiResponse.success_response("所有消息已标记为已读", %{marked_count: count})) # Use ApiResponse
+        |> json(ApiResponse.success_response("所有消息已标记为已读", %{marked_count: count}))
     end
   end
 
@@ -180,7 +180,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
       account ->
         user = User.get_user_by_uid(account.user_id)
 
@@ -197,12 +197,12 @@ defmodule FlixBackendWeb.MessageController do
 
             conn
             |> put_status(:ok)
-            |> json(ApiResponse.success_response("批量标记成功", %{marked_count: count})) # Use ApiResponse
+            |> json(ApiResponse.success_response("批量标记成功", %{marked_count: count}))
 
           {:error, invalid_ids} ->
             conn
             |> put_status(:bad_request)
-            |> json(ApiResponse.error_response("无效的消息 ID 格式" <> inspect(%{invalid_ids: invalid_ids}))) # Use ApiResponse with data
+            |> json(ApiResponse.error_response("无效的消息 ID 格式" <> inspect(%{invalid_ids: invalid_ids})))
         end
     end
   end
@@ -214,7 +214,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
 
       account ->
         user = User.get_user_by_uid(account.user_id)
@@ -222,7 +222,7 @@ defmodule FlixBackendWeb.MessageController do
 
         conn
         |> put_status(:ok)
-        |> json(ApiResponse.message_count_response(counts)) # Use ApiResponse
+        |> json(ApiResponse.message_count_response(counts))
     end
   end
 
@@ -232,7 +232,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
       account ->
         user = User.get_user_by_uid(account.user_id)
 
@@ -240,7 +240,7 @@ defmodule FlixBackendWeb.MessageController do
           nil ->
             conn
             |> put_status(:not_found)
-            |> json(ApiResponse.not_found_response("消息未找到")) # Use ApiResponse
+            |> json(ApiResponse.not_found_response("消息未找到"))
 
           message ->
             if message.receiver_id == user.uid do
@@ -248,17 +248,17 @@ defmodule FlixBackendWeb.MessageController do
                 {:ok, _} ->
                   conn
                   |> put_status(:ok) # Use 200 OK with success message instead of 204
-                  |> json(ApiResponse.success_response("消息删除成功")) # Use ApiResponse
+                  |> json(ApiResponse.success_response("消息删除成功"))
 
                 {:error, _} ->
                   conn
                   |> put_status(:internal_server_error)
-                  |> json(ApiResponse.internal_server_error_response("删除消息失败")) # Use ApiResponse
+                  |> json(ApiResponse.internal_server_error_response("删除消息失败"))
               end
             else
               conn
               |> put_status(:forbidden)
-              |> json(ApiResponse.forbidden_response("您无权删除此消息")) # Use ApiResponse
+              |> json(ApiResponse.forbidden_response("您无权删除此消息"))
             end
         end
     end
@@ -270,7 +270,7 @@ defmodule FlixBackendWeb.MessageController do
       nil ->
         conn
         |> put_status(:unauthorized)
-        |> json(ApiResponse.unauthorized_response()) # Use ApiResponse
+        |> json(ApiResponse.unauthorized_response())
       account ->
         if account.user_id != user_id do
           conn
@@ -289,12 +289,12 @@ defmodule FlixBackendWeb.MessageController do
 
               conn
               |> put_status(:ok)
-              |> json(ApiResponse.message_sync_response(messages, sync_time)) # Use ApiResponse
+              |> json(ApiResponse.message_sync_response(messages, sync_time))
 
             {:error, _} ->
               conn
               |> put_status(:bad_request)
-              |> json(ApiResponse.error_response("无效的时间戳格式")) # Use ApiResponse
+              |> json(ApiResponse.error_response("无效的时间戳格式"))
           end
         end
     end

@@ -30,7 +30,7 @@ defmodule FlixBackend.Accounts.Account do
 
   def changeset(account, attrs) do
     account
-    |> cast(attrs, [:phone_number, :password, :role, :user_id])
+    |> cast(attrs, [:phone_number, :hashed_password, :role, :user_id])
     # 手机号是必须的
     |> validate_required([:phone_number])
     |> validate_format(:phone_number, ~r/^[1]\d{10}$/, message: "手机号格式不正确")
@@ -38,7 +38,6 @@ defmodule FlixBackend.Accounts.Account do
     # 角色必须是 "user" 或 "admin"
     |> validate_inclusion(:role, ["user", "admin"])
     # 密码加密
-    |> put_pass_hash()
     # 关联 User
     |> assoc_constraint(:user)
   end
@@ -105,8 +104,7 @@ defmodule FlixBackend.Accounts.Account do
 
   def update_password(account, new_password) do
     account
-    |> change(%{password: new_password})
-    |> put_pass_hash()
+    |> change(%{hashed_password: Bcrypt.hash_pwd_salt(new_password)})
     |> Repo.update()
   end
 
@@ -116,10 +114,4 @@ defmodule FlixBackend.Accounts.Account do
       hashed_password -> Bcrypt.verify_pass(password, hashed_password)
     end
   end
-
-  defp put_pass_hash(%Ecto.Changeset{valid?: true, changes: %{password: password}} = changeset) do
-    change(changeset, hashed_password: Bcrypt.hash_pwd_salt(password))
-  end
-
-  defp put_pass_hash(changeset), do: changeset
 end

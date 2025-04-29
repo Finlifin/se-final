@@ -39,11 +39,16 @@ defmodule FlixBackend.Guardian do
         {:error, :not_found}
 
       account ->
-        case Bcrypt.verify_pass(password, account.hashed_password) do
-          true ->
+        IO.inspect(account, label: "Account found")
+        IO.inspect(password, label: "Password provided")
+        IO.inspect(account.hashed_password, label: "Hashed password")
+        IO.inspect(Bcrypt.hash_pwd_salt(password), label: "Hashed password from input")
+        cond do
+          is_nil(account.hashed_password) ->
+            {:error, :password_not_set}
+          Bcrypt.verify_pass(password, account.hashed_password) ->
             create_token(account)
-
-          false ->
+          true ->
             {:error, :unauthorized}
         end
     end

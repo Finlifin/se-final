@@ -10,11 +10,11 @@ defmodule FlixBackendWeb.ProfileController do
   def get_user_profile(conn, %{"userId" => user_id}) do
     case ProfileService.get_user_profile(user_id) do
       {:ok, user} ->
-        json(conn, ApiResponse.success_response("获取用户资料成功", user)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取用户资料成功", user))
       {:error, reason} ->
         conn
         |> put_status(:not_found)
-        |> json(ApiResponse.not_found_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.not_found_response(reason))
     end
   end
 
@@ -24,11 +24,11 @@ defmodule FlixBackendWeb.ProfileController do
   def get_seller_profile(conn, %{"userId" => user_id}) do
     case ProfileService.get_seller_profile(user_id) do
       {:ok, seller} ->
-        json(conn, ApiResponse.success_response("获取商家信息成功", seller)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取商家信息成功", seller))
       {:error, reason} ->
         conn
         |> put_status(:not_found)
-        |> json(ApiResponse.not_found_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.not_found_response(reason))
     end
   end
 
@@ -38,11 +38,11 @@ defmodule FlixBackendWeb.ProfileController do
   def get_user_abstract(conn, %{"userId" => user_id}) do
     case ProfileService.get_user_abstract(user_id) do
       {:ok, user_abstract} ->
-        json(conn, ApiResponse.success_response("获取用户简要信息成功", user_abstract)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取用户简要信息成功", user_abstract))
       {:error, reason} ->
         conn
         |> put_status(:not_found)
-        |> json(ApiResponse.not_found_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.not_found_response(reason))
     end
   end
 
@@ -54,11 +54,11 @@ defmodule FlixBackendWeb.ProfileController do
 
     case ProfileService.get_popular_sellers(limit) do
       {:ok, popular_sellers} ->
-        json(conn, ApiResponse.success_response("获取热门卖家成功", popular_sellers)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取热门卖家成功", popular_sellers))
       {:error, reason} ->
         conn
         |> put_status(:internal_server_error)
-        |> json(ApiResponse.internal_server_error_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.internal_server_error_response(reason))
     end
   end
 
@@ -71,15 +71,15 @@ defmodule FlixBackendWeb.ProfileController do
     user_params = Map.put(user_params, "userId", account.user_id)
     case ProfileService.update_user_profile(user_params) do
       {:ok, updated_user} ->
-        json(conn, ApiResponse.success_response("用户资料更新成功", updated_user)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("用户资料更新成功", updated_user))
       {:error, %Ecto.Changeset{} = changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> json(ApiResponse.validation_error_response(changeset)) # Use ApiResponse
+        |> json(ApiResponse.validation_error_response(changeset))
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
-        |> json(ApiResponse.error_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.error_response(reason))
     end
   end
 
@@ -92,16 +92,16 @@ defmodule FlixBackendWeb.ProfileController do
       {amount, ""} when amount > 0 ->
         case ProfileService.recharge_balance(user_id, amount) do
           {:ok, updated_user} ->
-            json(conn, ApiResponse.success_response("充值成功", updated_user)) # Use ApiResponse
+            json(conn, ApiResponse.success_response("充值成功", updated_user))
           {:error, reason} ->
             conn
             |> put_status(:bad_request) # Or internal_server_error depending on the reason
-            |> json(ApiResponse.error_response(reason)) # Use ApiResponse
+            |> json(ApiResponse.error_response(reason))
         end
       _ ->
          conn
          |> put_status(:bad_request)
-         |> json(ApiResponse.error_response("无效的充值金额")) # Use ApiResponse
+         |> json(ApiResponse.error_response("无效的充值金额"))
     end
 
   end
@@ -115,11 +115,11 @@ defmodule FlixBackendWeb.ProfileController do
 
     case ProfileService.update_avatar(user_id, avatar_url) do
       {:ok, updated_user} ->
-        json(conn, ApiResponse.success_response("头像更新成功", updated_user)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("头像更新成功", updated_user))
       {:error, reason} ->
         conn
         |> put_status(:bad_request) # Or internal_server_error
-        |> json(ApiResponse.error_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.error_response(reason))
     end
   end
 
@@ -130,11 +130,11 @@ defmodule FlixBackendWeb.ProfileController do
     # Add authentication check if needed
     case ProfileService.get_user_products(user_id) do
       {:ok, product_ids} ->
-        json(conn, ApiResponse.success_response("获取用户发布商品成功", product_ids)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取用户发布商品成功", product_ids))
       {:error, reason} ->
         conn
         |> put_status(:not_found)
-        |> json(ApiResponse.not_found_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.not_found_response(reason))
     end
   end
 
@@ -145,11 +145,11 @@ defmodule FlixBackendWeb.ProfileController do
      # Add authentication check if needed
     case ProfileService.get_user_sold_products(user_id) do
       {:ok, product_ids} ->
-        json(conn, ApiResponse.success_response("获取用户已售商品成功", product_ids)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取用户已售商品成功", product_ids))
       {:error, reason} ->
         conn
         |> put_status(:not_found)
-        |> json(ApiResponse.not_found_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.not_found_response(reason))
     end
   end
 
@@ -160,11 +160,11 @@ defmodule FlixBackendWeb.ProfileController do
      # Add authentication check if needed
     case ProfileService.get_user_purchased_products(user_id) do
       {:ok, product_ids} ->
-        json(conn, ApiResponse.success_response("获取用户购买商品成功", product_ids)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取用户购买商品成功", product_ids))
       {:error, reason} ->
         conn
         |> put_status(:not_found)
-        |> json(ApiResponse.not_found_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.not_found_response(reason))
     end
   end
 
@@ -175,11 +175,11 @@ defmodule FlixBackendWeb.ProfileController do
      # Add authentication check if needed
     case ProfileService.get_user_favorites(user_id) do
       {:ok, product_ids} ->
-        json(conn, ApiResponse.success_response("获取用户收藏商品成功", product_ids)) # Use ApiResponse
+        json(conn, ApiResponse.success_response("获取用户收藏商品成功", product_ids))
       {:error, reason} ->
         conn
         |> put_status(:not_found)
-        |> json(ApiResponse.not_found_response(reason)) # Use ApiResponse
+        |> json(ApiResponse.not_found_response(reason))
     end
   end
 

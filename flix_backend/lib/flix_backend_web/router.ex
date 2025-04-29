@@ -35,6 +35,8 @@ defmodule FlixBackendWeb.Router do
       post "/verify_token", AuthController, :verify_token
       post "/login/sms", AuthController, :login_with_sms
       post "/login/password", AuthController, :login_with_password
+      post "/reset_password", AuthController, :reset_password  # 添加重置密码路由（不需要认证）
+      post "/set_password", AuthController, :set_initial_password  # 添加设置初始密码路由（不需要认证，通过验证码验证）
     end
 
     scope "/products" do
@@ -75,6 +77,12 @@ defmodule FlixBackendWeb.Router do
   # 需要认证的API
   scope "/api/v1", FlixBackendWeb do
     pipe_through [:api, :auth]
+
+    # 认证相关需要登录的接口
+    scope "/auth" do
+      post "/update_password", AuthController, :update_password  # 添加修改密码路由（需要认证）
+      post "/set_password", AuthController, :set_initial_password  # 添加设置初始密码路由（已登录状态）
+    end
 
     # 这里放置需要认证的资源路由
     scope "/products" do

@@ -32,6 +32,7 @@ import fin.phoenix.flix.ui.message.ChatScreen
 import fin.phoenix.flix.ui.message.ChatSettingScreen
 import fin.phoenix.flix.ui.message.MessageCenterScreen
 import fin.phoenix.flix.ui.message.SystemNotificationScreen
+import fin.phoenix.flix.ui.myprofile.ChangePasswordScreen
 import fin.phoenix.flix.ui.myprofile.MyFavoritesScreen
 import fin.phoenix.flix.ui.myprofile.MyProductsScreen
 import fin.phoenix.flix.ui.myprofile.MyProfileContent
@@ -342,6 +343,11 @@ fun Flix(
             val route = "/messages/settings/$conversationId"
             LoginRequiredScreen(route = route) {
                 ChatSettingScreen(navController = navController, conversationId = conversationId)
+            }
+        }
+        composable("/settings/change_password") {
+            LoginRequiredScreen(route = "/setting/change_password") {
+                ChangePasswordScreen(navController = navController)
             }
         }
         composable("/notifications/system") {
