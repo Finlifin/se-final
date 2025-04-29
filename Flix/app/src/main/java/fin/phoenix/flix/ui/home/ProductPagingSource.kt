@@ -14,9 +14,11 @@ class ProductPagingSource(
     private val sortOrder: String? = "desc"
 ) : PagingSource<Int, ProductAbstract>() {
     
+    // 允许分页系统重用键值，避免同一页被多次请求时的错误
+    override val keyReuseSupported: Boolean = true
+    
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ProductAbstract> {
         return try {
-            // 页码从1开始，如果是初始加载则默认为1
             val page = params.key ?: 1
             
             // 调用repository获取数据
@@ -32,19 +34,31 @@ class ProductPagingSource(
             when (result) {
                 is Resource.Success -> {
                     val products = result.data.products.map { 
-                        // 调用Product类的toAbstract()方法，而不是toProductAbstract()
+                        // 调用Product类的toAbstract()方法
                         it.toAbstract()
                     }
                     
-                    // 计算下一页和上一页
-                    val nextKey = if (products.size < params.loadSize) null else page + 1
+                    // 使用服务器返回的总页数信息，但使用请求的页码（而不是服务器返回的currentPage）
+                    val totalPages = result.data.totalPages 
+                    
+                    // 只有当当前请求页小于总页数时，才返回下一页的页码
+                    val nextKey = if (page < totalPages) page + 1 else null
                     val prevKey = if (page > 1) page - 1 else null
                     
-                    LoadResult.Page(
-                        data = products,
-                        prevKey = prevKey,
-                        nextKey = nextKey
-                    )
+                    // 如果返回的数据为空，即使页码有效也不再请求下一页
+                    if (products.isEmpty()) {
+                        LoadResult.Page(
+                            data = products,
+                            prevKey = prevKey,
+                            nextKey = null // 确保空结果不会继续请求
+                        )
+                    } else {
+                        LoadResult.Page(
+                            data = products,
+                            prevKey = prevKey,
+                            nextKey = nextKey
+                        )
+                    }
                 }
                 is Resource.Error -> {
                     LoadResult.Error(Exception(result.message))

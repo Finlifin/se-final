@@ -28,7 +28,29 @@ object RetrofitClient {
     // 缓存不同Context创建的Retrofit实例
     private val retrofitInstances = mutableMapOf<String, Retrofit>()
 
+    // 创建没有缓存的OkHttpClient，用于普通API
     private fun createOkHttpClient(context: Context? = null): OkHttpClient {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
+        val builder = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+
+        // 如果提供了Context，添加认证拦截器
+        if (context != null) {
+            // 添加认证拦截器
+            builder.addInterceptor(AuthInterceptor(context))
+        }
+
+        return builder.build()
+    }
+    
+    // 创建带缓存的OkHttpClient，用于图片API
+    private fun createOkHttpClientWithCache(context: Context? = null): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -45,7 +67,7 @@ object RetrofitClient {
             builder.addInterceptor(AuthInterceptor(context))
             
             // 设置缓存目录和大小
-            val cacheDir = File(context.cacheDir, "http-cache")
+            val cacheDir = File(context.cacheDir, "image-cache")
             val cache = Cache(cacheDir, CACHE_SIZE.toLong())
             builder.cache(cache)
             
@@ -110,15 +132,21 @@ object RetrofitClient {
         }
     }
 
-    private fun getRetrofit(baseUrl: String, context: Context? = null): Retrofit {
-        // 为每个Context+URL组合创建唯一的key
-        val key = "${context?.hashCode() ?: "noContext"}_$baseUrl"
+    private fun getRetrofit(baseUrl: String, context: Context? = null, useImageBaseUrl: Boolean = false): Retrofit {
+        // 为每个Context+URL+缓存策略组合创建唯一的key
+        val key = "${context?.hashCode() ?: "noContext"}_${baseUrl}_${useImageBaseUrl}"
 
         // 如果缓存中没有，则创建新的Retrofit实例
         if (!retrofitInstances.containsKey(key)) {
+            val client = if (useImageBaseUrl && context != null) {
+                createOkHttpClientWithCache(context)
+            } else {
+                createOkHttpClient(context)
+            }
+            
             val retrofit = Retrofit.Builder()
                 .baseUrl(baseUrl)
-                .client(createOkHttpClient(context))
+                .client(client)
                 .addConverterFactory(GsonConverterFactory.create(GsonConfig.createPrettyGson()))
                 .build()
 
@@ -134,6 +162,6 @@ object RetrofitClient {
         useImageBaseUrl: Boolean = false
     ): T {
         val baseUrl = if (useImageBaseUrl) IMAGE_BASE_URL else BASE_URL
-        return getRetrofit(baseUrl, context).create(serviceClass)
+        return getRetrofit(baseUrl, context, useImageBaseUrl).create(serviceClass)
     }
 }

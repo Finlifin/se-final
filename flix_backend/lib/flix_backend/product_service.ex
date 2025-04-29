@@ -24,110 +24,180 @@ defmodule FlixBackend.ProductService do
 
   返回 {:ok, products, total_count} 或 {:error, reason}
   """
-  def get_products(offset, limit, category \\ nil, seller_id \\ nil, search_query \\ nil,
-                   min_price \\ nil, max_price \\ nil, sort_by \\ nil, sort_order \\ nil) do
+  def get_products(
+        offset,
+        limit,
+        category \\ nil,
+        seller_id \\ nil,
+        search_query \\ nil,
+        min_price \\ nil,
+        max_price \\ nil,
+        sort_by \\ nil,
+        sort_order \\ nil
+      ) do
     # 基础查询，排除 search_vector 字段
-    query = from p in Product,
-            where: p.status == :available,
-            select: map(p, [:id, :seller_id, :title, :description, :price, :images,
-                          :category, :condition, :location, :post_time, :status,
-                          :view_count, :favorite_count, :tags, :available_delivery_methods,
-                          :inserted_at, :updated_at])
+    query =
+      from p in Product,
+        where: p.status == :available,
+        select:
+          map(p, [
+            :id,
+            :seller_id,
+            :title,
+            :description,
+            :price,
+            :images,
+            :category,
+            :condition,
+            :location,
+            :post_time,
+            :status,
+            :view_count,
+            :favorite_count,
+            :tags,
+            :available_delivery_methods,
+            :inserted_at,
+            :updated_at
+          ])
 
     # 添加分类过滤
-    query = if category do
-      from p in query, where: p.category == ^category
-    else
-      query
-    end
+    query =
+      if category do
+        from p in query, where: p.category == ^category
+      else
+        query
+      end
 
     # 添加卖家过滤
-    query = if seller_id do
-      from p in query, where: p.seller_id == ^seller_id
-    else
-      query
-    end
+    query =
+      if seller_id do
+        from p in query, where: p.seller_id == ^seller_id
+      else
+        query
+      end
 
     # 添加搜索过滤 - 使用全文搜索结合模糊匹配
-    query = if search_query && search_query != "" do
-      # 准备搜索词，移除特殊字符并准备为tsquery格式
-      processed_query = search_query
-                        |> String.replace(~r/[^\p{L}\p{N}_\s]/u, "")
-                        |> String.split(~r/\s+/)
-                        |> Enum.filter(&(String.length(&1) > 0))
-                        |> Enum.map(&(&1 <> ":*"))
-                        |> Enum.join(" & ")
-
-      # 准备模糊查询的模式字符串
-      fuzzy_pattern = "%#{search_query}%"
-
-      if processed_query != "" do
-        # 使用全文搜索结合模糊匹配
-        from p in Product,
-          where: p.status == :available and
-                 (fragment("search_vector @@ to_tsquery('simple', ?)", ^processed_query) or
-                  ilike(p.title, ^fuzzy_pattern) or
-                  ilike(p.description, ^fuzzy_pattern)),
-          order_by: [desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query)],
-          select: map(p, [:id, :seller_id, :title, :description, :price, :images,
-                        :category, :condition, :location, :post_time, :status,
-                        :view_count, :favorite_count, :tags, :available_delivery_methods,
-                        :inserted_at, :updated_at])
+    processed_query =
+      if search_query && search_query != "" do
+        # 准备搜索词，移除特殊字符并准备为tsquery格式
+        search_query
+        |> String.replace(~r/[^\p{L}\p{N}_\s]/u, "")
+        |> String.split(~r/\s+/)
+        |> Enum.filter(&(String.length(&1) > 0))
+        |> Enum.map(&(&1 <> ":*"))
+        |> Enum.join(" & ")
       else
-        # 如果处理后的查询为空，仅使用模糊匹配
-        from p in query,
-          where: ilike(p.title, ^fuzzy_pattern) or ilike(p.description, ^fuzzy_pattern)
+        ""
       end
-    else
-      query
-    end
+
+    query =
+      if search_query && search_query != "" do
+        # 准备模糊查询的模式字符串
+        fuzzy_pattern = "%#{search_query}%"
+
+        if processed_query != "" do
+          # 使用全文搜索结合模糊匹配
+          from p in Product,
+            where:
+              p.status == :available and
+                (fragment("search_vector @@ to_tsquery('simple', ?)", ^processed_query) or
+                   ilike(p.title, ^fuzzy_pattern) or
+                   ilike(p.description, ^fuzzy_pattern)),
+            order_by: [
+              desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query)
+            ],
+            select:
+              map(p, [
+                :id,
+                :seller_id,
+                :title,
+                :description,
+                :price,
+                :images,
+                :category,
+                :condition,
+                :location,
+                :post_time,
+                :status,
+                :view_count,
+                :favorite_count,
+                :tags,
+                :available_delivery_methods,
+                :inserted_at,
+                :updated_at
+              ])
+        else
+          # 如果处理后的查询为空，仅使用模糊匹配
+          from p in query,
+            where: ilike(p.title, ^fuzzy_pattern) or ilike(p.description, ^fuzzy_pattern)
+        end
+      else
+        query
+      end
 
     # 添加价格过滤
-    query = if min_price do
-      from p in query, where: p.price >= ^min_price
-    else
-      query
-    end
+    query =
+      if min_price do
+        from p in query, where: p.price >= ^min_price
+      else
+        query
+      end
 
-    query = if max_price do
-      from p in query, where: p.price <= ^max_price
-    else
-      query
-    end
+    query =
+      if max_price do
+        from p in query, where: p.price <= ^max_price
+      else
+        query
+      end
 
     # 添加排序（如果有全文搜索，则保持全文搜索的相关性排序）
-    query = if search_query && String.length(search_query) > 0 do
-      query # 保持全文搜索的排序
-    else
-      # 非搜索情况下的排序
-      cond do
-        sort_by == "price" && sort_order == "asc" ->
-          from p in query, order_by: [asc: p.price]
-        sort_by == "price" && sort_order == "desc" ->
-          from p in query, order_by: [desc: p.price]
-        sort_by == "post_time" && sort_order == "asc" ->
-          from p in query, order_by: [asc: p.post_time]
-        sort_by == "post_time" && sort_order == "desc" ->
-          from p in query, order_by: [desc: p.post_time]
-        sort_by == "view_count" && sort_order == "desc" ->
-          from p in query, order_by: [desc: p.view_count]
-        true ->
-          from p in query, order_by: [desc: p.post_time]
+    query =
+      if search_query && String.length(search_query) > 0 && processed_query != "" do
+        # 对于全文搜索，保持相关性排序，但添加ID作为二级排序确保结果一致性
+        from p in query,
+          order_by: [
+            desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query),
+            asc: p.id
+          ]
+      else
+        # 非搜索情况下的排序，所有情况都添加ID作为二级排序
+        cond do
+          sort_by == "price" && sort_order == "asc" ->
+            from p in query, order_by: [asc: p.price, asc: p.id]
+
+          sort_by == "price" && sort_order == "desc" ->
+            from p in query, order_by: [desc: p.price, asc: p.id]
+
+          sort_by == "post_time" && sort_order == "asc" ->
+            from p in query, order_by: [asc: p.post_time, asc: p.id]
+
+          sort_by == "post_time" && sort_order == "desc" ->
+            from p in query, order_by: [desc: p.post_time, asc: p.id]
+
+          sort_by == "view_count" && sort_order == "desc" ->
+            from p in query, order_by: [desc: p.view_count, asc: p.id]
+
+          true ->
+            # 默认按发布时间降序排序，并添加ID作为二级排序
+            from p in query, order_by: [desc: p.post_time, asc: p.id]
+        end
       end
-    end
 
     # 计算总数
-    count_query = query
-                 |> exclude(:order_by)
-                 |> exclude(:select)
-                 |> select([p], count(p.id))
+    count_query =
+      query
+      |> exclude(:order_by)
+      |> exclude(:select)
+      |> select([p], count(p.id))
 
     total_count = Repo.one(count_query)
 
     # 添加分页
-    query = from p in query,
-            limit: ^limit,
-            offset: ^offset
+    offset = (offset - 1) * limit
+    query =
+      from p in query,
+        limit: ^limit,
+        offset: ^offset
 
     products = Repo.all(query)
 
@@ -190,7 +260,9 @@ defmodule FlixBackend.ProductService do
           # 发送商品状态变更通知给关注此商品的用户
           send_product_status_change_notifications(updated_product)
           {:ok, updated_product}
-        {:error, changeset} -> {:error, :validation_error, changeset}
+
+        {:error, changeset} ->
+          {:error, :validation_error, changeset}
       end
     else
       {:error, :not_found, message} -> {:error, :not_found, message}
@@ -224,23 +296,24 @@ defmodule FlixBackend.ProductService do
   def favorite_product(product_id, user_id) do
     with {:ok, product} <- get_product_by_id(product_id),
          user = %User{} <- Repo.get(User, user_id) do
-
       # 检查产品是否已经在收藏列表中
       if Enum.member?(user.favorite_product_ids || [], product_id) do
         {:error, :bad_request, "产品已经收藏"}
       else
         # 添加产品ID到用户的收藏列表中
-        favorite_product_ids = [product_id | (user.favorite_product_ids || [])]
+        favorite_product_ids = [product_id | user.favorite_product_ids || []]
 
-        result = user
-        |> User.changeset(%{favorite_product_ids: favorite_product_ids})
-        |> Repo.update()
+        result =
+          user
+          |> User.changeset(%{favorite_product_ids: favorite_product_ids})
+          |> Repo.update()
 
         case result do
           {:ok, updated_user} ->
             # 发送通知给商品卖家
             notify_seller_of_favorite(product, updated_user)
             {:ok, updated_user}
+
           {:error, changeset} ->
             {:error, :validation_error, changeset}
         end
@@ -311,15 +384,19 @@ defmodule FlixBackend.ProductService do
       if Enum.empty?(favorite_ids) do
         {:ok, [], 0}
       else
-        query = from p in Product,
-                where: p.id in ^favorite_ids
+        query =
+          from p in Product,
+            where: p.id in ^favorite_ids,
+            # 添加明确的排序规则，按更新时间降序，ID升序确保分页结果一致性
+            order_by: [desc: p.updated_at, asc: p.id]
 
         total_count = Repo.aggregate(query, :count, :id)
 
-        products = query
-        |> limit(^limit)
-        |> offset(^offset)
-        |> Repo.all()
+        products =
+          query
+          |> limit(^limit)
+          |> offset(^offset)
+          |> Repo.all()
 
         {:ok, products, total_count}
       end
@@ -354,8 +431,10 @@ defmodule FlixBackend.ProductService do
 
       # 发送私信
       Messaging.send_private_message(
-        user.uid,    # 收藏的用户作为发送者
-        seller.uid,  # 卖家作为接收者
+        # 收藏的用户作为发送者
+        user.uid,
+        # 卖家作为接收者
+        seller.uid,
         content,
         product.id
       )
@@ -365,8 +444,9 @@ defmodule FlixBackend.ProductService do
   # 发送商品状态变更通知给关注此商品的用户
   defp send_product_status_change_notifications(product) do
     # 查找所有收藏了此商品的用户
-    query = from u in User,
-            where: fragment("? = ANY(favorite_product_ids)", ^product.id)
+    query =
+      from u in User,
+        where: fragment("? = ANY(favorite_product_ids)", ^product.id)
 
     users = Repo.all(query)
 
@@ -378,13 +458,14 @@ defmodule FlixBackend.ProductService do
       nil
     else
       # 根据新状态生成通知内容
-      {title, text} = case product.status do
-        :available -> {"商品已上架", "您收藏的商品\"#{product.title}\"已上架"}
-        :unavailable -> {"商品已下架", "您收藏的商品\"#{product.title}\"已下架"}
-        :reserved -> {"商品已被预定", "您收藏的商品\"#{product.title}\"已被预定"}
-        :sold -> {"商品已售出", "您收藏的商品\"#{product.title}\"已售出"}
-        _ -> {"商品状态已更新", "您收藏的商品\"#{product.title}\"状态已更新"}
-      end
+      {title, text} =
+        case product.status do
+          :available -> {"商品已上架", "您收藏的商品\"#{product.title}\"已上架"}
+          :unavailable -> {"商品已下架", "您收藏的商品\"#{product.title}\"已下架"}
+          :reserved -> {"商品已被预定", "您收藏的商品\"#{product.title}\"已被预定"}
+          :sold -> {"商品已售出", "您收藏的商品\"#{product.title}\"已售出"}
+          _ -> {"商品状态已更新", "您收藏的商品\"#{product.title}\"状态已更新"}
+        end
 
       # 向每个用户发送通知
       Enum.each(users, fn user ->
@@ -396,8 +477,10 @@ defmodule FlixBackend.ProductService do
 
         # 发送私信
         Messaging.send_private_message(
-          seller.uid,  # 卖家作为发送者
-          user.uid,    # 收藏的用户作为接收者
+          # 卖家作为发送者
+          seller.uid,
+          # 收藏的用户作为接收者
+          user.uid,
           content,
           product.id
         )

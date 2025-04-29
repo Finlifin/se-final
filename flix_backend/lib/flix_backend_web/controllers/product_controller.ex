@@ -9,7 +9,7 @@ defmodule FlixBackendWeb.ProductController do
   # 获取产品列表
   def index(conn, params) do
     limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1)
-    offset = Map.get(params, "offset", "0") |> String.to_integer() |> max(0)
+    offset = Map.get(params, "offset", "1") |> String.to_integer() |> max(1)
 
     category = Map.get(params, "category")
     seller_id = Map.get(params, "seller_id")

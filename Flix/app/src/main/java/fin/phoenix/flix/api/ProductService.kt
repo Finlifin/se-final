@@ -16,7 +16,7 @@ import retrofit2.http.Query
 interface ProductService {
     @GET("products")
     suspend fun getProducts(
-        @Query("page") page: Int = 1,
+        @Query("offset") page: Int = 1,
         @Query("limit") limit: Int = 10,
         @Query("category") category: String? = null,
         @Query("seller_id") sellerId: String? = null,
@@ -53,7 +53,7 @@ interface ProductService {
     @GET("profile/favorites")
     suspend fun getFavoriteProducts(
         @Query("user_id") userId: String,
-        @Query("page") page: Int = 1,
+        @Query("offset") page: Int = 1,
         @Query("limit") limit: Int = 10
     ): Response<ProductListResponse>
 }

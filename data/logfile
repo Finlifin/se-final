@@ -555,3 +555,25 @@
 2025-04-28 01:04:22.903 CST [8291] LOG:  checkpoint complete: wrote 12 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=1.104 s, sync=0.005 s, total=1.118 s; sync files=11, longest=0.002 s, average=0.001 s; distance=11 kB, estimate=69 kB; lsn=0/2931C28, redo lsn=0/2931BD0
 2025-04-28 01:09:21.978 CST [8291] LOG:  checkpoint starting: time
 2025-04-28 01:09:28.124 CST [8291] LOG:  checkpoint complete: wrote 62 buffers (0.4%); 0 WAL file(s) added, 0 removed, 0 recycled; write=6.125 s, sync=0.016 s, total=6.146 s; sync files=39, longest=0.001 s, average=0.001 s; distance=235 kB, estimate=235 kB; lsn=0/296CB58, redo lsn=0/296CAC8
+2025-04-29 13:31:08.928 CST [28348] LOG:  starting PostgreSQL 17.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 14.2.1 20250207, 64-bit
+2025-04-29 13:31:08.928 CST [28348] LOG:  listening on IPv6 address "::1", port 5432
+2025-04-29 13:31:08.928 CST [28348] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2025-04-29 13:31:08.929 CST [28348] LOG:  listening on Unix socket "/run/postgresql/.s.PGSQL.5432"
+2025-04-29 13:31:08.931 CST [28351] LOG:  database system was interrupted; last known up at 2025-04-29 11:20:56 CST
+2025-04-29 13:31:08.942 CST [28351] LOG:  database system was not properly shut down; automatic recovery in progress
+2025-04-29 13:31:08.943 CST [28351] LOG:  redo starts at 0/2C75ED0
+2025-04-29 13:31:08.943 CST [28351] LOG:  invalid record length at 0/2C75FD8: expected at least 24, got 0
+2025-04-29 13:31:08.943 CST [28351] LOG:  redo done at 0/2C75FA0 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2025-04-29 13:31:08.945 CST [28349] LOG:  checkpoint starting: end-of-recovery immediate wait
+2025-04-29 13:31:08.949 CST [28349] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.005 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/2C75FD8, redo lsn=0/2C75FD8
+2025-04-29 13:31:08.951 CST [28348] LOG:  database system is ready to accept connections
+2025-04-29 14:01:09.356 CST [28349] LOG:  checkpoint starting: time
+2025-04-29 14:01:09.462 CST [28349] LOG:  checkpoint complete: wrote 2 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.101 s, sync=0.002 s, total=0.107 s; sync files=2, longest=0.001 s, average=0.001 s; distance=6 kB, estimate=6 kB; lsn=0/2C77B88, redo lsn=0/2C77B30
+2025-04-29 14:22:20.381 CST [28441] ERROR:  OFFSET must not be negative
+2025-04-29 14:22:20.381 CST [28441] STATEMENT:  SELECT p0."id", p0."seller_id", p0."title", p0."description", p0."price", p0."images", p0."category", p0."condition", p0."location", p0."post_time", p0."status", p0."view_count", p0."favorite_count", p0."tags", p0."available_delivery_methods", p0."inserted_at", p0."updated_at" FROM "products" AS p0 WHERE (p0."status" = 'available') ORDER BY p0."post_time" DESC, p0."id" LIMIT $1 OFFSET $2
+2025-04-29 14:22:21.458 CST [28444] ERROR:  OFFSET must not be negative
+2025-04-29 14:22:21.458 CST [28444] STATEMENT:  SELECT p0."id", p0."seller_id", p0."title", p0."description", p0."price", p0."images", p0."category", p0."condition", p0."location", p0."post_time", p0."status", p0."view_count", p0."favorite_count", p0."tags", p0."available_delivery_methods", p0."inserted_at", p0."updated_at" FROM "products" AS p0 WHERE (p0."status" = 'available') ORDER BY p0."post_time" DESC, p0."id" LIMIT $1 OFFSET $2
+2025-04-29 14:23:18.301 CST [28448] ERROR:  OFFSET must not be negative
+2025-04-29 14:23:18.301 CST [28448] STATEMENT:  SELECT p0."id", p0."seller_id", p0."title", p0."description", p0."price", p0."images", p0."category", p0."condition", p0."location", p0."post_time", p0."status", p0."view_count", p0."favorite_count", p0."tags", p0."available_delivery_methods", p0."inserted_at", p0."updated_at" FROM "products" AS p0 WHERE (p0."status" = 'available') ORDER BY p0."post_time" DESC, p0."id" LIMIT $1 OFFSET $2
+2025-04-29 14:24:04.195 CST [28446] ERROR:  OFFSET must not be negative
+2025-04-29 14:24:04.195 CST [28446] STATEMENT:  SELECT p0."id", p0."seller_id", p0."title", p0."description", p0."price", p0."images", p0."category", p0."condition", p0."location", p0."post_time", p0."status", p0."view_count", p0."favorite_count", p0."tags", p0."available_delivery_methods", p0."inserted_at", p0."updated_at" FROM "products" AS p0 WHERE (p0."status" = 'available') ORDER BY p0."post_time" DESC, p0."id" LIMIT $1 OFFSET $2
