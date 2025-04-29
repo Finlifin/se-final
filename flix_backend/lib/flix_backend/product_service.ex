@@ -395,7 +395,7 @@ defmodule FlixBackend.ProductService do
         products =
           query
           |> limit(^limit)
-          |> offset(^offset)
+          |> offset(^((offset - 1) * limit))
           |> Repo.all()
 
         {:ok, products, total_count}

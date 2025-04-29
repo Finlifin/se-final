@@ -33,7 +33,7 @@ defmodule FlixBackend.CampusService do
     query = from c in query,
             order_by: [asc: c.name],
             limit: ^limit,
-            offset: ^offset
+            offset: ^((offset - 1) * limit)
 
     campuses = Repo.all(query)
 

@@ -25,7 +25,7 @@ defmodule FlixBackend.SchoolService do
     query = from s in query,
             order_by: [asc: s.name],
             limit: ^limit,
-            offset: ^offset
+            offset: ^((offset - 1) * limit)
 
     schools = Repo.all(query)
 
@@ -58,7 +58,7 @@ defmodule FlixBackend.SchoolService do
     query = from s in query,
             order_by: [asc: s.name],
             limit: ^limit,
-            offset: ^offset
+            offset: ^((offset - 1) * limit)
 
     schools = Repo.all(query)
 

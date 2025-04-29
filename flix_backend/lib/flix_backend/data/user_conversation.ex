@@ -93,6 +93,7 @@ defmodule FlixBackend.Data.UserConversation do
         {:error, :not_found}
 
       user_conversation ->
+        IO.inspect(user_conversation, label: "user_conversation")
         user_conversation
         |> changeset(%{unread_count: 0})
         |> Repo.update()

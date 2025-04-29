@@ -67,7 +67,7 @@ defmodule FlixBackend.Data.Message do
       where: m.receiver_id == ^user_id,
       order_by: [desc: m.inserted_at],
       limit: ^limit,
-      offset: ^offset
+      offset: ^((offset - 1) * limit)
 
     query = if status do
       from m in query, where: m.status == ^status
@@ -224,7 +224,7 @@ defmodule FlixBackend.Data.Message do
   # 清空会话中的所有消息
   def clear_conversation_messages(conversation_id) do
     from(m in __MODULE__, where: m.conversation_id == ^conversation_id)
-    |> FlixBackend.Repo.delete_all()
+    |> FlixBackend.Repo.update_all(set: [status: :deleted, updated_at: DateTime.utc_now()])
   end
 
   # 根据客户端消息ID获取消息

@@ -169,6 +169,7 @@ class MessageRepository(
                 messageDao.updateAllUnreadMessagesInConversation(conversationId, MessageStatus.READ)
                 
                 // 同步到服务器
+                Log.d(TAG, "Marking messages as read on server: $message")
                 messageClient.markMessagesRead(conversationId, message.id)
                 
                 // 更新会话的未读计数

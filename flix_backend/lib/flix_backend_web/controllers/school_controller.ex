@@ -12,7 +12,7 @@ defmodule FlixBackendWeb.SchoolController do
   # GET /api/v1/schools
   def index(conn, params) do
     limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1)
-    offset = Map.get(params, "offset", "0") |> String.to_integer() |> max(0)
+    offset = Map.get(params, "offset", "1") |> String.to_integer() |> max(1)
 
     with {:ok, schools, total_count} <- SchoolService.list_schools(offset, limit) do
       currentPage = div(offset, limit) + 1
@@ -27,7 +27,7 @@ defmodule FlixBackendWeb.SchoolController do
   # GET /api/v1/schools/search?query=...
   def search(conn, %{"query" => query} = params) do
     limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1)
-    offset = Map.get(params, "offset", "0") |> String.to_integer() |> max(0)
+    offset = Map.get(params, "offset", "1") |> String.to_integer() |> max(1)
 
     with {:ok, schools, total_count} <- SchoolService.search_schools(query, offset, limit) do
       currentPage = div(offset, limit) + 1
@@ -51,7 +51,7 @@ defmodule FlixBackendWeb.SchoolController do
   # GET /api/v1/schools/:id/campuses
   def list_campuses(conn, %{"id" => school_id} = params) do
     limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1)
-    offset = Map.get(params, "offset", "0") |> String.to_integer() |> max(0)
+    offset = Map.get(params, "offset", "1") |> String.to_integer() |> max(1)
 
     with {:ok, campuses, total_count} <- CampusService.list_campuses_by_school(school_id, offset, limit) do
       currentPage = div(offset, limit) + 1

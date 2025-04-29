@@ -1,7 +1,10 @@
 package fin.phoenix.flix.ui.message
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -76,6 +80,7 @@ import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.Order
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
+import fin.phoenix.flix.repository.ImageRepository
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource
@@ -98,19 +103,66 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val currentUser by UserManager.getInstance(context).currentUser.observeAsState()
+    var isUploading by remember { mutableStateOf(false) }
+    
+    // 创建ImageRepository实例用于图片上传
+    val imageRepository = remember { ImageRepository(context) }
+
+    // 获取对方用户信息
+    var otherUser by remember { mutableStateOf<UserAbstract?>(null) }
+    val profileRepository = remember { ProfileRepository(context) }
+
+    LaunchedEffect(chatState) {
+        viewModel.markConversationAsRead(conversationId)
+        if (chatState is MessageViewModel.ChatState.Success) {
+            val state = chatState as MessageViewModel.ChatState.Success
+            // 找出不是当前用户发送的消息
+            val otherUserMessage = state.messages.find { it.senderId != currentUser?.uid }
+            // 如果找到了对方的消息，获取对方的用户信息
+            if (otherUserMessage != null && otherUserMessage.senderId != null) {
+                val result = profileRepository.getUserAbstract(otherUserMessage.senderId!!)
+                if (result is Resource.Success) {
+                    otherUser = result.data
+                }
+            }
+        }
+    }
 
     // 图片选择器
-//    val imagePicker = rememberLauncherForActivityResult(
-//        contract = ActivityResultContracts.GetContent()
-//    ) { uri: Uri? ->
-//        uri?.let {
-//            viewModel.sendMessage(
-//                conversationId = partnerUserId,
-//                content = listOf(MessageContentItem("image", it.toString()))
-//            )
-//            showImagePicker = false
-//        }
-//    }
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // 显示上传中状态
+            isUploading = true
+            
+            // 在后台上传图片
+            coroutineScope.launch {
+                try {
+                    // 上传图片到服务器
+                    val result = imageRepository.uploadImage(it)
+                    
+                    if (result.isSuccess) {
+                        // 获取上传成功后的图片URL
+                        val imageUrl = result.getOrThrow()
+                        
+                        // 发送图片消息
+                        viewModel.sendMessage(
+                            conversationId = conversationId,
+                            content = listOf(MessageContentItem(ContentTypes.IMAGE, imageUrl))
+                        )
+                    } else {
+                        val error = result.exceptionOrNull()?.message ?: "图片上传失败"
+                        Log.e("ChatScreen", "上传图片失败: $error")
+                    }
+                } catch (e: Exception) {
+                    Log.e("ChatScreen", "上传图片出错", e)
+                } finally {
+                    isUploading = false
+                }
+            }
+        }
+    }
 
     // 加载会话信息
     LaunchedEffect(conversationId) {
@@ -121,7 +173,7 @@ fun ChatScreen(
         TopAppBar(
             title = {
                 Column {
-                    Text(currentUser?.userName ?: "用户")
+                    Text(otherUser?.userName ?: "会话")
                     if (connectionState != ConnectionState.CONNECTED) {
                         Text(
                             text = when (connectionState) {
@@ -164,9 +216,9 @@ fun ChatScreen(
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-//                    IconButton(onClick = { imagePicker.launch("image/*") }) {
-//                        Icon(Icons.Default.Image, contentDescription = "发送图片")
-//                    }
+                IconButton(onClick = { imagePicker.launch("image/*") }) {
+                    Icon(Icons.Default.Image, contentDescription = "发送图片")
+                }
 
                 TextField(
                     value = message,
@@ -382,7 +434,7 @@ fun MessageItem(
                             "image" -> {
                                 AsyncImage(
                                     model = ImageRequest.Builder(LocalContext.current)
-                                        .data(content.payload).crossfade(true).build(),
+                                        .data(imageUrl(content.payload as String)).crossfade(true).build(),
                                     contentDescription = "图片消息",
                                     modifier = Modifier
                                         .size(200.dp)

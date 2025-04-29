@@ -12,7 +12,7 @@ defmodule FlixBackendWeb.CampusController do
   def index(conn, params) do
     # 使用 offset 和 limit 进行分页
     limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1) # Ensure limit is at least 1
-    offset = Map.get(params, "offset", "0") |> String.to_integer() |> max(0) # Ensure offset is non-negative
+    offset = Map.get(params, "offset", "1") |> String.to_integer() |> max(1) # Ensure offset is non-negative
     school_id = Map.get(params, "school_id") # 可选的按学校过滤
 
     # 假设 CampusService.list_campuses 现在接受 offset 和 limit

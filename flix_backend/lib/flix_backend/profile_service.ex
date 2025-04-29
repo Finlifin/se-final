@@ -189,7 +189,7 @@ defmodule FlixBackend.ProfileService do
     query = from u in query,
             order_by: [desc: u.inserted_at],
             limit: ^limit,
-            offset: ^offset
+            offset: ^((offset - 1) * limit)
 
     users = Repo.all(query)
 

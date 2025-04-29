@@ -204,7 +204,7 @@ defmodule FlixBackendWeb.ProductController do
         |> json(ApiResponse.unauthorized_response())
       current_user ->
         limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1)
-        offset = Map.get(params, "offset", "0") |> String.to_integer() |> max(0)
+        offset = Map.get(params, "offset", "1") |> String.to_integer() |> max(1)
 
         case ProductService.get_favorite_products(current_user.user_id, offset, limit) do
           {:ok, products, total_count} ->

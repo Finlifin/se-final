@@ -181,7 +181,7 @@ defmodule FlixBackend.PaymentService do
             where: o.buyer_id == ^user_id and o.status in [:paid, :completed, :refunded],
             order_by: [desc: o.payment_time],
             limit: ^limit,
-            offset: ^offset
+            offset: ^((offset - 1) * limit)
 
     orders = Repo.all(query)
     total_count_query = from o in Order,
