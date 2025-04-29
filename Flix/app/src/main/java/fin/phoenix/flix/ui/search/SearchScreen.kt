@@ -28,8 +28,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,11 +48,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -70,7 +66,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import fin.phoenix.flix.data.ProductStatus
@@ -87,27 +82,25 @@ fun SearchScreen(
     initialQuery: String = ""
 ) {
     val viewModel: SearchViewModel = viewModel()
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.observeAsState(SearchUiState())
+    val searchQuery by viewModel.searchQuery.observeAsState("")
+    val tempQuery by viewModel.tempQuery.observeAsState("")
+    val showPriceRangeDialog by viewModel.showPriceRangeDialog.observeAsState(false)
+    val showSortDialog by viewModel.showSortDialog.observeAsState(false)
+    val minPrice by viewModel.minPrice.observeAsState(0.0)
+    val maxPrice by viewModel.maxPrice.observeAsState(10000.0)
+    val tempSortBy by viewModel.tempSortBy.observeAsState("")
+    val tempSortOrder by viewModel.tempSortOrder.observeAsState("")
+    val isRefreshing by viewModel.isRefreshing.observeAsState(false)
+    
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     
-    var searchQuery by remember { mutableStateOf(initialQuery) }
-    var tempQuery by remember { mutableStateOf(searchQuery) }
-    var priceRangeExpanded by remember { mutableStateOf(false) }
-    var sortByExpanded by remember { mutableStateOf(false) }
-    var showPriceRangeDialog by remember { mutableStateOf(false) }
-    var minPrice by remember { mutableDoubleStateOf(0.0) }
-    var maxPrice by remember { mutableDoubleStateOf(10000.0) }
-    
     val listState = rememberLazyListState()
-    var isRefreshing = remember { mutableStateOf(false) }
     val pullRefreshState = rememberPullToRefreshState()
     val onRefresh: () -> Unit = {
-        isRefreshing.value = true
-        scope.launch {
-            isRefreshing.value = false
-        }
+        viewModel.setRefreshing(true)
     }
     
     // 监测是否到达列表底部，用于自动加载下一页
@@ -125,34 +118,19 @@ fun SearchScreen(
         }
     }
     
-    // 下拉刷新处理
-    LaunchedEffect(isRefreshing) {
-        if (isRefreshing.value) {
-            delay(800) // 简单延迟，让刷新动画有足够时间显示
-            if (searchQuery.isNotEmpty()) {
-                viewModel.search(searchQuery)
-            }
-//            pullRefreshState.endRefresh()
-        }
-    }
-    
     // 搜索延迟，避免频繁请求
     LaunchedEffect(tempQuery) {
         if (tempQuery != searchQuery) {
             delay(500) // 延迟500ms再执行搜索
-            searchQuery = tempQuery
-            if (searchQuery.isNotEmpty()) {
-                viewModel.search(searchQuery)
-            }
+            viewModel.setSearchQuery(tempQuery)
         }
     }
     
     // 初始搜索
     LaunchedEffect(initialQuery) {
         if (initialQuery.isNotEmpty()) {
-            searchQuery = initialQuery
-            tempQuery = initialQuery
-            viewModel.search(searchQuery)
+            viewModel.setTempQuery(initialQuery)
+            viewModel.setSearchQuery(initialQuery)
         }
     }
     
@@ -165,7 +143,7 @@ fun SearchScreen(
     
     // 价格范围选择对话框
     if (showPriceRangeDialog) {
-        Dialog(onDismissRequest = { showPriceRangeDialog = false }) {
+        Dialog(onDismissRequest = { viewModel.showPriceRangeDialog(false) }) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -192,7 +170,7 @@ fun SearchScreen(
                         OutlinedTextField(
                             value = if (minPrice == 0.0) "" else minPrice.toString(),
                             onValueChange = { 
-                                minPrice = it.toDoubleOrNull() ?: 0.0 
+                                viewModel.setMinPrice(it.toDoubleOrNull() ?: 0.0)
                             },
                             label = { Text("最低价格") },
                             modifier = Modifier.weight(1f),
@@ -202,7 +180,7 @@ fun SearchScreen(
                         OutlinedTextField(
                             value = if (maxPrice == 10000.0) "" else maxPrice.toString(),
                             onValueChange = { 
-                                maxPrice = it.toDoubleOrNull() ?: 10000.0 
+                                viewModel.setMaxPrice(it.toDoubleOrNull() ?: 10000.0)
                             },
                             label = { Text("最高价格") },
                             modifier = Modifier.weight(1f),
@@ -219,8 +197,7 @@ fun SearchScreen(
                         Surface(
                             modifier = Modifier
                                 .clickable { 
-                                    showPriceRangeDialog = false 
-                                    viewModel.updatePriceRange(null, null)
+                                    viewModel.clearPriceRange()
                                 }
                                 .padding(8.dp),
                             color = Color.Transparent
@@ -236,8 +213,7 @@ fun SearchScreen(
                         Surface(
                             modifier = Modifier
                                 .clickable {
-                                    showPriceRangeDialog = false
-                                    viewModel.updatePriceRange(minPrice, maxPrice)
+                                    viewModel.confirmPriceRange()
                                 }
                                 .padding(8.dp),
                             color = Color.Transparent
@@ -254,6 +230,132 @@ fun SearchScreen(
         }
     }
     
+    // 排序选择对话框
+    if (showSortDialog) {
+        Dialog(onDismissRequest = { viewModel.showSortDialog(false) }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "选择排序方式",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setTempSortParams("post_time", "desc")
+                                },
+                            color = if (tempSortBy == "post_time" && tempSortOrder == "desc") 
+                                    Color(0xFFEAEAEA) else Color.Transparent
+                        ) {
+                            Text(
+                                text = "最新",
+                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+                            )
+                        }
+                        
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setTempSortParams("price", "asc")
+                                },
+                            color = if (tempSortBy == "price" && tempSortOrder == "asc") 
+                                    Color(0xFFEAEAEA) else Color.Transparent
+                        ) {
+                            Text(
+                                text = "价格从低到高",
+                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+                            )
+                        }
+                        
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setTempSortParams("price", "desc")
+                                },
+                            color = if (tempSortBy == "price" && tempSortOrder == "desc") 
+                                    Color(0xFFEAEAEA) else Color.Transparent
+                        ) {
+                            Text(
+                                text = "价格从高到低",
+                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+                            )
+                        }
+                        
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setTempSortParams("view_count", "desc")
+                                },
+                            color = if (tempSortBy == "view_count" && tempSortOrder == "desc") 
+                                    Color(0xFFEAEAEA) else Color.Transparent
+                        ) {
+                            Text(
+                                text = "热门",
+                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .clickable { 
+                                    viewModel.showSortDialog(false)
+                                }
+                                .padding(8.dp),
+                            color = Color.Transparent
+                        ) {
+                            Text(
+                                text = "取消",
+                                color = Color.Gray
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Surface(
+                            modifier = Modifier
+                                .clickable {
+                                    viewModel.confirmSorting()
+                                }
+                                .padding(8.dp),
+                            color = Color.Transparent
+                        ) {
+                            Text(
+                                text = "确认",
+                                color = RoseRed,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -261,7 +363,7 @@ fun SearchScreen(
                     val searchFieldFocus = remember { FocusRequester() }
                     TextField(
                         value = tempQuery,
-                        onValueChange = { tempQuery = it },
+                        onValueChange = { viewModel.setTempQuery(it) },
                         placeholder = { Text(text = "搜索商品") },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -284,8 +386,6 @@ fun SearchScreen(
                         trailingIcon = {
                             if (tempQuery.isNotEmpty()) {
                                 IconButton(onClick = { 
-                                    tempQuery = "" 
-                                    searchQuery = ""
                                     viewModel.clearSearch()
                                 }) {
                                     Icon(
@@ -308,7 +408,7 @@ fun SearchScreen(
                         if (tempQuery.isNotEmpty()) {
                             focusManager.clearFocus()
                             keyboardController?.hide()
-                            viewModel.search(tempQuery)
+                            viewModel.confirmSearch()
                         }
                     }) {
                         Icon(
@@ -338,14 +438,14 @@ fun SearchScreen(
                 modifier = Modifier.fillMaxSize(),
                 state = pullRefreshState,
                 indicator = {
-                    if (isRefreshing.value) {
+                    if (isRefreshing) {
                         PullToRefreshDefaults.Indicator(
                             state = pullRefreshState,
-                            isRefreshing = isRefreshing.value,
+                            isRefreshing = isRefreshing,
                         )
                     }
                 },
-                isRefreshing = isRefreshing.value,
+                isRefreshing = isRefreshing,
                 onRefresh = onRefresh,
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -362,20 +462,12 @@ fun SearchScreen(
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            // 分类筛选
-                            Box {
-                                FilterButton(
-                                    text = if (uiState.selectedCategory == null) "分类" else uiState.selectedCategory!!,
-                                    onClick = { /* 由CategoryChips处理 */ }
-                                )
-                            }
-                            
                             // 价格范围筛选
                             Box {
                                 FilterButton(
                                     text = if (uiState.priceRange == null) "价格" 
                                     else "¥${uiState.priceRange!!.first}-${uiState.priceRange!!.second}",
-                                    onClick = { showPriceRangeDialog = true }
+                                    onClick = { viewModel.showPriceRangeDialog(true) }
                                 )
                             }
                             
@@ -388,43 +480,8 @@ fun SearchScreen(
                                         "view_count" -> "热门"
                                         else -> "综合"
                                     },
-                                    onClick = { sortByExpanded = true }
+                                    onClick = { viewModel.showSortDialog(true) }
                                 )
-                                
-                                DropdownMenu(
-                                    expanded = sortByExpanded,
-                                    onDismissRequest = { sortByExpanded = false },
-                                    properties = PopupProperties(focusable = true)
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("最新") },
-                                        onClick = {
-                                            viewModel.updateSorting("post_time", "desc")
-                                            sortByExpanded = false
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("价格从低到高") },
-                                        onClick = {
-                                            viewModel.updateSorting("price", "asc")
-                                            sortByExpanded = false
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("价格从高到低") },
-                                        onClick = {
-                                            viewModel.updateSorting("price", "desc")
-                                            sortByExpanded = false
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("热门") },
-                                        onClick = {
-                                            viewModel.updateSorting("view_count", "desc")
-                                            sortByExpanded = false
-                                        }
-                                    )
-                                }
                             }
                             
                             // 更多筛选

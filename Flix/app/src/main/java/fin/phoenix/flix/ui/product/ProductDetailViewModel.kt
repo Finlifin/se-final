@@ -91,7 +91,6 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    // BUG: 这里的收藏状态没有更新
     fun toggleFavorite() {
         val productId = (_productState.value as? Resource.Success)?.data?.id ?: return
         val currentFavoriteStatus = _isProductFavorite.value ?: false
@@ -105,10 +104,19 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
                     productRepository.favoriteProduct(productId)
                 }
 
+                // 收藏操作即使返回Resource.Error，只要message中包含"成功"字样，我们也认为是成功的
                 when (result) {
                     is Resource.Error -> {
-                        _isProductFavorite.value = currentFavoriteStatus  // Revert on error
-                        Log.e(TAG, "Error toggling favorite: ${result.message}")
+                        // 检查错误消息是否包含成功字样
+                        if (result.message.contains("成功")) {
+                            // 这是一个误报的错误，实际操作成功了
+                            Log.d(TAG, "收藏操作成功: ${result.message}")
+                            // 保持乐观更新的状态
+                        } else {
+                            // 真的出错了，回退状态
+                            _isProductFavorite.value = currentFavoriteStatus  // Revert on error
+                            Log.e(TAG, "Error toggling favorite: ${result.message}")
+                        }
                     }
 
                     is Resource.Success -> {
@@ -124,8 +132,6 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
             }
         }
     }
-
-
     // 创建订单
     fun createOrder(
         productId: String,

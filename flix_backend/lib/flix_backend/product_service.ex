@@ -150,17 +150,39 @@ defmodule FlixBackend.ProductService do
         query
       end
 
-    # 添加排序（如果有全文搜索，则保持全文搜索的相关性排序）
+    # 添加排序
     query =
       if search_query && String.length(search_query) > 0 && processed_query != "" do
-        # 对于全文搜索，保持相关性排序，但添加ID作为二级排序确保结果一致性
-        from p in query,
-          order_by: [
-            desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query),
-            asc: p.id
-          ]
+        # 全文搜索结果的排序
+        base_query =
+          from p in query,
+            order_by: [
+              desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query)
+            ]
+
+        # 在保持相关性排序的基础上应用用户请求的排序
+        cond do
+          sort_by == "price" && sort_order == "asc" ->
+            from p in base_query, order_by: [asc: p.price, asc: p.id]
+
+          sort_by == "price" && sort_order == "desc" ->
+            from p in base_query, order_by: [desc: p.price, asc: p.id]
+
+          sort_by == "post_time" && sort_order == "asc" ->
+            from p in base_query, order_by: [asc: p.post_time, asc: p.id]
+
+          sort_by == "post_time" && sort_order == "desc" ->
+            from p in base_query, order_by: [desc: p.post_time, asc: p.id]
+
+          sort_by == "view_count" && sort_order == "desc" ->
+            from p in base_query, order_by: [desc: p.view_count, asc: p.id]
+
+          true ->
+            # 默认排序，保持相关性为主要排序条件，添加ID作为二级排序
+            from p in base_query, order_by: [asc: p.id]
+        end
       else
-        # 非搜索情况下的排序，所有情况都添加ID作为二级排序
+        # 非搜索情况下的排序
         cond do
           sort_by == "price" && sort_order == "asc" ->
             from p in query, order_by: [asc: p.price, asc: p.id]
@@ -194,6 +216,7 @@ defmodule FlixBackend.ProductService do
 
     # 添加分页
     offset = (offset - 1) * limit
+
     query =
       from p in query,
         limit: ^limit,
