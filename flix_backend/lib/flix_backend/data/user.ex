@@ -32,7 +32,7 @@ defmodule FlixBackend.Data.User do
     field :avatar_url, :string
     field :addresses, {:array, :string}, default: []
     field :current_address, :string
-    field :balance, :integer, default: 0
+    field :balance, :float, default: 0.0
     field :published_product_ids, {:array, :binary_id}, default: []
     field :sold_product_ids, {:array, :binary_id}, default: []
     field :purchased_product_ids, {:array, :binary_id}, default: []

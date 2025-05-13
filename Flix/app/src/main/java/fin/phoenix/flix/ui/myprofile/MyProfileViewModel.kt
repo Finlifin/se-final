@@ -108,6 +108,7 @@ class MyProfileViewModel(application: Application) : AndroidViewModel(applicatio
 
     /**
      * 充值余额
+     * 这个方法在用户界面上直接调用充值，但我们现在修改它来导航到充值界面
      */
     fun rechargeBalance(userId: String, amount: Int, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
@@ -120,6 +121,17 @@ class MyProfileViewModel(application: Application) : AndroidViewModel(applicatio
                 is Resource.Error -> onComplete(false)
                 else -> onComplete(false)
             }
+        }
+    }
+    
+    /**
+     * 刷新用户信息
+     * 这个方法用于在充值后刷新用户信息
+     */
+    fun refreshUserProfile(userId: String) {
+        viewModelScope.launch {
+            val result = repository.getUserProfile(userId)
+            _userProfileState.value = result
         }
     }
 }

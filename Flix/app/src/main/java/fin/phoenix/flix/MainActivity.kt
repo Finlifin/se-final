@@ -39,6 +39,7 @@ import fin.phoenix.flix.ui.myprofile.MyProfileContent
 import fin.phoenix.flix.ui.myprofile.MyPurchasedProductsScreen
 import fin.phoenix.flix.ui.myprofile.MySoldProductsScreen
 import fin.phoenix.flix.ui.myprofile.ProfileEditScreen
+import fin.phoenix.flix.ui.myprofile.RechargeScreen
 import fin.phoenix.flix.ui.orders.OrderDetailScreen
 import fin.phoenix.flix.ui.orders.OrderListScreen
 import fin.phoenix.flix.ui.payment.PaymentConfirmScreen
@@ -421,6 +422,12 @@ fun Flix(
         composable(route = "/orders") {
             LoginRequiredScreen(route = "/orders") {
                 OrderListScreen(navController = navController)
+            }
+        }
+        composable("/my_profile/recharge") {
+            LoginRequiredScreen(route = "/my_profile/recharge") {
+                // 充值界面
+                RechargeScreen(navController, userId = currentUserId!!)
             }
         }
     }

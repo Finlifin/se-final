@@ -190,83 +190,83 @@ fun SellerInformation(
         )
     }
 }
-
-@Composable
-fun ProductCard(
-    product: fin.phoenix.flix.data.ProductAbstract,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White)
-            .clickable(onClick = onClick)
-    ) {
-        // Product image
-        Image(
-            painter = rememberAsyncImagePainter(model = imageUrl(product.image)),
-            contentDescription = product.title,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f),
-            contentScale = ContentScale.Crop
-        )
-
-        // Product info
-        Column(
-            modifier = Modifier.padding(8.dp)
-        ) {
-            Text(
-                text = product.title,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "¥${product.price}", color = RoseRed, fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Seller info
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (product.seller != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = product.seller.avatarUrl),
-                        contentDescription = product.seller.userName,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                else {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = ""),
-                        contentDescription = "",
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                Text(
-                    text = if(product.seller != null) product.seller.userName else "未知卖家",
-                    fontSize = 10.sp,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
+//
+//@Composable
+//fun ProductCard(
+//    product: fin.phoenix.flix.data.ProductAbstract,
+//    modifier: Modifier = Modifier,
+//    onClick: () -> Unit
+//) {
+//    Column(
+//        modifier = modifier
+//            .clip(RoundedCornerShape(8.dp))
+//            .background(Color.White)
+//            .clickable(onClick = onClick)
+//    ) {
+//        // Product image
+//        Image(
+//            painter = rememberAsyncImagePainter(model = imageUrl(product.image)),
+//            contentDescription = product.title,
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .aspectRatio(1f),
+//            contentScale = ContentScale.Crop
+//        )
+//
+//        // Product info
+//        Column(
+//            modifier = Modifier.padding(8.dp)
+//        ) {
+//            Text(
+//                text = product.title,
+//                fontWeight = FontWeight.Medium,
+//                maxLines = 2,
+//                overflow = TextOverflow.Ellipsis
+//            )
+//
+//            Spacer(modifier = Modifier.height(4.dp))
+//
+//            Text(
+//                text = "¥${product.price}", color = RoseRed, fontWeight = FontWeight.Bold
+//            )
+//
+//            Spacer(modifier = Modifier.height(4.dp))
+//
+//            // Seller info
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                if (product.seller != null) {
+//                    Image(
+//                        painter = rememberAsyncImagePainter(model = product.seller.avatarUrl),
+//                        contentDescription = product.seller.userName,
+//                        modifier = Modifier
+//                            .size(16.dp)
+//                            .clip(CircleShape),
+//                        contentScale = ContentScale.Crop
+//                    )
+//                }
+//                else {
+//                    Image(
+//                        painter = rememberAsyncImagePainter(model = ""),
+//                        contentDescription = "",
+//                        modifier = Modifier
+//                            .size(16.dp)
+//                            .clip(CircleShape),
+//                        contentScale = ContentScale.Crop
+//                    )
+//                }
+//
+//                Spacer(modifier = Modifier.width(4.dp))
+//
+//                Text(
+//                    text = if(product.seller != null) product.seller.userName else "未知卖家",
+//                    fontSize = 10.sp,
+//                    color = Color.Gray,
+//                    maxLines = 1,
+//                    overflow = TextOverflow.Ellipsis
+//                )
+//            }
+//        }
+//    }
+//}

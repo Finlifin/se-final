@@ -18,8 +18,10 @@ defmodule FlixBackendWeb.ProductController do
     max_price = if params["max_price"], do: String.to_float(params["max_price"]), else: nil
     sort_by = Map.get(params, "sort_by")
     sort_order = Map.get(params, "sort_order")
+    available_status = Map.get(params, "_json", [:available, :sold])
+    IO.inspect(params)
 
-    case ProductService.get_products(offset, limit, category, seller_id, search_query, min_price, max_price, sort_by, sort_order) do
+    case ProductService.get_products(offset, limit, category, seller_id, search_query, min_price, max_price, sort_by, sort_order, available_status) do
       {:ok, products, total_count} ->
         products = Enum.map(products, fn product ->
           images = Map.get(product, :images, [])

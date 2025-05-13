@@ -2,7 +2,6 @@ package fin.phoenix.flix.repository
 
 import android.content.Context
 import android.util.Log
-import com.google.gson.annotations.SerializedName
 import fin.phoenix.flix.api.ProfileService
 import fin.phoenix.flix.api.ProfileUpdateRequest
 import fin.phoenix.flix.api.RetrofitClient
@@ -33,9 +32,10 @@ class ProfileRepository(private val context: Context) {
     /**
      * 根据用户ID获取用户简要信息
      */
-    suspend fun getUserAbstract(userId: String): Resource<UserAbstract> = withContext(Dispatchers.IO) {
-        userService.getUserAbstract(userId).toResource("获取用户信息失败")
-    }
+    suspend fun getUserAbstract(userId: String): Resource<UserAbstract> =
+        withContext(Dispatchers.IO) {
+            userService.getUserAbstract(userId).toResource("获取用户信息失败")
+        }
 
     /**
      * 获取用户完整资料
@@ -54,9 +54,10 @@ class ProfileRepository(private val context: Context) {
     /**
      * 更新用户信息
      */
-    suspend fun updateUserProfile(user: ProfileUpdateRequest): Resource<User> = withContext(Dispatchers.IO) {
-        userService.updateUserProfile(user).toResource("更新用户信息失败")
-    }
+    suspend fun updateUserProfile(user: ProfileUpdateRequest): Resource<User> =
+        withContext(Dispatchers.IO) {
+            userService.updateUserProfile(user).toResource("更新用户信息失败")
+        }
 
     /**
      * 充值余额
@@ -105,7 +106,8 @@ class ProfileRepository(private val context: Context) {
      */
     suspend fun getUserSoldProducts(userId: String): Resource<List<Product>> =
         withContext(Dispatchers.IO) {
-            val response = userService.getUserSoldProducts(userId).toResource("获取用户已售商品失败")
+            val response =
+                userService.getUserSoldProducts(userId).toResource("获取用户已售商品失败")
             if (response is Resource.Success) {
                 val products = mutableListOf<Product>()
                 for (productId in response.data) {
@@ -127,7 +129,8 @@ class ProfileRepository(private val context: Context) {
      */
     suspend fun getUserPurchasedProducts(userId: String): Resource<List<Product>> =
         withContext(Dispatchers.IO) {
-            val response = userService.getUserPurchasedProducts(userId).toResource("获取用户购买商品失败")
+            val response =
+                userService.getUserPurchasedProducts(userId).toResource("获取用户购买商品失败")
             if (response is Resource.Success) {
                 val products = mutableListOf<Product>()
                 for (productId in response.data) {

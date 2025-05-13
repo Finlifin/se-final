@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import fin.phoenix.flix.ui.colors.RoseRed
-import fin.phoenix.flix.ui.product.ProductCard
+import fin.phoenix.flix.ui.home.ProductCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

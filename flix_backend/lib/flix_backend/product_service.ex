@@ -33,12 +33,13 @@ defmodule FlixBackend.ProductService do
         min_price \\ nil,
         max_price \\ nil,
         sort_by \\ nil,
-        sort_order \\ nil
+        sort_order \\ nil,
+        available_status \\ [:available, :sold]
       ) do
     # 基础查询，排除 search_vector 字段
     query =
       from p in Product,
-        where: p.status == :available,
+        where: p.status in ^available_status,
         select:
           map(p, [
             :id,
@@ -99,7 +100,7 @@ defmodule FlixBackend.ProductService do
           # 使用全文搜索结合模糊匹配
           from p in Product,
             where:
-              p.status == :available and
+              p.status in ^available_status and
                 (fragment("search_vector @@ to_tsquery('simple', ?)", ^processed_query) or
                    ilike(p.title, ^fuzzy_pattern) or
                    ilike(p.description, ^fuzzy_pattern)),

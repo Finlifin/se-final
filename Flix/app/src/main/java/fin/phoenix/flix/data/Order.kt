@@ -26,6 +26,7 @@ data class Order(
     @SerializedName("seller_id") val sellerId: String, // 卖家ID
     @SerializedName("product_id") val productId: String, // 商品ID
     @SerializedName("order_time") val orderTime: Long, // 下单时间戳
+    @SerializedName("order_type") val orderType: String, // product | recharge
     @SerializedName("price") val price: Double, // 订单金额
     @SerializedName("status") val status: OrderStatus, // 订单状态
     @SerializedName("delivery_method") val deliveryMethod: String? = null, // 配送方式

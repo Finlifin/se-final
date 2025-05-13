@@ -18,7 +18,8 @@ defmodule FlixBackend.Data.Order do
              :delivery_time,
              :delivery_fee,
              :payment_method,
-             :payment_time
+             :payment_time,
+             :order_type
            ]}
   schema "orders" do
     field :order_time, :integer
@@ -30,6 +31,7 @@ defmodule FlixBackend.Data.Order do
     field :payment_method, :string
     field :payment_time, :integer
     field :status, FlixBackend.Data.OrderStatus, default: :pending
+    field :order_type, :string, default: "product"  # "product" or "recharge"
 
     timestamps()
 
@@ -63,9 +65,24 @@ defmodule FlixBackend.Data.Order do
       :delivery_time,
       :delivery_fee,
       :payment_method,
-      :payment_time
+      :payment_time,
+      :order_type
     ])
-    |> validate_required([:buyer_id, :seller_id, :product_id, :order_time, :price])
+    |> validate_required([:buyer_id, :price])
+    |> validate_order_type()
     |> unique_constraint(:order_id)
+  end
+
+  # 验证订单类型相关字段
+  defp validate_order_type(changeset) do
+    case get_field(changeset, :order_type) do
+      "product" ->
+        changeset
+        |> validate_required([:seller_id, :product_id])
+      "recharge" ->
+        changeset
+      _ ->
+        add_error(changeset, :order_type, "must be either product or recharge")
+    end
   end
 end

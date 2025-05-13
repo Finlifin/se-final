@@ -1,7 +1,9 @@
 defmodule FlixBackend.ProfileService do
   import Ecto.Query, warn: false
+  alias FlixBackend.PaymentService
   alias FlixBackend.Repo
   alias FlixBackend.Data.User
+  alias FlixBackend.Data.Order  # 添加 Order 的引用
 
   @doc """
   获取用户完整资料
@@ -194,5 +196,52 @@ defmodule FlixBackend.ProfileService do
     users = Repo.all(query)
 
     {:ok, users, total_count}
+  end
+
+  @doc """
+  创建充值支付订单
+  """
+  def create_recharge_payment(user_id, amount) do
+    case Repo.get_by(User, uid: user_id) do
+      nil ->
+        {:error, :not_found}
+
+      _user ->
+        # 创建一个充值订单
+        order_changeset = Order.changeset(%Order{}, %{
+          buyer_id: user_id,
+          seller_id: nil,  # 系统充值没有卖家
+          product_id: nil, # 系统充值没有商品
+          price: amount,
+          status: :payment_pending,
+          order_type: "recharge",
+          order_time: DateTime.to_unix(DateTime.utc_now())
+        })
+
+        case Repo.insert(order_changeset) do
+          {:ok, order} ->
+            # 生成支付信息
+            payment_info = %{
+              order_id: order.order_id,
+              amount: amount,
+              payment_method: "alipay", # 默认支付宝
+              payment_url: "https://example.com/pay/#{order.order_id}"
+            }
+            case PaymentService.handle_payment_callback(order.order_id, "test rechargement") do
+              {:ok, _} ->
+                {}
+                # 充值成功，更新用户余额
+                # {:ok, _} = recharge_balance(user_id, amount)
+              {:error, :internal_server_error, reason} ->
+                IO.inspect(reason, label: "充值失败")
+                {:error, reason}
+            end
+
+            {:ok, payment_info}
+
+          {:error, _changeset} ->
+            {:error, "创建充值订单失败"}
+        end
+    end
   end
 end

@@ -1,7 +1,8 @@
 defmodule FlixBackend.PaymentService do
   import Ecto.Query
+  alias Ecto.Multi
   alias FlixBackend.Repo
-  alias FlixBackend.Data.{Order, Product, User}
+  alias FlixBackend.Data.{Order, Product, User, Payment}
   alias FlixBackend.Messaging
 
   @doc """
@@ -85,36 +86,137 @@ defmodule FlixBackend.PaymentService do
   支付成功回调处理
   """
   def handle_payment_callback(order_id, transaction_id) do
-    # 这里应该验证支付回调的真实性，例如检查签名等
-
-    query = from o in Order,
-            where: o.order_id == ^order_id and o.status == :payment_pending
-
-    case Repo.one(query) do
-      nil ->
-        {:error, :not_found, "订单不存在或状态不正确"}
-
-      order ->
-        # 更新订单状态为已支付，添加支付时间
-        current_time = :os.system_time(:second)
-        changeset = Order.changeset(order, %{
-          status: :paid,
-          payment_time: current_time
-        })
-
-        case Repo.update(changeset) do
-          {:ok, updated_order} ->
-            # 通知卖家订单已支付
-            notify_seller_payment_success(updated_order)
-
-            # 通知买家支付成功
-            notify_buyer_payment_success(updated_order)
-
-            {:ok, updated_order}
-
-          {:error, changeset} ->
-            {:error, :validation_error, changeset}
+    # 使用 Ecto.Multi 处理事务
+    Multi.new()
+    |> Multi.run(:get_order, fn repo, _ ->
+      case repo.get(Order, order_id) do
+        nil -> {:error, :order_not_found}
+        order ->
+          if order.status == :payment_pending do
+            {:ok, order}
+          else
+            {:error, :invalid_order_status}
+          end
+      end
+    end)
+    |> Multi.run(:process_payment, fn repo, %{get_order: order} ->
+      case order.order_type do
+        "product" -> process_product_payment(repo, order)
+        "recharge" -> process_recharge_payment(repo, order)
+        _ -> {:error, :invalid_order_type}
+      end
+    end)
+    |> Multi.run(:update_order, fn repo, %{get_order: order, process_payment: _} ->
+      order
+      |> Order.changeset(%{
+        status: :paid,
+        payment_time: DateTime.to_unix(DateTime.utc_now()),
+        transaction_id: transaction_id
+      })
+      |> repo.update()
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{update_order: order}} ->
+        # 根据订单类型发送不同的通知
+        case order.order_type do
+          "product" ->
+            notify_seller_payment_success(order)
+            notify_buyer_payment_success(order)
+          "recharge" ->
+            notify_recharge_success(order)
         end
+        {:ok, order}
+
+      {:error, :get_order, :order_not_found, _} ->
+        {:error, :not_found, "订单不存在"}
+
+      {:error, :get_order, :invalid_order_status, _} ->
+        {:error, :bad_request, "订单状态不正确"}
+
+      {:error, :process_payment, :user_not_found, _} ->
+        {:error, :not_found, "用户不存在"}
+
+      {:error, _, reason, _} ->
+        {:error, :internal_server_error, "处理失败: #{inspect(reason)}"}
+    end
+  end
+
+  # 处理商品购买订单的支付
+  defp process_product_payment(repo, order) do
+    with {:ok, product} <- get_and_validate_product(repo, order.product_id),
+         {:ok, updated_product} <- update_product_status(repo, product),
+         {:ok, _} <- cancel_other_orders(repo, order) do
+      {:ok, order}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # 处理充值订单的支付
+  defp process_recharge_payment(repo, order) do
+    case repo.get(User, order.buyer_id) do
+      nil ->
+        {:error, :user_not_found}
+      user ->
+        user
+        |> User.changeset(%{balance: user.balance + order.price})
+        |> repo.update()
+        |> case do
+          {:ok, _updated_user} -> {:ok, order}
+          {:error, reason} -> {:error, reason}
+        end
+    end
+  end
+
+  # 获取并验证商品状态
+  defp get_and_validate_product(repo, product_id) do
+    case repo.get(Product, product_id) do
+      nil ->
+        {:error, :product_not_found}
+      product ->
+        if product.status == :available do
+          {:ok, product}
+        else
+          {:error, :product_not_available}
+        end
+    end
+  end
+
+  # 更新商品状态为已售出
+  defp update_product_status(repo, product) do
+    product
+    |> Product.changeset(%{status: :sold})
+    |> repo.update()
+  end
+
+  # 取消该商品的其他订单
+  defp cancel_other_orders(repo, order) do
+    from(o in Order,
+      where: o.product_id == ^order.product_id and o.order_id != ^order.order_id
+    )
+    |> repo.update_all(set: [status: :cancelled])
+    {:ok, nil}
+  end
+
+  # 通知充值成功
+  defp notify_recharge_success(order) do
+    buyer = Repo.get(User, order.buyer_id)
+
+    if buyer do
+      text_content = "充值成功：金额￥#{order.price},订单号:#{order.order_id}"
+
+      # 构造订单消息内容
+      content = [
+        %{type: "text", payload: text_content},
+        %{type: "order", payload: order}
+      ]
+
+      # 发送系统通知
+      Messaging.send_system_notification(
+        buyer.uid, # 充值用户
+        content
+      )
     end
   end
 
@@ -229,6 +331,146 @@ defmodule FlixBackend.PaymentService do
     end
   end
 
+  @doc """
+  支付成功处理
+  """
+  def handle_payment_success(payment) do
+    Multi.new()
+    |> Multi.run(:get_order, fn repo, _ ->
+      case repo.get(Order, payment.order_id) do
+        nil -> {:error, :order_not_found}
+        order -> {:ok, order}
+      end
+    end)
+    |> Multi.run(:get_product, fn repo, %{get_order: order} ->
+      case repo.get(Product, order.product_id) do
+        nil -> {:error, :product_not_found}
+        product -> {:ok, product}
+      end
+    end)
+    |> Multi.run(:validate_product_status, fn _repo, %{get_product: product} ->
+      if product.status == :available do
+        {:ok, product}
+      else
+        {:error, :product_not_available}
+      end
+    end)
+    |> Multi.run(:update_product, fn repo, %{get_product: product} ->
+      product
+      |> Product.changeset(%{status: :sold})
+      |> repo.update()
+    end)
+    |> Multi.run(:update_order, fn repo, %{get_order: order} ->
+      order
+      |> Order.changeset(%{
+        status: :paid,
+        payment_time: DateTime.to_unix(DateTime.utc_now())
+      })
+      |> repo.update()
+    end)
+    |> Multi.run(:cancel_other_orders, fn repo, %{get_order: order} ->
+      from(o in Order,
+        where: o.product_id == ^order.product_id and o.order_id != ^order.order_id
+      )
+      |> repo.update_all(set: [status: :cancelled, cancel_reason: "商品已售出"])
+      {:ok, nil}
+    end)
+    |> Multi.run(:update_payment, fn repo, _ ->
+      payment
+      |> Payment.changeset(%{status: :success})
+      |> repo.update()
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{update_order: order}} ->
+        # 发送支付成功通知
+        notify_payment_success(order)
+        {:ok, order}
+
+      {:error, :get_order, :order_not_found, _} ->
+        {:error, :order_not_found}
+
+      {:error, :get_product, :product_not_found, _} ->
+        {:error, :product_not_found}
+
+      {:error, :validate_product_status, :product_not_available, _} ->
+        {:error, :product_not_available}
+
+      {:error, _, reason, _} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  取消订单
+  """
+  def cancel_order(order_id, user_id, cancel_reason) do
+    Multi.new()
+    |> Multi.run(:get_order, fn repo, _ ->
+      case repo.get(Order, order_id) do
+        nil -> {:error, :order_not_found}
+        order -> {:ok, order}
+      end
+    end)
+    |> Multi.run(:validate_user, fn _repo, %{get_order: order} ->
+      if order.buyer_id == user_id do
+        {:ok, order}
+      else
+        {:error, :unauthorized}
+      end
+    end)
+    |> Multi.run(:validate_status, fn _repo, %{get_order: order} ->
+      if order.status in [:pending_payment, :pending_shipment] do
+        {:ok, order}
+      else
+        {:error, :invalid_status}
+      end
+    end)
+    |> Multi.run(:get_product, fn repo, %{get_order: order} ->
+      case repo.get(Product, order.product_id) do
+        nil -> {:error, :product_not_found}
+        product -> {:ok, product}
+      end
+    end)
+    |> Multi.run(:update_product_status, fn repo, %{get_product: product, get_order: order} ->
+      # 只有在订单状态为 pending_payment 且商品状态为 :available 时才恢复商品状态
+      if order.status == :pending_payment and product.status == :available do
+        product
+        |> Product.changeset(%{status: :available})
+        |> repo.update()
+      else
+        {:ok, product}
+      end
+    end)
+    |> Multi.run(:update_order, fn repo, %{get_order: order} ->
+      order
+      |> Order.changeset(%{
+        status: :cancelled,
+        # cancel_reason: cancel_reason,
+        # cancel_time: DateTime.to_unix(DateTime.utc_now())
+      })
+      |> repo.update()
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{update_order: order}} ->
+        notify_order_cancelled(order)
+        {:ok, order}
+
+      {:error, :get_order, :order_not_found, _} ->
+        {:error, :order_not_found}
+
+      {:error, :validate_user, :unauthorized, _} ->
+        {:error, :unauthorized}
+
+      {:error, :validate_status, :invalid_status, _} ->
+        {:error, :invalid_status}
+
+      {:error, _, reason, _} ->
+        {:error, reason}
+    end
+  end
+
   # 私有辅助函数：计算配送费用
   defp calculate_fee(delivery_method, product) do
     base_fee = case delivery_method do
@@ -335,6 +577,56 @@ defmodule FlixBackend.PaymentService do
       Messaging.send_private_message(
         buyer.uid,  # 买家作为发送者
         seller.uid, # 卖家作为接收者
+        content,
+        order.order_id
+      )
+    end
+  end
+
+  # 通知订单取消
+  defp notify_order_cancelled(order) do
+    buyer = Repo.get(User, order.buyer_id)
+    seller = Repo.get(User, order.seller_id)
+    product = Repo.get(Product, order.product_id)
+
+    if buyer && seller && product do
+      text_content = "订单已取消: 商品\"#{product.title}\",订单号:#{order.order_id}"
+
+      # 构造订单消息内容
+      content = [
+        %{type: "text", payload: text_content},
+        %{type: "order", payload: order}
+      ]
+
+      # 发送私信
+      Messaging.send_private_message(
+        seller.uid, # 卖家作为发送者
+        buyer.uid,  # 买家作为接收者
+        content,
+        order.order_id
+      )
+    end
+  end
+
+  # 通知支付成功
+  defp notify_payment_success(order) do
+    buyer = Repo.get(User, order.buyer_id)
+    seller = Repo.get(User, order.seller_id)
+    product = Repo.get(Product, order.product_id)
+
+    if buyer && seller && product do
+      text_content = "支付成功: 商品\"#{product.title}\",订单号:#{order.order_id}"
+
+      # 构造订单消息内容
+      content = [
+        %{type: "text", payload: text_content},
+        %{type: "order", payload: order}
+      ]
+
+      # 发送私信
+      Messaging.send_private_message(
+        seller.uid, # 卖家作为发送者
+        buyer.uid,  # 买家作为接收者
         content,
         order.order_id
       )

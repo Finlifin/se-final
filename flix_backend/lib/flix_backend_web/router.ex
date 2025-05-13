@@ -40,7 +40,7 @@ defmodule FlixBackendWeb.Router do
     end
 
     scope "/products" do
-      get "/", ProductController, :index
+      post "/", ProductController, :index
       get "/:id", ProductController, :show
     end
 

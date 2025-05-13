@@ -34,7 +34,8 @@ class ProductRepository(context: Context) {
         searchQuery: String? = null,
         priceRange: Pair<Double?, Double?>? = null,
         sortBy: String? = null,
-        sortOrder: String? = null
+        sortOrder: String? = null,
+        availableStatuses: List<String> = listOf("available")
     ): Resource<ProductListData> = withContext(Dispatchers.IO) {
         try {
             val response = productService.getProducts(
@@ -46,7 +47,8 @@ class ProductRepository(context: Context) {
                 minPrice = priceRange?.first,
                 maxPrice = priceRange?.second,
                 sortBy = sortBy,
-                sortOrder = sortOrder
+                sortOrder = sortOrder,
+                availableStatuses = availableStatuses
             )
             
             if (response.isSuccessful && response.body() != null) {

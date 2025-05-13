@@ -57,10 +57,18 @@ fun ProfileContent(user: User, navController: NavController) {
 
         // Wallet section
         WalletSection(
-            balance = user.balance, onTopUpClick = { navController.navigate("/profile/top_up") })
+            balance = user.balance, onTopUpClick = { navController.navigate("/my_profile/recharge") })
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // My Transactions section
+        MenuSection(
+            title = "我的交易", items = listOf(
+                MenuItem("我的订单") { navController.navigate("/orders") },
+                MenuItem("收藏夹") { navController.navigate("/my_profile/favorites") },)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
         // My Products section
         MenuSection(
             title = "我的商品",
@@ -70,15 +78,6 @@ fun ProfileContent(user: User, navController: NavController) {
                 MenuItem("我买到的") { navController.navigate("/my_profile/purchased_products") })
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // My Transactions section
-        MenuSection(
-            title = "我的交易", items = listOf(
-                MenuItem("我的订单") { navController.navigate("/orders") },
-                MenuItem("收藏夹") { navController.navigate("/my_profile/favorites") },
-                MenuItem("消息中心") { navController.navigate("/profile/messages") })
-        )
     }
 }
 

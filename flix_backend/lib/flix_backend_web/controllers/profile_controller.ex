@@ -87,23 +87,35 @@ defmodule FlixBackendWeb.ProfileController do
   充值余额
   """
   def recharge_balance(conn, %{"userId" => user_id, "amount" => amount_str}) do
-    # Add authentication check here to ensure user can only recharge their own balance
-    case amount_str |> Integer.parse() do
-      {amount, ""} when amount > 0 ->
-        case ProfileService.recharge_balance(user_id, amount) do
-          {:ok, updated_user} ->
-            json(conn, ApiResponse.success_response("充值成功", updated_user))
-          {:error, reason} ->
-            conn
-            |> put_status(:bad_request) # Or internal_server_error depending on the reason
-            |> json(ApiResponse.error_response(reason))
-        end
-      _ ->
-         conn
-         |> put_status(:bad_request)
-         |> json(ApiResponse.error_response("无效的充值金额"))
-    end
+    account = Guardian.Plug.current_resource(conn)
 
+    # 验证用户只能给自己充值
+    if account.user_id != user_id do
+      conn
+      |> put_status(:forbidden)
+      |> json(ApiResponse.error_response("只能给自己充值"))
+    else
+      case amount_str |> Integer.parse() do
+        {amount, ""} when amount > 0 ->
+          # 创建支付订单
+          case ProfileService.create_recharge_payment(user_id, amount) do
+            {:ok, payment_info} ->
+              json(conn, ApiResponse.payment_info_response(payment_info))
+            {:error, :not_found} ->
+              conn
+              |> put_status(:not_found)
+              |> json(ApiResponse.not_found_response("用户不存在"))
+            {:error, reason} ->
+              conn
+              |> put_status(:bad_request)
+              |> json(ApiResponse.error_response(reason))
+          end
+        _ ->
+          conn
+          |> put_status(:bad_request)
+          |> json(ApiResponse.error_response("无效的充值金额"))
+      end
+    end
   end
 
   @doc """

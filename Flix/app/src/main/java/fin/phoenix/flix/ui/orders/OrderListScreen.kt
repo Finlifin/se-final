@@ -170,7 +170,9 @@ fun OrderListScreen(navController: NavController) {
                 }
 
                 is OrderViewModel.OrdersState.Success -> {
-                    val orders = (ordersState as OrderViewModel.OrdersState.Success).orders
+                    val orders = (ordersState as OrderViewModel.OrdersState.Success).orders.filter {
+                        it.orderType == "product"
+                    }
 
                     if (orders.isEmpty()) {
                         EmptyState(

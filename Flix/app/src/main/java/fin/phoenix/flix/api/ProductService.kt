@@ -14,7 +14,7 @@ import retrofit2.http.Query
  * 商品API服务接口
  */
 interface ProductService {
-    @GET("products")
+    @POST("products")
     suspend fun getProducts(
         @Query("offset") page: Int = 1,
         @Query("limit") limit: Int = 10,
@@ -24,7 +24,8 @@ interface ProductService {
         @Query("min_price") minPrice: Double? = null,
         @Query("max_price") maxPrice: Double? = null,
         @Query("sort_by") sortBy: String? = null,
-        @Query("sort_order") sortOrder: String? = null
+        @Query("sort_order") sortOrder: String? = null,
+        @Body availableStatuses: List<String>? = null,
     ): Response<ProductListResponse>
 
     @GET("products/{id}")

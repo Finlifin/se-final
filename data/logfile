@@ -714,3 +714,56 @@
 2025-05-04 20:25:59.134 CST [28050] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.002 s, total=0.007 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/2FF8B50, redo lsn=0/2FF8AF8
 2025-05-04 20:30:59.234 CST [28050] LOG:  checkpoint starting: time
 2025-05-04 20:31:01.853 CST [28050] LOG:  checkpoint complete: wrote 27 buffers (0.2%); 0 WAL file(s) added, 0 removed, 1 recycled; write=2.606 s, sync=0.005 s, total=2.620 s; sync files=10, longest=0.002 s, average=0.001 s; distance=140 kB, estimate=140 kB; lsn=0/301BD50, redo lsn=0/301BCF8
+2025-05-13 12:56:04.188 CST [18165] LOG:  starting PostgreSQL 17.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.1.1 20250425, 64-bit
+2025-05-13 12:56:04.189 CST [18165] LOG:  listening on IPv6 address "::1", port 5432
+2025-05-13 12:56:04.189 CST [18165] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2025-05-13 12:56:04.189 CST [18165] LOG:  listening on Unix socket "/run/postgresql/.s.PGSQL.5432"
+2025-05-13 12:56:04.193 CST [18168] LOG:  database system was interrupted; last known up at 2025-05-04 20:31:01 CST
+2025-05-13 12:56:04.215 CST [18168] LOG:  database system was not properly shut down; automatic recovery in progress
+2025-05-13 12:56:04.216 CST [18168] LOG:  redo starts at 0/301BCF8
+2025-05-13 12:56:04.216 CST [18168] LOG:  invalid record length at 0/301BE00: expected at least 24, got 0
+2025-05-13 12:56:04.216 CST [18168] LOG:  redo done at 0/301BDC8 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2025-05-13 12:56:04.217 CST [18166] LOG:  checkpoint starting: end-of-recovery immediate wait
+2025-05-13 12:56:04.221 CST [18166] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.005 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/301BE00, redo lsn=0/301BE00
+2025-05-13 12:56:04.224 CST [18165] LOG:  database system is ready to accept connections
+2025-05-13 13:31:04.658 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 13:31:04.870 CST [18166] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.201 s, sync=0.003 s, total=0.213 s; sync files=2, longest=0.002 s, average=0.002 s; distance=5 kB, estimate=5 kB; lsn=0/301D388, redo lsn=0/301D330
+2025-05-13 13:36:04.970 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 13:36:08.799 CST [18166] LOG:  checkpoint complete: wrote 39 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.811 s, sync=0.015 s, total=3.829 s; sync files=37, longest=0.002 s, average=0.001 s; distance=141 kB, estimate=141 kB; lsn=0/3040898, redo lsn=0/3040808
+2025-05-13 13:41:04.841 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 13:41:07.661 CST [18166] LOG:  checkpoint complete: wrote 29 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.808 s, sync=0.009 s, total=2.821 s; sync files=23, longest=0.001 s, average=0.001 s; distance=138 kB, estimate=140 kB; lsn=0/3063418, redo lsn=0/30633C0
+2025-05-13 13:46:04.729 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 13:46:08.359 CST [18166] LOG:  checkpoint complete: wrote 37 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.610 s, sync=0.019 s, total=3.631 s; sync files=29, longest=0.004 s, average=0.001 s; distance=161 kB, estimate=161 kB; lsn=0/308BA38, redo lsn=0/308B9A8
+2025-05-13 13:51:04.459 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 13:51:07.587 CST [18166] LOG:  checkpoint complete: wrote 32 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.109 s, sync=0.011 s, total=3.128 s; sync files=27, longest=0.001 s, average=0.001 s; distance=138 kB, estimate=159 kB; lsn=0/30AE5F8, redo lsn=0/30AE5A0
+2025-05-13 14:01:04.745 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:01:04.953 CST [18166] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.201 s, sync=0.003 s, total=0.208 s; sync files=2, longest=0.002 s, average=0.002 s; distance=11 kB, estimate=144 kB; lsn=0/30B1420, redo lsn=0/30B13C8
+2025-05-13 14:21:05.316 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:21:05.529 CST [18166] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.201 s, sync=0.003 s, total=0.213 s; sync files=2, longest=0.003 s, average=0.002 s; distance=11 kB, estimate=131 kB; lsn=0/30B4378, redo lsn=0/30B4320
+2025-05-13 14:26:05.601 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:26:05.711 CST [18166] LOG:  checkpoint complete: wrote 2 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.101 s, sync=0.002 s, total=0.111 s; sync files=2, longest=0.001 s, average=0.001 s; distance=7 kB, estimate=118 kB; lsn=0/30B6120, redo lsn=0/30B60C8
+2025-05-13 14:31:05.811 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:31:07.831 CST [18166] LOG:  checkpoint complete: wrote 21 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.007 s, sync=0.009 s, total=2.020 s; sync files=20, longest=0.001 s, average=0.001 s; distance=100 kB, estimate=116 kB; lsn=0/30CF168, redo lsn=0/30CF110
+2025-05-13 14:36:05.844 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:36:09.979 CST [18166] LOG:  checkpoint complete: wrote 42 buffers (0.3%); 0 WAL file(s) added, 0 removed, 0 recycled; write=4.113 s, sync=0.015 s, total=4.136 s; sync files=34, longest=0.002 s, average=0.001 s; distance=159 kB, estimate=159 kB; lsn=0/30F70D0, redo lsn=0/30F7078
+2025-05-13 14:44:06.585 CST [18964] ERROR:  null value in column "seller_id" of relation "orders" violates not-null constraint
+2025-05-13 14:44:06.585 CST [18964] DETAIL:  Failing row contains (84f76f7b-548c-44dc-8201-5db989801f94, e995e03d-4ec4-4af2-93b6-51164780cabe, null, null, 1747118646, 100, payment_pending, null, null, null, null, null, null, 2025-05-13 06:44:06, 2025-05-13 06:44:06, recharge).
+2025-05-13 14:44:06.585 CST [18964] STATEMENT:  INSERT INTO "orders" ("status","buyer_id","price","order_time","order_type","inserted_at","updated_at","order_id") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+2025-05-13 14:45:46.951 CST [30057] ERROR:  constraint "orders_seller_id_fkey" for relation "orders" already exists
+2025-05-13 14:45:46.951 CST [30057] STATEMENT:  ALTER TABLE "orders" ALTER COLUMN "seller_id" TYPE uuid, ADD CONSTRAINT "orders_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "users"("uid") ON DELETE SET NULL, ALTER COLUMN "seller_id" DROP NOT NULL, ALTER COLUMN "product_id" TYPE uuid, ADD CONSTRAINT "orders_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE SET NULL, ALTER COLUMN "product_id" DROP NOT NULL
+2025-05-13 14:46:06.173 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:46:09.798 CST [18166] LOG:  checkpoint complete: wrote 37 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.609 s, sync=0.012 s, total=3.625 s; sync files=28, longest=0.001 s, average=0.001 s; distance=170 kB, estimate=170 kB; lsn=0/3121BF0, redo lsn=0/3121B60
+2025-05-13 14:51:06.877 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:51:11.009 CST [18166] LOG:  checkpoint complete: wrote 42 buffers (0.3%); 0 WAL file(s) added, 0 removed, 0 recycled; write=4.117 s, sync=0.013 s, total=4.133 s; sync files=35, longest=0.009 s, average=0.001 s; distance=214 kB, estimate=214 kB; lsn=0/31575F0, redo lsn=0/3157598
+2025-05-13 14:56:06.109 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 14:56:07.123 CST [18166] LOG:  checkpoint complete: wrote 11 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=1.003 s, sync=0.006 s, total=1.014 s; sync files=11, longest=0.002 s, average=0.001 s; distance=36 kB, estimate=196 kB; lsn=0/31609E0, redo lsn=0/3160988
+2025-05-13 15:01:06.218 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 15:01:07.033 CST [18166] LOG:  checkpoint complete: wrote 9 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.803 s, sync=0.005 s, total=0.816 s; sync files=9, longest=0.002 s, average=0.001 s; distance=37 kB, estimate=180 kB; lsn=0/3169ED8, redo lsn=0/3169E80
+2025-05-13 15:16:06.253 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 15:16:07.068 CST [18166] LOG:  checkpoint complete: wrote 9 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.803 s, sync=0.005 s, total=0.816 s; sync files=9, longest=0.002 s, average=0.001 s; distance=38 kB, estimate=166 kB; lsn=0/31737A0, redo lsn=0/3173748
+2025-05-13 15:21:06.168 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 15:21:06.983 CST [18166] LOG:  checkpoint complete: wrote 9 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.803 s, sync=0.005 s, total=0.816 s; sync files=9, longest=0.002 s, average=0.001 s; distance=38 kB, estimate=153 kB; lsn=0/317D280, redo lsn=0/317D228
+2025-05-13 15:26:07.083 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 15:26:11.513 CST [18166] LOG:  checkpoint complete: wrote 45 buffers (0.3%); 0 WAL file(s) added, 0 removed, 0 recycled; write=4.413 s, sync=0.014 s, total=4.431 s; sync files=39, longest=0.002 s, average=0.001 s; distance=237 kB, estimate=237 kB; lsn=0/31B89C8, redo lsn=0/31B8970
+2025-05-13 15:31:07.571 CST [18166] LOG:  checkpoint starting: time
+2025-05-13 15:31:10.606 CST [18166] LOG:  checkpoint complete: wrote 31 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.010 s, sync=0.018 s, total=3.035 s; sync files=30, longest=0.004 s, average=0.001 s; distance=132 kB, estimate=227 kB; lsn=0/31D9B38, redo lsn=0/31D9AE0
