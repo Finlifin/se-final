@@ -4,16 +4,51 @@ import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,14 +64,14 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import fin.phoenix.flix.api.ConnectionState
-import fin.phoenix.flix.data.ConversationDetail
-import fin.phoenix.flix.data.ConversationTypes
+import fin.phoenix.flix.data.Conversation
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
+import fin.phoenix.flix.data.repository.MessageRepository
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource
-import fin.phoenix.flix.util.formatDate
+import fin.phoenix.flix.util.formatTime
 import fin.phoenix.flix.util.imageUrl
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,14 +80,19 @@ fun MessageCenterScreen(navController: NavController) {
     val viewModel: MessageViewModel = viewModel()
     val conversationListState by viewModel.conversationListState.observeAsState()
     val connectionState by viewModel.connectionState.observeAsState()
-    val unreadCounts by viewModel.unreadCounts.observeAsState()
 
     // 获取UserManager实例和当前用户ID
     val context = LocalContext.current
     val userManager = UserManager.getInstance(context)
     val currentUserId by userManager.currentUserId.observeAsState()
 
-    var showDeleteDialog by remember { mutableStateOf<ConversationDetail?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<Conversation?>(null) }
+
+    LaunchedEffect(context) {
+        MessageRepository.getInstance(context).getAllConversations().observeForever {
+            Log.d("MessageCenterScreen", "Conversations: $it")
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -85,18 +125,16 @@ fun MessageCenterScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "登录后查看您的消息",
-                        color = Color.Gray
+                        text = "登录后查看您的消息", color = Color.Gray
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "去登录",
                         color = RoseRed,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { 
-                            navController.navigate("/login") 
-                        }
-                    )
+                        modifier = Modifier.clickable {
+                            navController.navigate("/login")
+                        })
                 }
             } else {
                 // 用户已登录，显示正常的消息列表内容
@@ -124,29 +162,13 @@ fun MessageCenterScreen(navController: NavController) {
                                 ConversationItem(
                                     conversation = conversation,
                                     onPinnedDropdownMenuItemClick = {
-                                        viewModel.togglePin(conversation.conversation.id, !conversation.userSettings.isPinned)
+//                                        viewModel.togglePin(conversation.conversation.id, !conversation.userSettings.isPinned)
                                     },
                                     onMutedDropdownMenuItemClick = {
-                                        viewModel.toggleMute(conversation.conversation.id, !conversation.userSettings.isMuted)
+//                                        viewModel.toggleMute(conversation.conversation.id, !conversation.userSettings.isMuted)
                                     },
                                     onItemClick = {
-                                        when (conversation.conversation.type) {
-                                            ConversationTypes.PRIVATE -> {
-                                                navController.navigate("/messages/${conversation.conversation.conversationId}")
-                                            }
-
-                                            ConversationTypes.SYSTEM_NOTIFICATION -> {
-                                                navController.navigate("/notifications/system")
-                                            }
-
-                                            ConversationTypes.SYSTEM_ANNOUNCEMENT -> {
-                                                navController.navigate("/notifications/announcement")
-                                            }
-
-                                            ConversationTypes.INTERACTION -> {
-                                                navController.navigate("/notifications/interaction")
-                                            }
-                                        }
+                                        navController.navigate("/messages/${conversation.participantId}")
                                     },
                                     onDeleteClick = { showDeleteDialog = conversation })
                             }
@@ -186,7 +208,7 @@ fun MessageCenterScreen(navController: NavController) {
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.deleteConversation(conversation.conversation.id)
+                            viewModel.deleteConversation(conversation.id)
                             showDeleteDialog = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -206,7 +228,7 @@ fun MessageCenterScreen(navController: NavController) {
 @SuppressLint("UnrememberedMutableState")
 @Composable
 fun ConversationItem(
-    conversation: ConversationDetail,
+    conversation: Conversation,
     onItemClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onPinnedDropdownMenuItemClick: () -> Unit = {},
@@ -214,31 +236,16 @@ fun ConversationItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val currentUser by UserManager.getInstance(context).currentUser.observeAsState()
-    val participantId = conversation.conversation.counterPartyId(currentUser?.uid!!)
-    val paricipant = mutableStateOf(currentUser!!)
+    val participantId = conversation.participantId
+    var participant by remember { mutableStateOf<UserAbstract?>(null) }
 
+    // 获取对方用户信息
     LaunchedEffect(participantId) {
-        val profileRepository = ProfileRepository(context)
-        if (participantId != null && conversation.conversation.type == ConversationTypes.PRIVATE) {
-            when(val result = profileRepository.getUserAbstract(participantId)) {
-                is Resource.Success -> {
-                    paricipant.value = result.data
-                }
-                is Resource.Error -> {
-                    paricipant.value = UserAbstract(
-                        uid = participantId,
-                        userName = "未知用户",
-                        avatarUrl = "test_avatar.png"
-                    )
-                }
-                is Resource.Loading -> {
-                    paricipant.value = UserAbstract(
-                        uid = participantId,
-                        userName = "未知用户",
-                        avatarUrl = "test_avatar.png"
-                    )
-                }
+        if (participantId != "server") {
+            val profileRepository = ProfileRepository(context)
+            val result = profileRepository.getUserAbstract(participantId)
+            if (result is Resource.Success) {
+                participant = result.data
             }
         }
     }
@@ -255,27 +262,47 @@ fun ConversationItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        // TODO
-                        .data(imageUrl(paricipant.value.avatarUrl ?: "test_avatar.png")).crossfade(true)
-                        .build(),
-                    contentDescription = "头像",
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray),
-                    contentScale = ContentScale.Crop
-                )
+                // 显示不同类型会话的头像
+                when (participantId) {
+                    "server" -> {
+                        // 系统通知使用固定图标
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "系统通知",
+                            tint = RoseRed,
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(CircleShape)
+                                .background(Color.LightGray)
+                                .padding(8.dp)
+                        )
+                    }
 
-                if (conversation.userSettings.unreadCount > 0) {
+                    else -> {
+                        // 普通会话使用用户头像
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageUrl(participant?.avatarUrl ?: "test_avatar.png"))
+                                .crossfade(true).build(),
+                            contentDescription = "头像",
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(CircleShape)
+                                .background(Color.LightGray),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+
+                // 显示未读消息数量
+                if (conversation.unreadCounts > 0) {
                     Badge(
                         containerColor = RoseRed,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .offset(x = 4.dp, y = (-4).dp)
                     ) {
-                        Text(text = conversation.userSettings.unreadCount.toString())
+                        Text(text = conversation.unreadCounts.toString())
                     }
                 }
             }
@@ -285,18 +312,11 @@ fun ConversationItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+                // 会话名称
                 Text(
-                    text = when (conversation.conversation.type) {
-                        ConversationTypes.PRIVATE -> paricipant.value.userName
-                            ?: "未知用户"
-
-                        ConversationTypes.SYSTEM_NOTIFICATION -> "系统通知"
-                        ConversationTypes.SYSTEM_ANNOUNCEMENT -> "系统公告"
-                        ConversationTypes.INTERACTION -> "互动消息"
-                        else -> {
-                            Log.d("ConversationItem", "Unknown type of conversation: $conversation")
-                            "未知会话"
-                        }
+                    text = when (participantId) {
+                        "server" -> "系统通知"
+                        else -> participant?.userName ?: "未知用户"
                     },
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp,
@@ -306,8 +326,21 @@ fun ConversationItem(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // 最后一条消息内容预览
+                val messagePreview = when {
+                    conversation.lastMessage == null -> ""
+                    conversation.lastMessage?.messageType == "system" -> "[系统通知]"
+                    conversation.lastMessage?.messageType == "notification" -> "[互动通知]"
+                    conversation.lastMessage?.messageType == "order" -> "[订单消息]"
+                    conversation.lastMessage?.messageType == "payment" -> "[支付消息]"
+                    conversation.lastMessage?.content?.firstOrNull()?.type == "text" -> 
+                        conversation.lastMessage?.content?.firstOrNull()?.payload?.toString() ?: ""
+                    conversation.lastMessage?.content?.firstOrNull()?.type == "image" -> "[图片]"
+                    conversation.lastMessage?.content?.firstOrNull()?.type == "product" -> "[商品]"
+                    else -> "[消息]"
+                }
                 Text(
-                    text = conversation.conversation.lastMessageContent ?: "",
+                    text = messagePreview,
                     color = Color.Gray,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -320,14 +353,14 @@ fun ConversationItem(
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                Text(
-                    text = formatDate(conversation.conversation.lastMessageTimestamp),
+                // 显示最后一条消息时间
+                Text(text = conversation.lastMessage?.createdAt?.let { formatTime(it) } ?: "",
                     color = Color.Gray,
-                    fontSize = 12.sp
-                )
+                    fontSize = 12.sp)
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // 会话菜单
                 Box {
                     IconButton(
                         onClick = { showMenu = true }) {
@@ -340,36 +373,49 @@ fun ConversationItem(
 
                     DropdownMenu(
                         expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        // 实现"置顶"功能
+                        /* 等待后端实现
                         DropdownMenuItem(
-                            text = { Text(if (conversation.userSettings.isPinned) "取消置顶" else "置顶") },
+                            text = { Text(if (conversation.isPinned) "取消置顶" else "置顶") },
                             onClick = {
                                 showMenu = false
                                 onPinnedDropdownMenuItemClick()
                             },
                             leadingIcon = {
                                 Icon(
-                                    if (conversation.userSettings.isPinned) Icons.Default.PushPin else Icons.Default.PushPin,
+                                    if (conversation.isPinned) Icons.Default.PushPin else Icons.Default.PushPin,
                                     contentDescription = null
                                 )
                             })
+                        */
+                        
+                        // 实现"免打扰"功能
+                        /* 等待后端实现
                         DropdownMenuItem(
-                            text = { Text(if (conversation.userSettings.isMuted) "取消免打扰" else "设为免打扰") },
+                            text = { Text(if (conversation.isMuted) "取消免打扰" else "设为免打扰") },
                             onClick = {
                                 showMenu = false
                                 onMutedDropdownMenuItemClick()
                             },
                             leadingIcon = {
                                 Icon(
-                                    if (conversation.userSettings.isMuted) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                                    if (conversation.isMuted) Icons.Default.NotificationsOff else Icons.Default.Notifications,
                                     contentDescription = null
                                 )
                             })
-                        DropdownMenuItem(text = { Text("删除会话") }, onClick = {
-                            showMenu = false
-                            onDeleteClick()
-                        }, leadingIcon = {
-                            Icon(Icons.Default.Delete, contentDescription = null)
-                        })
+                        */
+                        
+                        // 删除会话选项
+                        DropdownMenuItem(
+                            text = { Text("删除会话") },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null)
+                            }
+                        )
                     }
                 }
             }

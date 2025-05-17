@@ -1,5 +1,6 @@
 package fin.phoenix.flix
 
+//import fin.phoenix.flix.ui.message.SystemNotificationScreen
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,16 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.lifecycle.Observer
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import fin.phoenix.flix.api.ConnectionState
-import fin.phoenix.flix.api.PhoenixMessageClient
 import fin.phoenix.flix.data.UserManager
+import fin.phoenix.flix.data.repository.MessageRepository
 import fin.phoenix.flix.service.MessageService
 import fin.phoenix.flix.ui.about.AboutScreen
 import fin.phoenix.flix.ui.home.HomeScreen
@@ -31,7 +29,6 @@ import fin.phoenix.flix.ui.login.SignInSignUpScreen
 import fin.phoenix.flix.ui.message.ChatScreen
 import fin.phoenix.flix.ui.message.ChatSettingScreen
 import fin.phoenix.flix.ui.message.MessageCenterScreen
-import fin.phoenix.flix.ui.message.SystemNotificationScreen
 import fin.phoenix.flix.ui.myprofile.ChangePasswordScreen
 import fin.phoenix.flix.ui.myprofile.MyFavoritesScreen
 import fin.phoenix.flix.ui.myprofile.MyProductsScreen
@@ -51,14 +48,14 @@ import fin.phoenix.flix.ui.profile.UserScreen
 import fin.phoenix.flix.ui.search.SearchScreen
 import fin.phoenix.flix.ui.settings.SettingsScreen
 import fin.phoenix.flix.ui.theme.FlixTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private val TAG = "MainActivity"
     private val context: Context = this
     private lateinit var userManager: UserManager
 
     companion object {
+        const val TAG = "MainActivity"
+
         // Intent actions for notifications
         const val ACTION_OPEN_CHAT = "fin.phoenix.flix.action.OPEN_CHAT"
         const val ACTION_OPEN_NOTIFICATIONS = "fin.phoenix.flix.action.OPEN_NOTIFICATIONS"
@@ -88,73 +85,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun initPhoenixClient() {
-        val sharedPrefs = this.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
-        val userId = userManager.currentUserId.value
-        val token = sharedPrefs.getString("auth_token", null)
-
-        if (!token.isNullOrEmpty() && !userId.isNullOrEmpty()) {
-            // 配置WebSocket URL（如果需要）
-            // PhoenixMessageClient.instance.configureUrl("ws://your-server-url/socket/websocket")
-
-            // 连接WebSocket服务器
-            PhoenixMessageClient.instance.connect(token, userId)
-            // 同步消息
-
-            // 监听连接状态变化
-            PhoenixMessageClient.instance.connectionState.observe(this, Observer { state ->
-                when (state) {
-                    ConnectionState.CONNECTED -> {
-                        Log.d(TAG, "WebSocket连接成功")
-                        // 连接成功后加入用户频道
-                        lifecycleScope.launch {
-                            PhoenixMessageClient.instance.joinUserChannel().onSuccess {
-                                Log.d(TAG, "成功加入用户频道")
-                                // 启用自动同步消息
-                                PhoenixMessageClient.instance.enableAutoSync()
-                            }.onFailure { error ->
-                                Log.e(TAG, "加入用户频道失败: ${error.message}")
-                            }
-                        }
-                    }
-
-                    ConnectionState.CONNECTION_ERROR -> {
-                        Log.e(TAG, "WebSocket连接错误")
-                    }
-
-                    ConnectionState.DISCONNECTED -> {
-                        Log.d(TAG, "WebSocket已断开连接")
-                    }
-
-                    ConnectionState.CONNECTING -> {
-                        Log.d(TAG, "WebSocket正在连接...")
-                    }
-
-                    ConnectionState.RECONNECTING -> {
-                        Log.d(TAG, "WebSocket正在重连...")
-                    }
-                }
-            })
-
-            // 监听WebSocket错误
-            lifecycleScope.launch {
-                PhoenixMessageClient.instance.errors.collect { error ->
-                    Log.e(TAG, "WebSocket错误: ${error.code} - ${error.message}")
-                    Toast.makeText(
-                        this@MainActivity, "消息连接错误: ${error.message}", Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-
-            // 监听未读消息计数
-            PhoenixMessageClient.instance.unreadCounts.observe(this, Observer { counts ->
-                Log.d(TAG, "未读消息: 共${counts.total}条")
-                // 可以在这里更新UI上的未读消息角标
-            })
-        } else {
-            Log.w(TAG, "未找到用户ID或token，跳过WebSocket连接")
-        }
-    }
+//    private fun initMessageRepository() {
+//        val sharedPrefs = this.getSharedPreferences("flix_prefs", MODE_PRIVATE)
+//        val userId = userManager.currentUserId.value
+//        val token = sharedPrefs.getString("auth_token", null)
+//
+//        if (!token.isNullOrEmpty() && !userId.isNullOrEmpty()) {
+//            // 通过MessageRepository初始化和连接消息客户端
+//            MessageRepository.getInstance(this).establish()
+//        } else {
+//            Log.w(TAG, "未找到用户ID或token，跳过WebSocket连接")
+//        }
+//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -164,27 +106,27 @@ class MainActivity : AppCompatActivity() {
         userManager = UserManager.getInstance(this)
 
         // 检查用户是否已登录
-        val sharedPrefs = getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
+        val sharedPrefs = getSharedPreferences("flix_prefs", MODE_PRIVATE)
         val userId = userManager.currentUserId.value
         val token = sharedPrefs.getString("auth_token", "")
 
         // 只在用户已登录时启动消息服务和初始化Phoenix客户端
         if (!token.isNullOrEmpty() && !userId.isNullOrEmpty()) {
             startMessageService()
-            initPhoenixClient()
+//            initMessageRepository()
         } else {
             Log.d(TAG, "用户未登录，跳过启动消息服务和初始化客户端")
         }
 
         // install thread exception handler
-        val defaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             handleUncaughtException(thread, throwable)
         }
 
         setContent {
             FlixTheme {
-                Flix(ctx, intent, userManager, ::initPhoenixClient, ::startMessageService)
+                Flix(ctx, intent, userManager, ::startMessageService)
             }
         }
 
@@ -221,7 +163,7 @@ class MainActivity : AppCompatActivity() {
         stopMessageService()
         // 在活动销毁时断开WebSocket连接
         // 如果你希望即使应用在后台也保持连接，可以考虑使用Service
-        PhoenixMessageClient.instance.disconnect()
+        MessageRepository.getInstance(this).disconnectFromMessageServer()
     }
 }
 
@@ -230,7 +172,6 @@ fun Flix(
     ctx: Context,
     intent: Intent?,
     userManager: UserManager,
-    initPhoenixClient: () -> Unit,
     startMessageService: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -269,9 +210,6 @@ fun Flix(
 
                     // Start the message service
                     startMessageService()
-
-                    // Initialize Phoenix client
-                    initPhoenixClient()
 
                     // Navigate to home and clear the login page from back stack
                     navController.navigate("/home") {
@@ -329,21 +267,21 @@ fun Flix(
                 MessageCenterScreen(navController = navController)
             }
         }
-        composable("/messages/{conversationId}") { backStackEntry ->
-            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
-            val route = "/messages/$conversationId"
+        composable("/messages/{participantId}") { backStackEntry ->
+            val participantId = backStackEntry.arguments?.getString("participantId") ?: ""
+            val route = "/messages/$participantId"
             LoginRequiredScreen(route = route) {
-                ChatScreen(navController = navController, conversationId = conversationId)
+                ChatScreen(navController = navController, participantId = participantId)
             }
         }
         composable(
-            route = "/messages/settings/{conversationId}",
-            arguments = listOf(navArgument("conversationId") { type = NavType.StringType })
+            route = "/messages/settings/{participantId}",
+            arguments = listOf(navArgument("participantId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
-            val route = "/messages/settings/$conversationId"
+            val participantId = backStackEntry.arguments?.getString("participantId") ?: ""
+            val route = "/messages/settings/$participantId"
             LoginRequiredScreen(route = route) {
-                ChatSettingScreen(navController = navController, conversationId = conversationId)
+                ChatSettingScreen(navController = navController, participantId = participantId)
             }
         }
         composable("/settings/change_password") {
@@ -351,26 +289,26 @@ fun Flix(
                 ChangePasswordScreen(navController = navController)
             }
         }
-        composable("/notifications/system") {
-            SystemNotificationScreen(
-                navController = navController, conversationId = "system_notification"
-            )
-        }
-        composable("/notifications/announcement") {
-            LoginRequiredScreen(route = "/notifications/announcement") {
-                SystemNotificationScreen(
-                    navController = navController,
-                    conversationId = "system_announcement:$currentUserId"
-                )
-            }
-        }
-        composable("/notifications/interaction") {
-            LoginRequiredScreen(route = "/notifications/interaction") {
-                SystemNotificationScreen(
-                    navController = navController, conversationId = "interaction:${currentUserId}"
-                )
-            }
-        }
+//        composable("/notifications/system") {
+//            SystemNotificationScreen(
+//                navController = navController, conversationId = "system_notification"
+//            )
+//        }
+//        composable("/notifications/announcement") {
+//            LoginRequiredScreen(route = "/notifications/announcement") {
+//                SystemNotificationScreen(
+//                    navController = navController,
+//                    conversationId = "system_announcement:$currentUserId"
+//                )
+//            }
+//        }
+//        composable("/notifications/interaction") {
+//            LoginRequiredScreen(route = "/notifications/interaction") {
+//                SystemNotificationScreen(
+//                    navController = navController, conversationId = "interaction:${currentUserId}"
+//                )
+//            }
+//        }
         composable(route = "/search") {
             SearchScreen(navController = navController)
         }

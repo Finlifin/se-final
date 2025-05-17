@@ -82,8 +82,6 @@ class ProfileRepository(private val context: Context) {
      */
     suspend fun getUserProducts(userId: String): Resource<List<Product>> =
         withContext(Dispatchers.IO) {
-            Log.d("WTF", "WTF")
-
             val response = userService.getUserProducts(userId).toResource("获取用户商品失败")
             if (response is Resource.Success) {
                 val products = mutableListOf<Product>()

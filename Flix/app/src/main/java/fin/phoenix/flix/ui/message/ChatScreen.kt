@@ -1,6 +1,5 @@
 package fin.phoenix.flix.ui.message
 
-import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -66,8 +65,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -76,13 +73,14 @@ import fin.phoenix.flix.api.ConnectionState
 import fin.phoenix.flix.data.ContentTypes
 import fin.phoenix.flix.data.Message
 import fin.phoenix.flix.data.MessageContentItem
-import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.Order
+import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.repository.ImageRepository
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
+import fin.phoenix.flix.ui.home.ProductCard
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.formatTime
 import fin.phoenix.flix.util.imageUrl
@@ -91,42 +89,26 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    navController: NavController, conversationId: String
+    navController: NavController, participantId: String
 ) {
     val context = LocalContext.current
-    val viewModel: MessageViewModel = viewModel()
+    val viewModel: ChatViewModel = viewModel()
     val chatState by viewModel.chatState.observeAsState()
     val connectionState by viewModel.connectionState.observeAsState()
     var message by remember { mutableStateOf("") }
-    var showImagePicker by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf<Message?>(null) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val currentUser by UserManager.getInstance(context).currentUser.observeAsState()
     var isUploading by remember { mutableStateOf(false) }
-    
+
     // 创建ImageRepository实例用于图片上传
     val imageRepository = remember { ImageRepository(context) }
 
     // 获取对方用户信息
     var otherUser by remember { mutableStateOf<UserAbstract?>(null) }
+    val isSystemNotification = participantId == "server"
     val profileRepository = remember { ProfileRepository(context) }
-
-    LaunchedEffect(chatState) {
-        viewModel.markConversationAsRead(conversationId)
-        if (chatState is MessageViewModel.ChatState.Success) {
-            val state = chatState as MessageViewModel.ChatState.Success
-            // 找出不是当前用户发送的消息
-            val otherUserMessage = state.messages.find { it.senderId != currentUser?.uid }
-            // 如果找到了对方的消息，获取对方的用户信息
-            if (otherUserMessage != null && otherUserMessage.senderId != null) {
-                val result = profileRepository.getUserAbstract(otherUserMessage.senderId!!)
-                if (result is Resource.Success) {
-                    otherUser = result.data
-                }
-            }
-        }
-    }
 
     // 图片选择器
     val imagePicker = rememberLauncherForActivityResult(
@@ -135,20 +117,20 @@ fun ChatScreen(
         uri?.let {
             // 显示上传中状态
             isUploading = true
-            
+
             // 在后台上传图片
             coroutineScope.launch {
                 try {
                     // 上传图片到服务器
                     val result = imageRepository.uploadImage(it)
-                    
+
                     if (result.isSuccess) {
                         // 获取上传成功后的图片URL
                         val imageUrl = result.getOrThrow()
-                        
+
                         // 发送图片消息
                         viewModel.sendMessage(
-                            conversationId = conversationId,
+                            receiverId = participantId,
                             content = listOf(MessageContentItem(ContentTypes.IMAGE, imageUrl))
                         )
                     } else {
@@ -164,101 +146,114 @@ fun ChatScreen(
         }
     }
 
-    // 加载会话信息
-    LaunchedEffect(conversationId) {
-        viewModel.loadChat(conversationId)
+    LaunchedEffect(participantId) {
+        if (isSystemNotification) {
+            // 系统通知，加载系统通知消息
+            viewModel.loadSystemMessages()
+        } else {
+            // 正常的用户对话，加载对方用户信息
+            val result = profileRepository.getUserAbstract(participantId)
+            if (result is Resource.Success) {
+                otherUser = result.data
+            }
+            // 加载会话消息
+            viewModel.loadChatByParticipantId(participantId)
+        }
     }
 
     Scaffold(topBar = {
-        TopAppBar(
-            title = {
-                Column {
-                    Text(otherUser?.userName ?: "会话")
-                    if (connectionState != ConnectionState.CONNECTED) {
-                        Text(
-                            text = when (connectionState) {
-                                ConnectionState.CONNECTING -> "正在连接..."
-                                ConnectionState.DISCONNECTED -> "连接已断开"
-                                ConnectionState.CONNECTION_ERROR -> "连接失败"
-                                else -> ""
-                            }, fontSize = 12.sp, color = Color.Gray
-                        )
-                    }
+        TopAppBar(title = {
+            Column {
+                Text(
+                    if (isSystemNotification) "系统通知"
+                    else otherUser?.userName ?: "会话"
+                )
+                if (connectionState != ConnectionState.CONNECTED && connectionState != ConnectionState.JOINED) {
+                    Text(
+                        text = when (connectionState) {
+                            ConnectionState.CONNECTING -> "正在连接..."
+                            ConnectionState.DISCONNECTED -> "连接已断开"
+                            ConnectionState.CONNECTION_ERROR -> "连接失败"
+                            else -> ""
+                        }, fontSize = 12.sp, color = Color.Gray
+                    )
                 }
-            }, 
-            navigationIcon = {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                }
-            },
-            actions = {
-                // 添加设置按钮
-                IconButton(onClick = { 
+            }
+        }, navigationIcon = {
+            IconButton(onClick = { navController.navigateUp() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            }
+        }, actions = {
+            // 只有非系统通知才显示聊天设置按钮
+            if (!isSystemNotification) {
+                IconButton(onClick = {
                     // 当chatState可用且为Success状态时，跳转到聊天设置页面
-                    chatState?.let { state ->
-                        if (state is MessageViewModel.ChatState.Success) {
-                            navController.navigate("/messages/settings/${state.conversationId}")
-                        }
+                    if (chatState is ChatViewModel.ChatState.Success) {
+                        navController.navigate("/messages/settings/${(chatState as ChatViewModel.ChatState.Success).conversation.participantId}")
                     }
                 }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "聊天设置")
                 }
             }
-        )
+        })
     }, bottomBar = {
-        Surface(
-            modifier = Modifier.fillMaxWidth().imePadding(),
-            tonalElevation = 3.dp
-        ) {
-            Row(
+        // 只有非系统通知才显示消息输入框
+        if (!isSystemNotification) {
+            Surface(
                 modifier = Modifier
-                    .padding(8.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxWidth()
+                    .imePadding(), tonalElevation = 3.dp
             ) {
-                IconButton(onClick = { imagePicker.launch("image/*") }) {
-                    Icon(Icons.Default.Image, contentDescription = "发送图片")
-                }
+                Row(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { imagePicker.launch("image/*") }) {
+                        Icon(Icons.Default.Image, contentDescription = "发送图片")
+                    }
 
-                TextField(
-                    value = message,
-                    onValueChange = { message = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("输入消息...") },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.White,
-                    ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = {
-                        if (message.isNotBlank()) {
-                            viewModel.sendMessage(
-                                conversationId = conversationId,
-                                content = listOf(MessageContentItem(ContentTypes.TEXT, message))
-                            )
-                            message = ""
-                            coroutineScope.launch {
-                                listState.animateScrollToItem(0)
+                    TextField(
+                        value = message,
+                        onValueChange = { message = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("输入消息...") },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            disabledContainerColor = Color.White,
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
+                            if (message.isNotBlank()) {
+                                viewModel.sendMessage(
+                                    receiverId = participantId,
+                                    content = listOf(MessageContentItem(ContentTypes.TEXT, message))
+                                )
+                                message = ""
+                                coroutineScope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
                             }
-                        }
-                    })
-                )
+                        })
+                    )
 
-                IconButton(
-                    onClick = {
-                        if (message.isNotBlank()) {
-                            viewModel.sendMessage(
-                                conversationId = conversationId,
-                                content = listOf(MessageContentItem(ContentTypes.TEXT, message))
-                            )
-                            message = ""
-                            coroutineScope.launch {
-                                listState.animateScrollToItem(0)
+                    IconButton(
+                        onClick = {
+                            if (message.isNotBlank()) {
+                                viewModel.sendMessage(
+                                    receiverId = participantId,
+                                    content = listOf(MessageContentItem(ContentTypes.TEXT, message))
+                                )
+                                message = ""
+                                coroutineScope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
                             }
-                        }
-                    }) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+                        }) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+                    }
                 }
             }
         }
@@ -270,13 +265,13 @@ fun ChatScreen(
                 .background(Color(0xFFF5F5F5))
         ) {
             when (val state = chatState) {
-                is MessageViewModel.ChatState.Loading, null -> {
+                is ChatViewModel.ChatState.Loading, null -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center), color = RoseRed
                     )
                 }
 
-                is MessageViewModel.ChatState.Success -> {
+                is ChatViewModel.ChatState.Success -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         reverseLayout = true,
@@ -286,9 +281,19 @@ fun ChatScreen(
                     ) {
                         items(state.messages) { message ->
                             MessageItem(
-                                message = message,
+                                message = message.apply {
+                                    if (message.senderId != currentUser?.uid) {
+                                        sender = otherUser
+                                    }
+                                },
                                 isOutgoing = message.senderId == currentUser?.uid,
-                                onWithdrawClick = { showWithdrawDialog = message })
+                                onWithdrawClick = {
+                                    if (!isSystemNotification) {
+                                        showWithdrawDialog = message
+                                    }
+                                },
+                                navController = navController
+                            )
                         }
                     }
 
@@ -306,7 +311,7 @@ fun ChatScreen(
                     }
                 }
 
-                is MessageViewModel.ChatState.Error -> {
+                is ChatViewModel.ChatState.Error -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -319,8 +324,13 @@ fun ChatScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { viewModel.loadChat(conversationId) },
-                            colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+                            onClick = {
+                                if (isSystemNotification) {
+                                    viewModel.loadSystemMessages()
+                                } else {
+                                    viewModel.loadChatByParticipantId(participantId)
+                                }
+                            }, colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
                         ) {
                             Text("重试")
                         }
@@ -338,8 +348,8 @@ fun ChatScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.withdrawMessage(message.id)
-                            showWithdrawDialog = null
+//                            viewModel.withdrawMessage(message.id)
+//                            showWithdrawDialog = null
                         }) {
                         Text("撤回")
                     }
@@ -355,29 +365,9 @@ fun ChatScreen(
 
 @Composable
 fun MessageItem(
-    message: Message, isOutgoing: Boolean, onWithdrawClick: () -> Unit
+    message: Message, isOutgoing: Boolean, onWithdrawClick: () -> Unit, navController: NavController
 ) {
-    val _sender = MutableLiveData(message.sender)
-    val sender: LiveData<UserAbstract?> = _sender
-    val context = LocalContext.current
-    LaunchedEffect(message.senderId) {
-        if (sender.value == null) {
-            val profileRepository = ProfileRepository(context)
-            when(val result = profileRepository.getUserAbstract(message.senderId!!)) {
-                is Resource.Success -> {
-                    _sender.postValue(result.data)
-                }
-                is Resource.Error -> {
-                    Log.e("MessageItem", "Failed to load sender info: ${result.message}")
-                }
-                is Resource.Loading -> {
-                    // Do nothing, just wait for the data to load
-                }
-            }
-        }
-
-        Log.d("MessageItem", "Displaying message: ${message}")
-    }
+    LocalContext.current
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -385,7 +375,7 @@ fun MessageItem(
     ) {
         // 时间戳
         Text(
-            text = formatTime(message.serverTimestamp ?: message.clientTimestamp),
+            text = formatTime(message.createdAt),
             fontSize = 12.sp,
             color = Color.Gray,
             modifier = Modifier.padding(bottom = 4.dp)
@@ -399,8 +389,8 @@ fun MessageItem(
             if (!isOutgoing) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl(sender.value?.avatarUrl ?: "loading_avatar.png")).crossfade(true)
-                        .build(),
+                        .data(imageUrl(message.sender?.avatarUrl ?: "loading_avatar.png"))
+                        .crossfade(true).build(),
                     contentDescription = "头像",
                     modifier = Modifier
                         .size(32.dp)
@@ -420,7 +410,8 @@ fun MessageItem(
                 ), color = if (isOutgoing) RoseRed else Color.White
             ) {
                 Column(
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier.padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     for (content in message.content) {
                         when (content.type) {
@@ -434,7 +425,8 @@ fun MessageItem(
                             "image" -> {
                                 AsyncImage(
                                     model = ImageRequest.Builder(LocalContext.current)
-                                        .data(imageUrl(content.payload as String)).crossfade(true).build(),
+                                        .data(imageUrl(content.payload as String)).crossfade(true)
+                                        .build(),
                                     contentDescription = "图片消息",
                                     modifier = Modifier
                                         .size(200.dp)
@@ -442,65 +434,21 @@ fun MessageItem(
                                     contentScale = ContentScale.Crop
                                 )
                             }
-                            
-                            "product" -> {
-                                val payload = content.payload as? Product
-                                if (payload != null) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth(0.8f),
-                                        color = Color(0xFFF5F5F5)
-                                    ) {
-                                        Column(modifier = Modifier.padding(8.dp)) {
-                                            Text(
-                                                text = "[商品]",
-                                                fontSize = 12.sp,
-                                                color = Color.Gray
-                                            )
-                                            
-                                            Row(
-                                                modifier = Modifier.padding(vertical = 8.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                if (payload.images.first() != null) {
-                                                    AsyncImage(
-                                                        model = ImageRequest.Builder(LocalContext.current)
-                                                            .data(payload.images.first()).crossfade(true).build(),
-                                                        contentDescription = "商品图片",
-                                                        modifier = Modifier
-                                                            .size(60.dp)
-                                                            .clip(RoundedCornerShape(4.dp)),
-                                                        contentScale = ContentScale.Crop
-                                                    )
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                }
 
-                                                Column {
-                                                    Text(
-                                                        text = payload.title,
-                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                                        maxLines = 2,
-                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                                    )
-                                                    
-                                                    Text(
-                                                        text = "¥${payload.price}",
-                                                        color = RoseRed,
-                                                        fontSize = 14.sp,
-                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
+                            "product" -> {
+                                val product = content.payload as? Product
+                                if (product != null) {
+                                    ProductCard(product = product.toAbstract(), onClick = {
+                                        navController.navigate("/product/${product.id}")
+                                    })
                                 } else {
                                     Text(
                                         text = "[商品信息]",
-                                        color = if (isOutgoing) Color.White else Color.Gray
+                                        color = if (isOutgoing) Color.White else Color.Gray,
                                     )
                                 }
                             }
-                            
+
                             "order" -> {
                                 val payload = content.payload as? Order
                                 if (payload != null) {
@@ -515,24 +463,11 @@ fun MessageItem(
                                                 fontSize = 12.sp,
                                                 color = Color.Gray
                                             )
-                                            
+
                                             Row(
                                                 modifier = Modifier.padding(vertical = 8.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-//                                                if (payload. != null) {
-//                                                    AsyncImage(
-//                                                        model = ImageRequest.Builder(LocalContext.current)
-//                                                            .data(payload.imageUrl).crossfade(true).build(),
-//                                                        contentDescription = "商品图片",
-//                                                        modifier = Modifier
-//                                                            .size(60.dp)
-//                                                            .clip(RoundedCornerShape(4.dp)),
-//                                                        contentScale = ContentScale.Crop
-//                                                    )
-//                                                    Spacer(modifier = Modifier.width(8.dp))
-//                                                }
-                                                
                                                 Column {
                                                     Text(
                                                         text = payload.productId,
@@ -540,7 +475,7 @@ fun MessageItem(
                                                         maxLines = 2,
                                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                                     )
-                                                    
+
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically
                                                     ) {
@@ -550,9 +485,9 @@ fun MessageItem(
                                                             fontSize = 14.sp,
                                                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                                                         )
-                                                        
+
                                                         Spacer(modifier = Modifier.width(8.dp))
-                                                        
+
                                                         Surface(
                                                             shape = RoundedCornerShape(4.dp),
                                                             color = getOrderStatusColor(payload.status.toString()).first
@@ -561,7 +496,10 @@ fun MessageItem(
                                                                 text = getOrderStatusText(payload.status.toString()),
                                                                 color = getOrderStatusColor(payload.status.toString()).second,
                                                                 fontSize = 12.sp,
-                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                                                modifier = Modifier.padding(
+                                                                    horizontal = 4.dp,
+                                                                    vertical = 2.dp
+                                                                )
                                                             )
                                                         }
                                                     }
@@ -576,18 +514,18 @@ fun MessageItem(
                                     )
                                 }
                             }
-                            
+
                             "favorite" -> {
                                 val payload = content.payload as? Map<*, *>
                                 if (payload != null) {
                                     val user = payload["user"] as? Map<*, *>
                                     val product = payload["product"] as? Map<*, *>
-                                    
+
                                     if (user != null && product != null) {
                                         val userName = user["userName"] as? String ?: "未知用户"
                                         val productName = product["title"] as? String ?: "未知商品"
                                         val productImage = product["image"] as? String
-                                        
+
                                         Surface(
                                             shape = RoundedCornerShape(8.dp),
                                             modifier = Modifier.fillMaxWidth(0.8f),
@@ -599,15 +537,17 @@ fun MessageItem(
                                                     fontSize = 12.sp,
                                                     color = Color.Gray
                                                 )
-                                                
+
                                                 Row(
                                                     modifier = Modifier.padding(vertical = 8.dp),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     if (productImage != null) {
                                                         AsyncImage(
-                                                            model = ImageRequest.Builder(LocalContext.current)
-                                                                .data(productImage).crossfade(true).build(),
+                                                            model = ImageRequest.Builder(
+                                                                LocalContext.current
+                                                            ).data(productImage).crossfade(true)
+                                                                .build(),
                                                             contentDescription = "商品图片",
                                                             modifier = Modifier
                                                                 .size(60.dp)
@@ -616,7 +556,7 @@ fun MessageItem(
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                     }
-                                                    
+
                                                     Column {
                                                         Text(
                                                             text = "$userName 收藏了商品",
@@ -624,7 +564,7 @@ fun MessageItem(
                                                             maxLines = 1,
                                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                                         )
-                                                        
+
                                                         Text(
                                                             text = productName,
                                                             maxLines = 2,
@@ -685,19 +625,19 @@ fun MessageItem(
                 }
             }
 
-            if (isOutgoing && message.status != "withdrawn") {
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = onWithdrawClick, modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Undo,
-                        contentDescription = "撤回消息",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
+//            if (isOutgoing && message.status != "withdrawn") {
+//                Spacer(modifier = Modifier.width(8.dp))
+//                IconButton(
+//                    onClick = onWithdrawClick, modifier = Modifier.size(24.dp)
+//                ) {
+//                    Icon(
+//                        Icons.AutoMirrored.Filled.Undo,
+//                        contentDescription = "撤回消息",
+//                        tint = Color.Gray,
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//                }
+//            }
         }
     }
 }

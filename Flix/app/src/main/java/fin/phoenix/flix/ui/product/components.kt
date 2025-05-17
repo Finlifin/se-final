@@ -164,6 +164,23 @@ fun BottomActionBar(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("联系卖家")
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // 立即购买按钮
+                Button(
+                    onClick = onBuyClick,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingCart,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("立即购买")
+                }
             } else {
                 OutlinedButton(
                     onClick = onEditClick,
@@ -181,22 +198,6 @@ fun BottomActionBar(
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // 立即购买按钮
-            Button(
-                onClick = onBuyClick,
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ShoppingCart,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("立即购买")
-            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package fin.phoenix.flix.ui.message
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -35,7 +36,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -51,67 +51,61 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
+import fin.phoenix.flix.data.repository.MessageRepository
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.ui.colors.VeryLightRoseRed
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.imageUrl
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatSettingScreen(
-    navController: NavController,
-    conversationId: String
+    navController: NavController, participantId: String
 ) {
-    val viewModel: MessageViewModel = viewModel()
+    val viewModel: ChatViewModel = viewModel()
     val context = LocalContext.current
+    val messageRepository = MessageRepository.getInstance(context)
     val profileRepository = remember { ProfileRepository(context) }
     var showClearDialog by remember { mutableStateOf(false) }
     var notificationEnabled by remember { mutableStateOf(true) }
-    var showBlockDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
-    val currentUserId = UserManager.getInstance(context).currentUserId.observeAsState()
-    
+    UserManager.getInstance(context).currentUserId.observeAsState()
+    val chatState = viewModel.chatState.observeAsState()
+
     // 获取对方用户信息
-    var sellerState by remember { mutableStateOf<Resource<UserAbstract>>(Resource.Loading) }
-    
-    LaunchedEffect(conversationId) {
-        // 从conversationId中提取对方用户ID（假设conversationId形如"user1-user2"）
-        val parts = conversationId.split(":")
-        if (parts.size == 3) {
-            val otherUserId = parts.find { it != currentUserId.value && it != "private" }
-            if (otherUserId != null) {
-                val result = profileRepository.getUserAbstract(otherUserId)
-                sellerState = result
-            }
+    var userState by remember { mutableStateOf<Resource<UserAbstract>>(Resource.Loading) }
+
+    LaunchedEffect(participantId) {
+        // 直接根据participantId获取用户信息
+        if (participantId != "server") {
+            userState = profileRepository.getUserAbstract(participantId)
         }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("聊天设置") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
+            TopAppBar(title = { Text("聊天设置") }, navigationIcon = {
+                IconButton(onClick = { navController.navigateUp() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
-            )
-        }
-    ) { padding ->
+            })
+        }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
             // 用户信息卡片
-            if (sellerState is Resource.Success) {
-                val seller = (sellerState as Resource.Success<UserAbstract>).data
+            if (userState is Resource.Success) {
+                val user = (userState as Resource.Success<UserAbstract>).data
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(1.dp, VeryLightRoseRed),
@@ -123,7 +117,7 @@ fun ChatSettingScreen(
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(painter = rememberAsyncImagePainter(model = seller.avatarUrl?.let {
+                        Image(painter = rememberAsyncImagePainter(model = user.avatarUrl?.let {
                             imageUrl(
                                 it
                             )
@@ -138,7 +132,7 @@ fun ChatSettingScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = seller.userName, fontWeight = FontWeight.Medium
+                                text = user.userName, fontWeight = FontWeight.Medium
                             )
                             Text(
                                 text = "信用分: 未实现", fontSize = 12.sp, color = Color.Gray
@@ -146,7 +140,7 @@ fun ChatSettingScreen(
                         }
 
                         OutlinedButton(
-                            onClick = { navController.navigate("/profile/${seller.uid}") },
+                            onClick = { navController.navigate("/profile/${user.uid}") },
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Text("查看主页")
@@ -160,8 +154,7 @@ fun ChatSettingScreen(
                 SettingItem(
                     icon = Icons.Default.Delete,
                     title = "清空聊天记录",
-                    onClick = { showClearDialog = true }
-                )
+                    onClick = { showClearDialog = true })
             }
 
             HorizontalDivider()
@@ -172,11 +165,10 @@ fun ChatSettingScreen(
                     icon = Icons.Default.Notifications,
                     title = "消息通知",
                     checked = notificationEnabled,
-                    onCheckedChange = { 
+                    onCheckedChange = {
                         notificationEnabled = it
-                        viewModel.toggleMute(conversationId, !it)
-                    }
-                )
+                        // 更新会话的通知设置 - 这部分需要在MessageRepository中实现
+                    })
             }
 
             HorizontalDivider()
@@ -186,8 +178,7 @@ fun ChatSettingScreen(
                 SettingItem(
                     icon = Icons.Default.Report,
                     title = "举报",
-                    onClick = { showReportDialog = true }
-                )
+                    onClick = { showReportDialog = true })
             }
         }
 
@@ -200,12 +191,13 @@ fun ChatSettingScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.clearConversation(conversationId)
-                            showClearDialog = false
-                            // 返回到聊天界面
-                            navController.navigateUp()
-                        }
-                    ) {
+                            viewModel.viewModelScope.launch {
+                                messageRepository.clearConversation((chatState.value as ChatViewModel.ChatState.Success).conversation.id)
+                                showClearDialog = false
+                                // 返回到聊天界面
+                                navController.navigateUp()
+                            }
+                        }) {
                         Text("清空")
                     }
                 },
@@ -213,8 +205,7 @@ fun ChatSettingScreen(
                     TextButton(onClick = { showClearDialog = false }) {
                         Text("取消")
                     }
-                }
-            )
+                })
         }
 
         // 举报对话框
@@ -228,8 +219,7 @@ fun ChatSettingScreen(
                         onClick = {
                             // 实现举报功能
                             showReportDialog = false
-                        }
-                    ) {
+                        }) {
                         Text("提交举报")
                     }
                 },
@@ -237,16 +227,14 @@ fun ChatSettingScreen(
                     TextButton(onClick = { showReportDialog = false }) {
                         Text("取消")
                     }
-                }
-            )
+                })
         }
     }
 }
 
 @Composable
 fun SettingSection(
-    title: String,
-    content: @Composable () -> Unit
+    title: String, content: @Composable () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -261,9 +249,7 @@ fun SettingSection(
 
 @Composable
 fun SettingItem(
-    icon: ImageVector,
-    title: String,
-    onClick: () -> Unit
+    icon: ImageVector, title: String, onClick: () -> Unit
 ) {
     ListItem(
         headlineContent = { Text(title) },
@@ -274,19 +260,14 @@ fun SettingItem(
 
 @Composable
 fun SettingItemWithSwitch(
-    icon: ImageVector,
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    icon: ImageVector, title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit
 ) {
     ListItem(
         headlineContent = { Text(title) },
         leadingContent = { Icon(icon, contentDescription = null) },
-        trailingContent = { 
+        trailingContent = {
             Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
+                checked = checked, onCheckedChange = onCheckedChange
             )
-        }
-    )
+        })
 }

@@ -19,9 +19,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import fin.phoenix.flix.data.ProductStatus
 import fin.phoenix.flix.ui.colors.RoseRed
-import fin.phoenix.flix.ui.profile.UserProductGrid
+import fin.phoenix.flix.ui.home.ProductCard
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.ui.components.ErrorMessage
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,13 +91,32 @@ fun MyProductsScreen(navController: NavController, userId: String) {
                 is Resource.Success -> {
                     val products = state.data
                     
-                    UserProductGrid(
-                        products = products,
-                        emptyMessage = "您暂时没有发布商品",
-                        onProductClick = { productId ->
-                            navController.navigate("/product/$productId")
+                    if (products.isEmpty()) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "您暂时没有发布商品",
+                                fontSize = 18.sp,
+                                color = Color.Gray
+                            )
                         }
-                    )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            items(products) { product ->
+                                ProductCard(
+                                    product = product.toAbstract(),
+                                    onClick = { navController.navigate("/product/${product.id}") }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -156,13 +179,32 @@ fun MySoldProductsScreen(navController: NavController, userId: String) {
                 is Resource.Success -> {
                     val products = state.data
                     
-                    UserProductGrid(
-                        products = products,
-                        emptyMessage = "您暂时没有卖出商品",
-                        onProductClick = { productId ->
-                            navController.navigate("/product/$productId")
+                    if (products.isEmpty()) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "您暂时没有卖出商品",
+                                fontSize = 18.sp,
+                                color = Color.Gray
+                            )
                         }
-                    )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            items(products) { product ->
+                                ProductCard(
+                                    product = product.toAbstract(),
+                                    onClick = { navController.navigate("/product/${product.id}") }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -225,13 +267,32 @@ fun MyPurchasedProductsScreen(navController: NavController, userId: String) {
                 is Resource.Success -> {
                     val products = state.data
                     
-                    UserProductGrid(
-                        products = products,
-                        emptyMessage = "您暂时没有购买商品",
-                        onProductClick = { productId ->
-                            navController.navigate("/product/$productId")
+                    if (products.isEmpty()) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "您暂时没有购买商品",
+                                fontSize = 18.sp,
+                                color = Color.Gray
+                            )
                         }
-                    )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            items(products) { product ->
+                                ProductCard(
+                                    product = product.toAbstract(),
+                                    onClick = { navController.navigate("/product/${product.id}") }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

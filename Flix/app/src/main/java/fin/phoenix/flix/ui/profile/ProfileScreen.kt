@@ -40,6 +40,7 @@ import fin.phoenix.flix.api.PhoenixMessageClient
 import fin.phoenix.flix.api.navigateToChat
 import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.ui.colors.RoseRed
+import fin.phoenix.flix.ui.components.ErrorMessage
 import fin.phoenix.flix.util.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

@@ -48,7 +48,7 @@ data class Product(
             price = price,
             image = images.first(),
             condition = condition,
-            status = status,
+            status = status ?: ProductStatus.DELETE,
         )
     }
 }

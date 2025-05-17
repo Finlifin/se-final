@@ -1019,3 +1019,5 @@
 2025-05-17 19:17:34.933 CST [13595] LOG:  checkpoint complete: wrote 31 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.012 s, sync=0.007 s, total=3.023 s; sync files=16, longest=0.001 s, average=0.001 s; distance=150 kB, estimate=150 kB; lsn=0/38CC7C0, redo lsn=0/38CC768
 2025-05-17 19:22:32.033 CST [13595] LOG:  checkpoint starting: time
 2025-05-17 19:22:33.348 CST [13595] LOG:  checkpoint complete: wrote 14 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=1.305 s, sync=0.002 s, total=1.316 s; sync files=3, longest=0.001 s, average=0.001 s; distance=19 kB, estimate=137 kB; lsn=0/38D29F0, redo lsn=0/38D15E8
+2025-05-17 19:27:32.448 CST [13595] LOG:  checkpoint starting: time
+2025-05-17 19:27:32.760 CST [13595] LOG:  checkpoint complete: wrote 4 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.301 s, sync=0.003 s, total=0.313 s; sync files=2, longest=0.003 s, average=0.002 s; distance=21 kB, estimate=126 kB; lsn=0/38D6D38, redo lsn=0/38D6CE0

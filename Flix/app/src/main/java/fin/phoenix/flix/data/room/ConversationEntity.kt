@@ -2,41 +2,47 @@ package fin.phoenix.flix.data.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.TypeConverter
-import androidx.room.TypeConverters
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import java.util.Date
+import fin.phoenix.flix.data.Conversation
+import fin.phoenix.flix.data.UserAbstract
 
+/**
+ * 会话数据库实体类
+ */
 @Entity(tableName = "conversations")
-@TypeConverters(ConversationConverters::class, DateConverters::class)
 data class ConversationEntity(
-    @PrimaryKey val id: String,
-    val conversationId: String,
-    val type: String,
-    val participantIds: List<String>,
-    val lastMessageId: String?,
-    val lastMessageContent: String?,
-    val lastMessageTimestamp: Date?,
-    val updatedAt: Date,
-    val insertedAt: Date,
-    val unreadCount: Int = 0,
-    val isPinned: Boolean = false,
-    val isMuted: Boolean = false,
-    val lastReadMessageId: String? = null
-)
-
-class ConversationConverters {
-    private val gson = Gson()
-
-    @TypeConverter
-    fun fromStringList(value: String): List<String> {
-        val listType = object : TypeToken<List<String>>() {}.type
-        return gson.fromJson(value, listType)
+    @PrimaryKey
+    val id: String,
+    var participantId: String,
+    var lastMessageId: String?,
+    val participant: UserAbstract?,
+    var unreadCounts: Int
+) {
+    /**
+     * 将实体转换为领域模型
+     */
+    fun toDomainModel(): Conversation {
+        return Conversation(
+            id = id,
+            participantId = participantId,
+            lastMessageId = lastMessageId,
+            participant = participant,
+            unreadCounts = unreadCounts,
+            lastMessage = null // 通过DAO关联查询填充
+        )
     }
 
-    @TypeConverter
-    fun toStringList(list: List<String>): String {
-        return gson.toJson(list)
+    companion object {
+        /**
+         * 从领域模型创建数据库实体
+         */
+        fun fromDomainModel(conversation: Conversation): ConversationEntity {
+            return ConversationEntity(
+                id = conversation.id,
+                participantId = conversation.participantId,
+                lastMessageId = conversation.lastMessageId,
+                participant = conversation.participant,
+                unreadCounts = conversation.unreadCounts
+            )
+        }
     }
 }

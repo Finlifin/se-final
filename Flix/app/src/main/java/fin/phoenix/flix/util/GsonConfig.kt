@@ -1,5 +1,7 @@
 package fin.phoenix.flix.util
 
+import android.annotation.SuppressLint
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializationContext
@@ -117,7 +119,8 @@ object GsonConfig {
             return jsonObject
         }
     }
-/**
+
+    /**
      * 增强的日期适配器，支持多种日期格式并使用本地时区
      */
     class DateTypeAdapter : JsonSerializer<Date>, JsonDeserializer<Date> {
@@ -128,7 +131,7 @@ object GsonConfig {
 
         private val localFormats = arrayOf(
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault()),
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") },
             SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         )
 
@@ -176,7 +179,17 @@ object GsonConfig {
                         }
                     }
 
-                    // 尝试本地时区格式
+                    // 处理ISO格式但没有Z结尾的情况（服务器返回没有时区信息的情况）
+                    try {
+                        val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { 
+                            timeZone = TimeZone.getTimeZone("UTC") // 假设服务器返回的时间是UTC时间
+                        }
+                        return isoFormat.parse(dateStr)
+                    } catch (e: Exception) {
+                        // 继续尝试其他格式
+                    }
+
+                    // 尝试本地格式
                     for (format in localFormats) {
                         try {
                             return format.parse(dateStr)
@@ -187,8 +200,8 @@ object GsonConfig {
                 }
             }
 
-            // 如果所有尝试都失败，返回当前时间
-            return Date()
+            Log.e("DateTypeAdapter", "无法解析日期: $json")
+            return Date() // 返回当前日期作为默认值
         }
     }
 }

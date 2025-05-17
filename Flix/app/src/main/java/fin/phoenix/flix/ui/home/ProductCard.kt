@@ -72,6 +72,19 @@ fun ProductCard(
                             fontWeight = FontWeight.Bold
                         )
                     }
+                } else if (product.status == ProductStatus.DELETE) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0x80000000)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "卖家已删除",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 

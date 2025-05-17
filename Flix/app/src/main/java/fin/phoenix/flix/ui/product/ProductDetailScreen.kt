@@ -1,5 +1,6 @@
 package fin.phoenix.flix.ui.product
 
+import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -83,7 +84,26 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
     Scaffold(modifier = Modifier.padding(WindowInsets.statusBars.asPaddingValues()), topBar = {
         ProductDetailTopBar(
             onBackClick = { navController.popBackStack() },
-            onShareClick = { /* Handle share action */ })
+            onShareClick = { 
+                // 获取当前商品数据
+                if (productState is Resource.Success) {
+                    val product = (productState as Resource.Success<Product>).data
+                    val shareText = "这是一件Flix上的商品: ${product.title}, https://example.com/product/${product.id}"
+                    
+                    // 创建分享意图
+                    val sendIntent: Intent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        type = "text/plain"
+                    }
+                    
+                    // 创建选择器并启动分享活动
+                    val shareIntent = Intent.createChooser(sendIntent, "分享商品")
+                    context.startActivity(shareIntent)
+                } else {
+                    Toast.makeText(context, "商品信息加载中，请稍后再试", Toast.LENGTH_SHORT).show()
+                }
+            })
     }, bottomBar = {
         when (productState) {
             is Resource.Success -> {
@@ -479,9 +499,10 @@ fun ProductDetailTopBar(
 
 private fun formatPostTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
-    val diff = now - timestamp * 1000
+    val timestampMs = timestamp * 1000  // 将秒转为毫秒
+    val diff = now - timestampMs
 
-    Log.d("ProductDetailScreen", "formatPostTime: $timestamp, $now, $diff")
+    Log.d("ProductDetailScreen", "formatPostTime: timestamp=$timestamp, now=$now, diff=$diff")
 
     return when {
         diff < 60 * 1000 -> "刚刚"
@@ -490,7 +511,7 @@ private fun formatPostTime(timestamp: Long): String {
         diff < 7 * 24 * 60 * 60 * 1000 -> "${diff / (24 * 60 * 60 * 1000)}天前"
         else -> {
             val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
-                .format(java.util.Date(timestamp))
+                .format(java.util.Date(timestampMs))  // 使用毫秒级时间戳
             date
         }
     }

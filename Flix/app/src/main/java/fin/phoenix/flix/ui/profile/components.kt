@@ -2,13 +2,11 @@ package fin.phoenix.flix.ui.profile
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,8 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -43,15 +39,13 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.Seller
-import fin.phoenix.flix.data.User
 import fin.phoenix.flix.ui.colors.RoseRed
+import fin.phoenix.flix.ui.home.ProductCard
 import fin.phoenix.flix.util.imageUrl
 
 @Composable
 fun UserProfileHeader(
-    user: Seller,
-    onMessageClick: () -> Unit,
-    onFollowClick: () -> Unit
+    user: Seller, onMessageClick: () -> Unit, onFollowClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -61,39 +55,35 @@ fun UserProfileHeader(
     ) {
         // User info row
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()
         ) {
             // Avatar
-            Image(
-                painter = rememberAsyncImagePainter(model = user.avatarUrl?.let { imageUrl(it) } ?: "https://randomuser.me/api/portraits/lego/1.jpg"),
+            Image(painter = rememberAsyncImagePainter(model = user.avatarUrl?.let { imageUrl(it) }
+                ?: "https://randomuser.me/api/portraits/lego/1.jpg"),
                 contentDescription = "User avatar",
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-            
+                contentScale = ContentScale.Crop)
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             // User stats
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = user.userName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    text = user.userName, fontWeight = FontWeight.Bold, fontSize = 18.sp
                 )
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 Text(
                     text = "已发布: ${user.publishedProductIds.size} · 已售出: ${user.soldProductIds.size}",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
-                
+
                 if (user.currentAddress != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -106,13 +96,12 @@ fun UserProfileHeader(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Action buttons
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Message button
             OutlinedButton(
@@ -124,14 +113,12 @@ fun UserProfileHeader(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.Default.Chat,
-                    contentDescription = "Message",
-                    tint = RoseRed
+                    imageVector = Icons.Default.Chat, contentDescription = "Message", tint = RoseRed
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("发消息")
             }
-            
+
             // Follow button
             Button(
                 onClick = onFollowClick,
@@ -149,19 +136,14 @@ fun UserProfileHeader(
 
 @Composable
 fun UserProductGrid(
-    products: List<Product>,
-    emptyMessage: String,
-    onProductClick: (String) -> Unit
+    products: List<Product>, emptyMessage: String, onProductClick: (String) -> Unit
 ) {
     if (products.isEmpty()) {
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
         ) {
             Text(
-                text = emptyMessage,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
+                text = emptyMessage, color = Color.Gray, textAlign = TextAlign.Center
             )
         }
     } else {
@@ -169,78 +151,21 @@ fun UserProductGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().padding(12.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp)
         ) {
             items(products) { product ->
-                UserProductItem(
-                    product = product,
-                    onClick = { onProductClick(product.id) }
-                )
+                ProductCard(
+                    product = product.toAbstract(), onClick = { onProductClick(product.id) })
             }
-        }
-    }
-}
-
-@Composable
-fun UserProductItem(
-    product: Product,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column {
-            // Product image
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-            ) {
-                Image(
-                    painter = rememberAsyncImagePainter(
-                        model = imageUrl(product.images.firstOrNull() ?: "")
-                    ),
-                    contentDescription = product.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                
-                // Price tag
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .background(Color(0x99000000))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "¥${product.price}",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            
-            // Product title
-            Text(
-                text = product.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(8.dp),
-                fontSize = 12.sp
-            )
         }
     }
 }
 
 @Composable
 fun ErrorMessage(
-    error: String,
-    onRetry: () -> Unit
+    error: String, onRetry: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -248,25 +173,22 @@ fun ErrorMessage(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "加载失败",
-            fontWeight = FontWeight.Bold,
-            color = Color.Gray
+            text = "加载失败", fontWeight = FontWeight.Bold, color = Color.Gray
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = error,
             color = Color.Gray,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 32.dp)
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Button(
-            onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(
+            onClick = onRetry, colors = ButtonDefaults.buttonColors(
                 containerColor = RoseRed
             )
         ) {
@@ -288,12 +210,11 @@ fun UserNotFound() {
             color = Color.Gray,
             fontSize = 18.sp
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
-            text = "该用户可能已注销或不存在",
-            color = Color.Gray
+            text = "该用户可能已注销或不存在", color = Color.Gray
         )
     }
 }

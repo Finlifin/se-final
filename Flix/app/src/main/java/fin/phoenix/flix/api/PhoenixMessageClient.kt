@@ -3,18 +3,14 @@ package fin.phoenix.flix.api
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import fin.phoenix.flix.data.Conversation
-import fin.phoenix.flix.data.ConversationDetail
-import fin.phoenix.flix.data.ConversationTypes
-import fin.phoenix.flix.data.ConversationUserSettings
-import fin.phoenix.flix.data.EventTypes
+import com.google.gson.Gson
 import fin.phoenix.flix.data.Message
 import fin.phoenix.flix.data.MessageContentItem
-import fin.phoenix.flix.data.MessageEvent
 import fin.phoenix.flix.data.MessageStatus
 import fin.phoenix.flix.data.MessageTypes
 import fin.phoenix.flix.data.SyncResult
 import fin.phoenix.flix.data.UnreadCounts
+import fin.phoenix.flix.data.repository.getConversationId
 import fin.phoenix.flix.util.GsonConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,11 +29,9 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.Clock
 import java.util.Date
 import java.util.Timer
 import java.util.TimerTask
-import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -46,7 +40,7 @@ import kotlin.coroutines.resumeWithException
 
 /**
  * Phoenix WebSocket 客户端，用于处理二手交易平台的实时消息通信
- * 基于 Phoenix 框架的 WebSocket 协议实现
+ * 遵循最新的 message channel API 规范
  */
 class PhoenixMessageClient private constructor() {
     private val TAG = "PhoenixMessageClient"
@@ -56,12 +50,12 @@ class PhoenixMessageClient private constructor() {
     private var client: OkHttpClient? = null
     private var authToken: String? = null
     var userId: String? = null
-    private var gson = GsonConfig.createPrettyGson()
+    private var gson: Gson = GsonConfig.createPrettyGson()
 
     // CoroutineScope for operations
     private val clientScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Connection state
+    // 连接状态机: disconnected -> connected -> joined
     private val _connectionState = MutableLiveData<ConnectionState>(ConnectionState.DISCONNECTED)
     val connectionState: LiveData<ConnectionState> = _connectionState
 
@@ -74,16 +68,12 @@ class PhoenixMessageClient private constructor() {
     private val OPERATION_TIMEOUT = 15L // seconds
 
     // Channel state
-    private var joinedChannels = ConcurrentHashMap<String, String>() // channel -> ref
     private var userChannel: String? = null
 
     // 是否保持连接
     private var keepConnected = false
 
     // Message flows for UI to observe
-    private val _messageEvents = MutableSharedFlow<MessageEvent>(replay = 0)
-    val messageEvents: SharedFlow<MessageEvent> = _messageEvents
-
     private val _newMessages = MutableSharedFlow<Message>(replay = 0)
     val newMessages: SharedFlow<Message> = _newMessages
 
@@ -93,12 +83,6 @@ class PhoenixMessageClient private constructor() {
     // Error flow for connection issues
     private val _errors = MutableSharedFlow<PhoenixError>(replay = 0)
     val errors: SharedFlow<PhoenixError> = _errors
-
-    // 重连相关配置
-    private var reconnectTimer: Timer? = null
-    private var reconnectAttempt = AtomicInteger(0)
-    private val maxReconnectAttempts = 5
-    private val baseReconnectDelay = 2000L // 2秒基础延迟
 
     // Request callbacks
     private val responseCallbacks = ConcurrentHashMap<String, PhoenixCallback>()
@@ -119,7 +103,6 @@ class PhoenixMessageClient private constructor() {
     companion object {
         val instance: PhoenixMessageClient by lazy { PhoenixMessageClient() }
 
-//        private var BASE_SOCKET_URL = "ws://192.168.31.117:4000/socket/websocket"
         private var BASE_SOCKET_URL = "ws://10.70.141.134:4000/socket/websocket"
         private const val HEARTBEAT_INTERVAL = 30000L // 30 seconds
         private const val AUTO_SYNC_INTERVAL = 60000L // 60 seconds
@@ -132,20 +115,14 @@ class PhoenixMessageClient private constructor() {
         const val EVENT_CLOSE = "phx_close"
         const val EVENT_HEARTBEAT = "heartbeat"
 
-        // Custom events
-        const val EVENT_NEW_MESSAGE = "new_message"
-        const val EVENT_MESSAGE_STATUS_CHANGED = "message_status_changed"
-        const val EVENT_SEND_MESSAGE = "send_private_message"
-        const val EVENT_MARK_READ = "mark_read"
-        const val EVENT_WITHDRAW_MESSAGE = "withdraw_message"
+        // API事件，根据最新文档
         const val EVENT_SYNC = "sync"
-        const val EVENT_GET_CONVERSATION_HISTORY = "get_conversation_history"
-        const val EVENT_CREATE_CONVERSATION = "create_conversation"
-        const val EVENT_GET_CONVERSATIONS = "get_conversations"
-        const val EVENT_GET_CONVERSATION_INFO = "get_conversation_info"
-        const val CLEAR_CONVERSATION = "clear_conversation"
+        const val EVENT_SEND_MESSAGE = "send_message"
+        const val EVENT_MARK_READ = "mark_read"
+        const val EVENT_MARK_ALL_READ = "mark_all_read"
+        const val EVENT_GET_MESSAGE_HISTORY = "get_message_history"
+        const val EVENT_GET_UNREAD_STATS = "get_unread_stats"
     }
-
 
     /**
      * 配置WebSocket URL
@@ -156,17 +133,20 @@ class PhoenixMessageClient private constructor() {
 
     /**
      * 连接 WebSocket 服务器
+     * 增加同步锁和更严格的状态检查，避免重复连接
      */
+    @Synchronized
     fun connect(authToken: String, userId: String) {
-        if (_connectionState.value == ConnectionState.CONNECTING || _connectionState.value == ConnectionState.CONNECTED) {
-            Log.d(TAG, "WebSocket已连接或正在连接中")
+        // 更严格的连接状态检查
+        val currentState = _connectionState.value
+        if (currentState == ConnectionState.CONNECTING || currentState == ConnectionState.CONNECTED || currentState == ConnectionState.JOINED) {
+            Log.d(TAG, "WebSocket已连接或正在连接中，当前状态: $currentState")
             return
         }
 
         this.authToken = authToken
         this.userId = userId
         keepConnected = true
-        reconnectAttempt.set(0)
         _connectionState.postValue(ConnectionState.CONNECTING)
 
         try {
@@ -201,9 +181,6 @@ class PhoenixMessageClient private constructor() {
         heartbeatTimer?.cancel()
         heartbeatTimer = null
 
-        reconnectTimer?.cancel()
-        reconnectTimer = null
-
         autoSyncTimer?.cancel()
         autoSyncTimer = null
 
@@ -213,7 +190,6 @@ class PhoenixMessageClient private constructor() {
 
         // 清理回调和状态
         responseCallbacks.clear()
-        joinedChannels.clear()
         userChannel = null
 
         // 取消协程
@@ -233,26 +209,10 @@ class PhoenixMessageClient private constructor() {
 
         val channelName = "user:${userId}"
         userChannel = channelName
-        joinChannel(channelName)
-    }
-
-    /**
-     * 加入指定频道
-     */
-    private suspend fun joinChannel(channelName: String): JSONObject {
-        if (joinedChannels.containsKey(channelName)) {
-            Log.d(TAG, "已加入频道: $channelName")
-            return JSONObject()
-        }
 
         val ref = generateRef()
-        val payload = JSONObject()
-
-        // 添加身份认证令牌
-        if (authToken != null) {
-            payload.put("token", authToken)
-        } else {
-            throw PhoenixException("未提供认证令牌")
+        val payload = JSONObject().apply {
+            put("token", authToken ?: throw PhoenixException("未提供认证令牌"))
         }
 
         val joinPayload = JSONObject().apply {
@@ -265,40 +225,27 @@ class PhoenixMessageClient private constructor() {
         Log.d(TAG, "正在加入频道: $channelName")
         val response = sendAndWaitForResponse(joinPayload, ref)
         Log.d(TAG, "加入频道响应: $response")
-        // 检查响应状态
-        val status = response.optString("status")
 
-        joinedChannels[channelName] = ref
-        Log.d(TAG, "成功加入频道: $channelName")
+        // 成功加入后更新状态
+        _connectionState.postValue(ConnectionState.JOINED)
 
-        // 如果是用户频道，启动自动同步
-        if (channelName == userChannel && isAutoSyncEnabled) {
-            startAutoSync()
-        }
+        // 启动自动同步
+//        if (isAutoSyncEnabled) {
+//            startAutoSync()
+//        }
 
-
-        return response
+        response
     }
 
     /**
-     * 离开指定频道
+     * 离开用户频道
      */
     suspend fun leaveUserChannel(): Result<JSONObject> = runCatching {
         if (userChannel == null) {
             throw PhoenixException("未加入用户频道")
         }
 
-        leaveChannel(userChannel!!)
-    }
-
-    /**
-     * 离开指定频道
-     */
-    private suspend fun leaveChannel(channelName: String): JSONObject {
-        if (!joinedChannels.containsKey(channelName)) {
-            throw PhoenixException("未加入该频道")
-        }
-
+        val channelName = userChannel!!
         val ref = generateRef()
         val leavePayload = JSONObject().apply {
             put("topic", channelName)
@@ -308,65 +255,75 @@ class PhoenixMessageClient private constructor() {
         }
 
         val response = sendAndWaitForResponse(leavePayload, ref)
-        joinedChannels.remove(channelName)
 
-        // 如果离开的是用户频道，停止自动同步
-        if (channelName == userChannel) {
-            stopAutoSync()
-            userChannel = null
-        }
+        // 更新状态为已连接但未加入频道
+        _connectionState.postValue(ConnectionState.CONNECTED)
 
-        return response
+        // 停止自动同步
+        stopAutoSync()
+        userChannel = null
+
+        response
     }
 
     /**
      * 发送消息
+     * 根据最新API文档实现
      */
     suspend fun sendMessage(
-        conversationId: String,
+        receiverId: String,
         content: List<MessageContentItem>,
-        messageType: String = MessageTypes.PRIVATE_MESSAGE
+        messageType: String = MessageTypes.CHAT
     ): Result<Message> = runCatching {
         checkUserChannel()
 
-        val clientMessageId = UUID.randomUUID().toString()
-        val clientTimestamp = Clock.systemUTC()
+        // 客户端消息ID格式：{userId}-{timestamp}
+        val clientMessageId = "${userId}-${System.currentTimeMillis()}"
 
         // 构建内容数组
         val contentArray = JSONArray()
         content.forEach { item ->
             val contentItem = JSONObject()
             contentItem.put("type", item.type)
-
-            // 根据类型序列化载荷
-            when (item.payload) {
-                is String -> contentItem.put("payload", item.payload)
-                is JSONObject -> contentItem.put("payload", item.payload)
-                is Map<*, *> -> contentItem.put("payload", JSONObject(item.payload))
-                else -> contentItem.put("payload", gson.toJson(item.payload))
-            }
-
+            contentItem.put("payload", item.payload)
             contentArray.put(contentItem)
         }
 
-        // 构建请求负载
+        // 构建请求负载，符合新API
         val payload = JSONObject().apply {
-            put("client_message_id", clientMessageId)
-            put("client_timestamp", clientTimestamp.toString())
-            put("conversation_id", conversationId)
             put("content", contentArray)
-            put("message_type", messageType)
+            put("receiver_id", receiverId)
+            put("message_id", clientMessageId)
         }
 
         val response = push(userChannel!!, EVENT_SEND_MESSAGE, payload)
 
         // 解析响应
-        if (!response.has("client_message_id")) {
+        val serverMessageId = response.optString("id")
+        val returnedClientMessageId = response.optString("message_id")
+        val serverTimestamp = response.optLong("server_timestamp")
+        val status = response.optString("status", MessageStatus.SENT)
+
+        if (serverMessageId.isEmpty()) {
             throw PhoenixException("消息发送失败: 响应格式错误")
         }
 
+        // 使用服务器返回的时间戳创建Date对象
+        val createdAt = if (serverTimestamp > 0) Date(serverTimestamp) else Date()
+
         // 构建消息对象
-        val message = buildMessageFromResponse(response, content, messageType, conversationId)
+        val message = Message(
+            id = serverMessageId,
+            clientMessageId = returnedClientMessageId,
+            senderId = userId!!,
+            receiverId = receiverId,
+            content = content,
+            messageType = messageType,
+            conversationId = getConversationId(userId!!, receiverId),
+            status = status,
+            createdAt = createdAt,
+            updatedAt = createdAt
+        )
 
         // 发布到消息流
         clientScope.launch {
@@ -377,41 +334,43 @@ class PhoenixMessageClient private constructor() {
     }
 
     /**
-     * 撤回消息
-     */
-    suspend fun withdrawMessage(messageId: String): Result<JSONObject> = runCatching {
-        checkUserChannel()
-
-        val payload = JSONObject().apply {
-            put("message_id", messageId)
-        }
-
-        push(userChannel!!, EVENT_WITHDRAW_MESSAGE, payload)
-    }
-
-    /**
      * 标记消息为已读
+     * 根据最新API文档实现
      */
-    suspend fun markMessagesRead(
-        conversationId: String, lastReadMessageId: String
-    ): Result<JSONObject> = runCatching {
+    suspend fun markMessagesRead(messageIds: List<String>): Result<Int> = runCatching {
         checkUserChannel()
 
+        val messageIdsArray = JSONArray()
+        messageIds.forEach { messageIdsArray.put(it) }
+
         val payload = JSONObject().apply {
-            put("conversation_id", conversationId)
-            put("last_read_message_id", lastReadMessageId)
+            put("message_ids", messageIdsArray)
         }
 
-        push(userChannel!!, EVENT_MARK_READ, payload)
+        val response = push(userChannel!!, EVENT_MARK_READ, payload)
+        response.optInt("updated_count", 0)
     }
 
     /**
-     * 同步消息和事件
+     * 标记所有消息为已读
+     * 根据最新API文档实现
+     */
+    suspend fun markAllMessagesRead(): Result<Int> = runCatching {
+        checkUserChannel()
+
+        val payload = JSONObject()
+        val response = push(userChannel!!, EVENT_MARK_ALL_READ, payload)
+        response.optInt("updated_count", 0)
+    }
+
+    /**
+     * 同步消息
+     * 根据最新API文档实现
      */
     suspend fun syncMessages(since: String? = null): Result<SyncResult> = runCatching {
         checkUserChannel()
 
-        val timestamp = since ?: lastSyncTimestamp ?: "2020-01-01T00:00:00.000Z"
+        val timestamp = since ?: lastSyncTimestamp ?: "0"
 
         val payload = JSONObject().apply {
             put("last_sync_timestamp", timestamp)
@@ -419,14 +378,13 @@ class PhoenixMessageClient private constructor() {
 
         val response = push(userChannel!!, EVENT_SYNC, payload)
 
-        // 解析事件列表
-        val events = mutableListOf<MessageEvent>()
-        val eventsArray = response.optJSONArray("events") ?: JSONArray()
+        // 解析消息列表
+        val messages = mutableListOf<Message>()
+        val messagesArray = response.optJSONArray("messages") ?: JSONArray()
 
-        for (i in 0 until eventsArray.length()) {
-            val eventJson = eventsArray.getJSONObject(i)
-            // 这里需要进一步实现从JSON到MessageEvent的转换
-            // events.add(parseMessageEvent(eventJson)) 
+        for (i in 0 until messagesArray.length()) {
+            val messageJson = messagesArray.getJSONObject(i)
+            messages.add(gson.fromJson(messageJson.toString(), Message::class.java))
         }
 
         // 获取新的同步时间戳
@@ -434,26 +392,24 @@ class PhoenixMessageClient private constructor() {
         lastSyncTimestamp = newTimestamp
 
         // 构建同步结果
-        SyncResult(events, Date()) // 临时用当前日期代替，实际应从JSON解析
+        SyncResult(messages, Date())
     }
 
     /**
-     * 获取会话历史记录
+     * 获取消息历史
+     * 根据最新API文档实现
      */
-    suspend fun getConversationHistory(
-        conversationId: String, limit: Int = 20, before: String? = null
+    suspend fun getMessageHistory(
+        limit: Int = 20, offset: Int = 0
     ): Result<List<Message>> = runCatching {
         checkUserChannel()
 
         val payload = JSONObject().apply {
-            put("conversation_id", conversationId)
             put("limit", limit)
-            if (before != null) {
-                put("before", before)
-            }
+            put("offset", offset)
         }
 
-        val response = push(userChannel!!, EVENT_GET_CONVERSATION_HISTORY, payload)
+        val response = push(userChannel!!, EVENT_GET_MESSAGE_HISTORY, payload)
 
         // 解析消息列表
         val messages = mutableListOf<Message>()
@@ -461,183 +417,32 @@ class PhoenixMessageClient private constructor() {
 
         for (i in 0 until messagesArray.length()) {
             val messageJson = messagesArray.getJSONObject(i)
-            // 这里需要进一步实现从JSON到Message的转换
-            // messages.add(parseMessage(messageJson))
+            messages.add(gson.fromJson(messageJson.toString(), Message::class.java))
+
         }
 
         messages
     }
 
     /**
-     * 创建会话
+     * 获取未读消息统计
+     * 根据最新API文档实现
      */
-    suspend fun createConversation(
-        type: String, participantIds: List<String>
-    ): Result<ConversationDetail> = runCatching {
+    suspend fun getUnreadStats(): Result<UnreadCounts> = runCatching {
         checkUserChannel()
 
-        val participantsArray = JSONArray()
-        participantIds.forEach { participantsArray.put(it) }
+        val payload = JSONObject()
+        val response = push(userChannel!!, EVENT_GET_UNREAD_STATS, payload)
 
-        val payload = JSONObject().apply {
-            put("type", type)
-            put("participant_ids", participantsArray)
-        }
+        val stats = response.optJSONObject("stats") ?: JSONObject()
 
-        val response = push(userChannel!!, EVENT_CREATE_CONVERSATION, payload)
-
-        // 解析会话
-        val conversationJson = response.optJSONObject("conversation")
-            ?: throw PhoenixException("创建会话失败: 响应格式错误")
-
-        // 解析基本会话信息
-        val conversation = Conversation(
-            id = conversationJson.getString("id"),
-            conversationId = conversationJson.getString("conversation_id"),
-            type = conversationJson.getString("type"),
-            participantIds = List(conversationJson.getJSONArray("participant_ids").length()) { i ->
-                conversationJson.getJSONArray("participant_ids").getString(i)
-            },
-            lastMessageId = conversationJson.optString("last_message_id"),
-            lastMessageContent = conversationJson.optString("last_message_content"),
-            lastMessageTimestamp = null, // 需要解析时间戳
-            updatedAt = Date(), // 需要解析时间戳
-            insertedAt = Date() // 需要解析时间戳
+        UnreadCounts(
+            total = stats.optInt("total", 0),
+            chat = stats.optInt("chat", 0),
+            system = stats.optInt("system", 0),
+            order = stats.optInt("order", 0),
+            payment = stats.optInt("payment", 0)
         )
-
-        // 创建用户设置对象
-        val userSettings = ConversationUserSettings(
-            unreadCount = response.optInt("unread_count", 0),
-            isPinned = response.optBoolean("is_pinned", false),
-            isMuted = response.optBoolean("is_muted", false),
-            lastReadMessageId = response.optString("last_read_message_id"),
-            draft = null
-        )
-
-        // 返回会话详情
-        ConversationDetail(conversation, userSettings)
-    }
-
-    suspend fun getOrCreateConversationWith(with: String): Result<ConversationDetail> {
-        return createConversation(ConversationTypes.PRIVATE, listOf(userId!!, with))
-    }
-
-    suspend fun getConversation(
-        conversationId: String
-    ): Result<ConversationDetail> = runCatching {
-        checkUserChannel()
-
-//        val payload = JSONObject().apply {
-//            put("conversation_id", conversationId)
-//        }
-        val payload = JSONObject(mapOf("conversation_id" to conversationId))
-        Log.d(TAG, "获取会话详情请求: $payload")
-
-        val response = push(userChannel!!, EVENT_GET_CONVERSATION_INFO, payload)
-
-        // 解析会话详情
-        val conversationJson = response.optJSONObject("conversation")
-            ?: throw PhoenixException("获取会话失败: 响应格式错误")
-
-        // 解析基本会话信息
-        val conversation = Conversation(
-            id = conversationJson.getString("id"),
-            conversationId = conversationJson.getString("conversation_id"),
-            type = conversationJson.getString("type"),
-            participantIds = List(conversationJson.getJSONArray("participant_ids").length()) { i ->
-                conversationJson.getJSONArray("participant_ids").getString(i)
-            },
-            lastMessageId = conversationJson.optString("last_message_id"),
-            lastMessageContent = conversationJson.optString("last_message_content"),
-            lastMessageTimestamp = null, // 需要解析时间戳
-            updatedAt = Date(), // 需要解析时间戳
-            insertedAt = Date() // 需要解析时间戳
-        )
-
-        // 创建用户设置对象
-        val userSettings = ConversationUserSettings(
-            unreadCount = response.optInt("unread_count", 0),
-            isPinned = response.optBoolean("is_pinned", false),
-            isMuted = response.optBoolean("is_muted", false),
-            lastReadMessageId = response.optString("last_read_message_id"),
-            draft = null
-        )
-
-        // 返回会话详情
-        ConversationDetail(conversation, userSettings)
-    }
-
-    /**
-     * 获取会话列表
-     */
-    suspend fun getConversations(limit: Int = 20): Result<List<ConversationDetail>> = runCatching {
-        checkUserChannel()
-
-        val payload = JSONObject().apply {
-            put("limit", limit)
-        }
-
-        val response = push(userChannel!!, EVENT_GET_CONVERSATIONS, payload)
-        Log.d(TAG, "获取会话列表响应: $response")
-
-        // 解析会话列表
-        val conversations = mutableListOf<ConversationDetail>()
-        val responseArray = if (response.has("conversations")) {
-            response.getJSONArray("conversations")
-        } else {
-            response as? JSONArray ?: throw PhoenixException("获取会话失败: 响应格式错误")
-        }
-
-        for (i in 0 until responseArray.length()) {
-            val item = responseArray.getJSONObject(i)
-            val conversationJson = item.optJSONObject("conversation") ?: item
-
-            // 解析基本会话信息
-            val conversation = Conversation(
-                id = conversationJson.getString("id"),
-                conversationId = conversationJson.getString("conversation_id"),
-                type = conversationJson.getString("type"),
-                participantIds = List(
-                    conversationJson.getJSONArray("participant_ids").length()
-                ) { j ->
-                    conversationJson.getJSONArray("participant_ids").getString(j)
-                },
-                lastMessageId = conversationJson.optString("last_message_id"),
-                lastMessageContent = conversationJson.optString("last_message_content"),
-                lastMessageTimestamp = null, // 需要解析时间戳
-                updatedAt = Date(), // 需要解析时间戳
-                insertedAt = Date() // 需要解析时间戳
-            )
-
-            // 创建用户设置对象
-            val userSettings = ConversationUserSettings(
-                unreadCount = item.optInt("unread_count", 0),
-                isPinned = item.optBoolean("is_pinned", false),
-                isMuted = item.optBoolean("is_muted", false),
-                lastReadMessageId = item.optString("last_read_message_id"),
-                draft = null
-            )
-
-            conversations.add(ConversationDetail(conversation, userSettings))
-        }
-
-        conversations
-    }
-
-    /*
-        * 清除会话
-     */
-    suspend fun clearConversation(
-        conversationId: String
-    ): Result<JSONObject> = runCatching {
-        checkUserChannel()
-
-        val payload = JSONObject(mapOf("conversation_id" to conversationId))
-
-        val response = push(userChannel!!, CLEAR_CONVERSATION, payload)
-        Log.d(TAG, "清除会话响应: $response")
-
-        response
     }
 
     /**
@@ -647,7 +452,7 @@ class PhoenixMessageClient private constructor() {
         isAutoSyncEnabled = true
 
         // 如果已连接用户频道，立即启动自动同步
-        if (userChannel != null && _connectionState.value == ConnectionState.CONNECTED) {
+        if (userChannel != null && _connectionState.value == ConnectionState.JOINED) {
             startAutoSync(syncIntervalMs)
         }
     }
@@ -669,7 +474,7 @@ class PhoenixMessageClient private constructor() {
         autoSyncTimer = Timer().apply {
             schedule(object : TimerTask() {
                 override fun run() {
-                    if (_connectionState.value == ConnectionState.CONNECTED && userChannel != null) {
+                    if (_connectionState.value == ConnectionState.JOINED && userChannel != null) {
                         clientScope.launch {
                             syncMessages().onFailure { error ->
                                 Log.e(TAG, "自动同步失败", error)
@@ -712,7 +517,7 @@ class PhoenixMessageClient private constructor() {
      * 检查用户频道是否已加入
      */
     private fun checkUserChannel() {
-        if (userChannel == null || !joinedChannels.containsKey(userChannel!!)) {
+        if (userChannel == null || _connectionState.value != ConnectionState.JOINED) {
             throw PhoenixException("未加入用户频道")
         }
     }
@@ -721,10 +526,6 @@ class PhoenixMessageClient private constructor() {
      * 向频道发送事件
      */
     private suspend fun push(channelName: String, event: String, payload: JSONObject): JSONObject {
-        if (!joinedChannels.containsKey(channelName)) {
-            throw PhoenixException("未加入频道: $channelName")
-        }
-
         val ref = generateRef()
         val message = JSONObject().apply {
             put("topic", channelName)
@@ -777,7 +578,7 @@ class PhoenixMessageClient private constructor() {
         heartbeatTimer = Timer().apply {
             schedule(object : TimerTask() {
                 override fun run() {
-                    if (_connectionState.value == ConnectionState.CONNECTED) {
+                    if (_connectionState.value == ConnectionState.CONNECTED || _connectionState.value == ConnectionState.JOINED) {
                         val ref = generateRef()
                         val payload = JSONObject().apply {
                             put("topic", "phoenix")
@@ -803,57 +604,6 @@ class PhoenixMessageClient private constructor() {
         clientScope.launch {
             _errors.emit(PhoenixError("connection_error", message))
         }
-
-        scheduleReconnect()
-    }
-
-    /**
-     * 安排重连
-     */
-    private fun scheduleReconnect() {
-        if (!keepConnected) {
-            return
-        }
-
-        val currentAttempt = reconnectAttempt.incrementAndGet()
-        if (currentAttempt > maxReconnectAttempts) {
-            Log.e(TAG, "达到最大重连次数")
-            clientScope.launch {
-                _errors.emit(
-                    PhoenixError(
-                        "max_reconnect_attempts", "达到最大重连次数 ($maxReconnectAttempts)"
-                    )
-                )
-            }
-            return
-        }
-
-        reconnectTimer?.cancel()
-        val delay = calculateReconnectDelay(currentAttempt)
-
-        Log.d(TAG, "安排重连, 延迟 $delay ms, 尝试 #$currentAttempt")
-        _connectionState.postValue(ConnectionState.RECONNECTING)
-
-        reconnectTimer = Timer().apply {
-            schedule(object : TimerTask() {
-                override fun run() {
-                    if (keepConnected) {
-                        authToken?.let { token ->
-                            userId?.let { uid ->
-                                connect(token, uid)
-                            }
-                        }
-                    }
-                }
-            }, delay)
-        }
-    }
-
-    /**
-     * 计算重连延迟
-     */
-    private fun calculateReconnectDelay(attempt: Int): Long {
-        return (baseReconnectDelay * (1 shl (attempt - 1))).coerceAtMost(30000L) // 最大30秒
     }
 
     /**
@@ -867,7 +617,7 @@ class PhoenixMessageClient private constructor() {
                 startHeartbeat()
 
                 // 重新加入用户频道
-                if (userChannel != null && !joinedChannels.containsKey(userChannel!!)) {
+                if (userChannel != null) {
                     clientScope.launch {
                         try {
                             joinUserChannel()
@@ -894,7 +644,6 @@ class PhoenixMessageClient private constructor() {
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "WebSocket已关闭: $code, $reason")
                 _connectionState.postValue(ConnectionState.DISCONNECTED)
-                handleWebSocketClosure(code, reason)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -914,10 +663,36 @@ class PhoenixMessageClient private constructor() {
         val payload = message.optJSONObject("payload") ?: JSONObject()
         val ref = message.optString("ref")
 
+        Log.d(TAG, "接收到消息: $message")
+
         when (event) {
             EVENT_REPLY -> handleReply(ref, payload)
-            "event" -> handleEvent(payload)
+            EVENT_ERROR -> handleChannelError(topic, payload)
+            "new_message" -> handleIncomingMessage(payload) // 处理服务器推送的新消息
+            // 这里添加了对未读计数更新事件的处理
+            "unread_count_update" -> handleUnreadCountUpdate(payload)
             else -> Log.d(TAG, "未处理的事件类型: $event")
+        }
+    }
+
+    /**
+     * 处理通道错误
+     */
+    private fun handleChannelError(topic: String, payload: JSONObject) {
+        Log.e(TAG, "通道错误: $topic, $payload")
+
+        // 如果是用户通道出错，将状态从JOINED设置回CONNECTED
+        if (topic == userChannel) {
+            _connectionState.postValue(ConnectionState.CONNECTED)
+
+            // 尝试重新加入
+            clientScope.launch {
+                try {
+                    joinUserChannel()
+                } catch (e: Exception) {
+                    Log.e(TAG, "重新加入用户频道失败", e)
+                }
+            }
         }
     }
 
@@ -942,152 +717,73 @@ class PhoenixMessageClient private constructor() {
     }
 
     /**
-     * 处理服务器事件
+     * 处理服务器推送的消息
      */
-    private fun handleEvent(payload: JSONObject) {
-        val eventType = payload.optString("event_type")
-
-        when (eventType) {
-            EventTypes.NEW_MESSAGE -> handleNewMessageEvent(payload.optJSONObject("payload")!!)
-            EventTypes.MESSAGE_STATUS_CHANGED -> handleMessageStatusEvent(payload)
-            else -> {
-                // 发布原始事件
-                clientScope.launch {
-                    // 这里需要进一步实现从JSON到MessageEvent的转换
-                    // val event = parseMessageEvent(payload)
-//                     _messageEvents.emit(event)
-                }
-            }
-        }
-    }
-
-    /**
-     * 处理新消息事件
-     */
-    private fun handleNewMessageEvent(payload: JSONObject) {
+    private fun handleIncomingMessage(payload: JSONObject) {
         clientScope.launch {
             try {
-                // 这里需要进一步实现从JSON到Message的转换
-                val message = parseMessage(payload)
-                Log.d(TAG, "处理新消息事件: $message")
+                val message = gson.fromJson(
+                    payload.getJSONObject("message").toString(), Message::class.java
+                )
+
+
+                Log.d(TAG, "接收到新消息: $message")
 
                 // 发布到新消息流
                 _newMessages.emit(message)
 
                 // 更新未读计数
-                updateUnreadCounts(
-                    payload.optJSONObject("payload")?.optString("message_type")
-                        ?: MessageTypes.PRIVATE_MESSAGE
-                )
+                updateUnreadCounts(message.messageType)
             } catch (e: Exception) {
-                Log.e(TAG, "处理新消息事件失败", e)
+                Log.e(TAG, "处理消息失败", e)
             }
         }
     }
 
     /**
-     * 解析消息
+     * 处理未读计数更新事件
      */
-    private fun parseMessage(message: JSONObject): Message {
-        val gson = GsonConfig.createPrettyGson()
-        return gson.fromJson(message.toString(), Message::class.java)
-    }
-
-    /**
-     * 处理消息状态变更事件
-     */
-    private fun handleMessageStatusEvent(payload: JSONObject) {
-        clientScope.launch {
-            try {
-                val messagePayload = payload.optJSONObject("payload") ?: return@launch
-                val messageId = messagePayload.optString("message_id")
-                val oldStatus = messagePayload.optString("old_status")
-                val newStatus = messagePayload.optString("new_status")
-
-                if (messageId.isNotEmpty() && newStatus.isNotEmpty()) {
-                    _messageStatusChanges.emit(
-                        MessageStatusChange(
-                            messageId = messageId,
-                            oldStatus = oldStatus.takeIf { it.isNotEmpty() },
-                            newStatus = newStatus
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "处理消息状态事件失败", e)
-            }
+    private fun handleUnreadCountUpdate(payload: JSONObject) {
+        try {
+            val stats = payload.optJSONObject("stats") ?: JSONObject()
+            val newCounts = UnreadCounts(
+                total = stats.optInt("total", 0),
+                chat = stats.optInt("chat", 0),
+                system = stats.optInt("system", 0),
+                order = stats.optInt("order", 0),
+                payment = stats.optInt("payment", 0)
+            )
+            _unreadCounts.postValue(newCounts)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理未读计数更新失败", e)
         }
     }
 
     /**
      * 更新未读消息计数
      */
-    fun updateUnreadCounts(messageType: String) {
+    private fun updateUnreadCounts(messageType: String) {
         val currentCounts = _unreadCounts.value ?: UnreadCounts()
         val newCounts = when (messageType) {
-            MessageTypes.PRIVATE_MESSAGE -> currentCounts.copy(
-                privateMessage = currentCounts.privateMessage + 1, total = currentCounts.total + 1
+            MessageTypes.CHAT -> currentCounts.copy(
+                chat = currentCounts.chat + 1, total = currentCounts.total + 1
             )
 
-            MessageTypes.SYSTEM_NOTIFICATION -> currentCounts.copy(
-                systemNotification = currentCounts.systemNotification + 1,
-                total = currentCounts.total + 1
+            MessageTypes.SYSTEM -> currentCounts.copy(
+                system = currentCounts.system + 1, total = currentCounts.total + 1
             )
 
-            MessageTypes.SYSTEM_ANNOUNCEMENT -> currentCounts.copy(
-                systemAnnouncement = currentCounts.systemAnnouncement + 1,
-                total = currentCounts.total + 1
+            MessageTypes.ORDER -> currentCounts.copy(
+                order = currentCounts.order + 1, total = currentCounts.total + 1
             )
 
-            MessageTypes.INTERACTION -> currentCounts.copy(
-                interaction = currentCounts.interaction + 1, total = currentCounts.total + 1
+            MessageTypes.PAYMENT -> currentCounts.copy(
+                payment = currentCounts.payment + 1, total = currentCounts.total + 1
             )
 
             else -> currentCounts
         }
         _unreadCounts.postValue(newCounts)
-    }
-
-    /**
-     * 处理WebSocket关闭
-     */
-    private fun handleWebSocketClosure(code: Int, reason: String) {
-        heartbeatTimer?.cancel()
-        heartbeatTimer = null
-
-        if (keepConnected && code != 1000) { // 1000是正常关闭
-            scheduleReconnect()
-        }
-    }
-
-    /**
-     * 构建消息对象
-     */
-    private fun buildMessageFromResponse(
-        response: JSONObject,
-        content: List<MessageContentItem>,
-        messageType: String,
-        conversationId: String
-    ): Message {
-        val clientMessageId = response.optString("client_message_id")
-        val messageId = response.optString("message_id")
-        val serverTimestamp = response.optString("server_timestamp")
-        val status = response.optString("status", MessageStatus.SENT)
-
-        return Message(
-            id = messageId,
-            clientMessageId = clientMessageId,
-            senderId = userId,
-            receiverId = null, // 需要补充
-            conversationId = conversationId,
-            content = content,
-            messageType = messageType,
-            status = status,
-            clientTimestamp = Date(),
-            serverTimestamp = Date(), // 需要解析serverTimestamp
-            insertedAt = Date(), // 需要解析serverTimestamp
-            updatedAt = Date() // 需要解析serverTimestamp
-        )
     }
 
     /**
@@ -1104,10 +800,14 @@ class PhoenixMessageClient private constructor() {
 }
 
 /**
- * 连接状态枚举
+ * 连接状态枚举 - 符合状态机模型
  */
 enum class ConnectionState {
-    DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, CONNECTION_ERROR
+    DISCONNECTED,   // 未连接
+    CONNECTING,     // 正在连接
+    CONNECTED,      // 已连接但未加入频道
+    JOINED,         // 已加入频道
+    CONNECTION_ERROR // 连接错误
 }
 
 /**
@@ -1126,7 +826,5 @@ data class PhoenixError(
 
 
 suspend fun navigateToChat(userId: String, k: (String) -> Unit) {
-    val result = PhoenixMessageClient.instance.getOrCreateConversationWith(userId)
-    val conversation = result.getOrThrow()
-    k("/messages/${conversation.conversation.conversationId}")
+    k("/messages/$userId")
 }
