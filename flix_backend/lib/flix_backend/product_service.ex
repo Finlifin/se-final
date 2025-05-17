@@ -445,12 +445,12 @@ defmodule FlixBackend.ProductService do
     seller = Repo.get(User, product.seller_id)
 
     if seller do
-      text_content = "#{user.user_name}收藏了您的商品\"#{product.title}\""
+      text_content = "我收藏了你的商品\"#{product.title}\""
 
       # 构造收藏消息内容
       content = [
         %{type: "text", payload: text_content},
-        %{type: "favorite", payload: %{user: user, product: product}}
+        %{type: "product", payload: product}
       ]
 
       # 发送私信
@@ -460,7 +460,7 @@ defmodule FlixBackend.ProductService do
         # 卖家作为接收者
         seller.uid,
         content,
-        product.id
+        "#{user.uid}-#{DateTime.utc_now() |> DateTime.to_unix(:millisecond)}"
       )
     end
   end
