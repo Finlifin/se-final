@@ -2,26 +2,11 @@ package fin.phoenix.flix.util
 
 import android.annotation.SuppressLint
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.google.gson.JsonPrimitive
-import com.google.gson.JsonSerializationContext
-import com.google.gson.JsonSerializer
-import fin.phoenix.flix.data.InteractionPayload
-import fin.phoenix.flix.data.MessageContentItem
-import fin.phoenix.flix.data.Order
-import fin.phoenix.flix.data.Product
-import fin.phoenix.flix.data.SystemAnnouncementPayload
-import fin.phoenix.flix.data.SystemNotificationPayload
+import com.google.gson.*
+import fin.phoenix.flix.data.*
 import java.lang.reflect.Type
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
+import java.util.*
 
 /**
  * Utility class for Gson configuration
@@ -53,9 +38,7 @@ object GsonConfig {
     /**
      * 消息内容项反序列化器，用于处理不同类型的消息内容
      */
-    class MessageContentItemDeserializer : JsonDeserializer<MessageContentItem>, JsonSerializer<MessageContentItem> {
-        private val gson = Gson()
-        
+    class MessageContentItemDeserializer : JsonDeserializer<MessageContentItem> {
         override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): MessageContentItem {
             val jsonObject = json.asJsonObject
             val type = jsonObject.get("type").asString
@@ -68,8 +51,35 @@ object GsonConfig {
                 "image" -> payloadElement.asString
                 "video" -> payloadElement.asString
                 "audio" -> payloadElement.asString
-                "comment" -> payloadElement.asString
                 "like" -> payloadElement.asString
+                
+                // 针对评论类型的特殊处理
+                "comment" -> {
+                    // 处理评论类型，可能是JsonObject也可能是String
+                    if (payloadElement.isJsonObject) {
+                        try {
+                            // 尝试解析为Comment对象
+                            context.deserialize<Comment>(payloadElement, Comment::class.java)
+                        } catch (e: Exception) {
+                            // 降级处理为Map
+                            try {
+                                val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any>>() {}.type
+                                context.deserialize<Map<String, Any>>(payloadElement, mapType)
+                            } catch (e2: Exception) {
+                                // 如果解析失败，保存原始JSON字符串
+                                Log.e("MessageDeserializer", "解析评论失败", e2)
+                                payloadElement.toString()
+                            }
+                        }
+                    } else {
+                        // 如果不是JsonObject，尝试作为字符串处理
+                        try {
+                            payloadElement.asString
+                        } catch (e: Exception) {
+                            "[评论内容]"
+                        }
+                    }
+                }
                 
                 // 复杂类型 - 使用正确的数据类
                 "product" -> context.deserialize<Product>(payloadElement, Product::class.java)
@@ -92,17 +102,36 @@ object GsonConfig {
                         try {
                             context.deserialize<Map<String, Any>>(payloadElement, mapType)
                         } catch (e: Exception) {
-                            payloadElement
+                            Log.e("MessageDeserializer", "解析未知类型失败: $type", e)
+                            payloadElement.toString()
+                        }
+                    } else if (payloadElement.isJsonArray) {
+                        val listType = object : com.google.gson.reflect.TypeToken<List<Any>>() {}.type
+                        try {
+                            context.deserialize<List<Any>>(payloadElement, listType)
+                        } catch (e: Exception) {
+                            payloadElement.toString()
+                        }
+                    } else if (payloadElement.isJsonPrimitive) {
+                        try {
+                            payloadElement.asString
+                        } catch (e: Exception) {
+                            payloadElement.toString()
                         }
                     } else {
-                        payloadElement
+                        payloadElement.toString()
                     }
                 }
             }
             
             return MessageContentItem(type, payload)
         }
+    }
 
+    /**
+     * 消息内容项序列化器
+     */
+    class MessageContentItemSerializer : JsonSerializer<MessageContentItem> {
         override fun serialize(src: MessageContentItem, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
             val jsonObject = JsonObject()
             jsonObject.addProperty("type", src.type)

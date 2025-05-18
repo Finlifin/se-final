@@ -276,4 +276,24 @@ defmodule FlixBackendWeb.AuthController do
         |> json(ApiResponse.unauthorized_response("验证码错误或已过期: #{inspect(reason)}"))
     end
   end
+
+  @doc """
+  检查用户是否已设置密码
+
+  返回有无密码的状态，用于客户端判断是显示设置密码还是修改密码界面
+  """
+  def check_password_set(conn, _params) do
+    case Guardian.Plug.current_resource(conn) do
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(ApiResponse.unauthorized_response("用户未登录"))
+
+      account ->
+        has_password = account.hashed_password != nil
+        conn
+        |> put_status(:ok)
+        |> json(ApiResponse.success_response("查询成功", %{has_password: has_password}))
+    end
+  end
 end

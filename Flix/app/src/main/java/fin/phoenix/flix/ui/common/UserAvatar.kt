@@ -31,7 +31,8 @@ fun UserAvatar(
     avatarUrl: String?, 
     size: Dp = 40.dp,
     placeholder: String = "?",
-    fontSize: TextUnit = 16.sp
+    fontSize: TextUnit = 16.sp,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     
@@ -44,7 +45,7 @@ fun UserAvatar(
                 .build(),
             contentDescription = "User Avatar",
             contentScale = ContentScale.Crop,
-            modifier = Modifier
+            modifier = modifier
                 .size(size)
                 .clip(CircleShape)
         )

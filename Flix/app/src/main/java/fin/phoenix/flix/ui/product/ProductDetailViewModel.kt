@@ -172,4 +172,20 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
             }
         }
     }
+
+    /**
+     * 清理所有资源和状态，避免内存泄漏和UI残留
+     * 在用户离开ProductDetailScreen时调用
+     */
+    fun clearResources() {
+        // 重置所有状态为初始值
+        _productState.value = Resource.Loading
+        _sellerState.value = Resource.Loading
+        _isProductFavorite.value = false
+        // 取消所有可能的网络请求
+        viewModelScope.launch {
+            // 这里可以添加取消任何正在进行的网络请求
+            // 如果有使用协程Job，可以在这里取消
+        }
+    }
 }

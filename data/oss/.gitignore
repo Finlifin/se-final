@@ -8,3 +8,22 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+env/
+ENV/
+
+# Upload files and temp directories
+uploads/*
+!uploads/.gitkeep
+tmp/
+temp/
+
+# Coverage and test reports
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Local config
+local_settings.py
+*.sqlite3

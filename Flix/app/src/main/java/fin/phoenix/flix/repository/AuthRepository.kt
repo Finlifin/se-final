@@ -105,6 +105,22 @@ class AuthRepository(private val context: Context) {
         }
 
     /**
+     * 检查当前用户是否已经设置密码
+     */
+    suspend fun checkPasswordSet(): Resource<Boolean> =
+        withContext(Dispatchers.IO) {
+            val response = authService.checkPasswordSet().toResource("获取密码状态失败")
+            
+            if (response is Resource.Success) {
+                Resource.Success(response.data.hasPassword)
+            } else if (response is Resource.Error) {
+                Resource.Error(response.message)
+            } else {
+                Resource.Error("未知错误")
+            }
+        }
+
+    /**
      * 验证密码是否符合规则：
      * 长度6-16字符，必须至少包含数字、大写字母、小写字母、特殊符号中的两种
      */

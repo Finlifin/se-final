@@ -1,1 +1,7 @@
 pg
+logfile
+*.log
+*.dat
+*.bak
+*.tmp
+*.cache

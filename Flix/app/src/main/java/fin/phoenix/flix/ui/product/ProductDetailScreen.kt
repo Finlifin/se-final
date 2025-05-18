@@ -3,6 +3,8 @@ package fin.phoenix.flix.ui.product
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,7 +40,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.rememberAsyncImagePainter
 import fin.phoenix.flix.api.navigateToChat
 import fin.phoenix.flix.data.Product
@@ -68,6 +73,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProductDetailScreen(navController: NavController, productId: String) {
     val viewModel: ProductDetailViewModel = viewModel()
+    val commentViewModel: CommentViewModel = viewModel()
     val productState by viewModel.productState.observeAsState(Resource.Loading)
     val sellerState by viewModel.sellerState.observeAsState(Resource.Loading)
     val isFavorited by viewModel.isProductFavorite.observeAsState(false)
@@ -76,9 +82,32 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
     val scope = rememberCoroutineScope()
 
     val showPaymentOptions = remember { mutableStateOf(false) }
+    val showReplySheet = remember { mutableStateOf(false) }
 
+    // 确保只在productId变化时加载商品详情
     LaunchedEffect(productId) {
         viewModel.loadProductDetails(productId)
+        // 添加这一行确保评论数据也只加载一次
+        commentViewModel.refreshProductComments(productId)
+    }
+
+    // 清理资源，防止内存泄漏和状态残留
+    DisposableEffect(Unit) {
+        onDispose {
+            commentViewModel.clearProductResources(productId)
+            viewModel.clearResources()
+        }
+    }
+
+    // 评论回复底部弹窗
+    if (showReplySheet.value) {
+        CommentReplySheet(
+            viewModel = commentViewModel,
+            onDismiss = {
+                showReplySheet.value = false
+                commentViewModel.clearSelectedComment()
+            }
+        )
     }
 
     Scaffold(modifier = Modifier.padding(WindowInsets.statusBars.asPaddingValues()), topBar = {
@@ -147,7 +176,11 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
                 is Resource.Success -> {
                     val product = (productState as Resource.Success<Product>).data
                     ProductDetailContent(
-                        product = product, sellerState = sellerState, navController = navController
+                        product = product, 
+                        sellerState = sellerState, 
+                        navController = navController, 
+                        showReplySheet = showReplySheet,
+                        commentViewModel = commentViewModel
                     )
 
                     if (showPaymentOptions.value) {
@@ -181,6 +214,8 @@ private fun ProductDetailContent(
     product: Product,
     sellerState: Resource<UserAbstract>,
     navController: NavController,
+    showReplySheet: MutableState<Boolean>,
+    commentViewModel: CommentViewModel
 ) {
     Column(
         modifier = Modifier
@@ -443,6 +478,16 @@ private fun ProductDetailContent(
                     }
                 }
             }
+
+            // 评论区
+            CommentSection(
+                viewModel = commentViewModel,
+                productId = product.id,
+                onShowReplySheet = { comment ->
+                    commentViewModel.selectComment(comment)
+                    showReplySheet.value = true
+                }
+            )
 
             // 底部空间，防止内容被底部操作栏遮挡
             Spacer(modifier = Modifier.height(80.dp))

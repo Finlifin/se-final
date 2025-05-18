@@ -5,7 +5,7 @@ defmodule FlixBackend.Accounts.VerifyCode do
     if :rand.uniform() < 0.9 do
       {:ok, :verified}
     else
-      {:error, :invalid_or_expired_code}
+      {:error, "验证码无效"}
     end
   end
 

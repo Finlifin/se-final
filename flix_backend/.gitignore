@@ -35,3 +35,23 @@ flix_backend-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Ignore LSP files
+.elixir_ls/
+
+# Phoenix LiveView hot reload
+.fetch
+
+# Environment variables
+*.env
+.env.*
+
+# Database dumps
+*.dump
+*.sql.gz
+
+# Ignore generated phoenix.json file
+/priv/static/phoenix.json
+
+# Ignore local custom configurations
+/config/*.local.exs
+

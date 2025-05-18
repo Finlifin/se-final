@@ -209,14 +209,24 @@ fun PaymentConfirmScreen(navController: NavController, orderId: String) {
                                 }
                             }
 
-                            // 测试需要，模拟支付
-                            Button(
-                                onClick = { viewModel.confirmPayment(orderId) },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("模拟支付")
+                                // 测试需要，模拟支付
+                                Button(
+                                    onClick = { viewModel.confirmPayment(orderId) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+                                ) {
+                                    Text("模拟支付")
+                                }
                             }
+
                         }
                     } else if (paymentDetails.status == "paid") {
                         // 显示支付成功界面

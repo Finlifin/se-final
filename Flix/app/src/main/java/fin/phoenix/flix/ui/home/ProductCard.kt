@@ -108,13 +108,13 @@ fun ProductCard(
                         color = RoseRed,
                         fontWeight = FontWeight.Bold
                     )
-
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
+//
+//                    Icon(
+//                        imageVector = Icons.Default.FavoriteBorder,
+//                        contentDescription = "Favorite",
+//                        tint = Color.Gray,
+//                        modifier = Modifier.size(20.dp)
+//                    )
                 }
             }
         }

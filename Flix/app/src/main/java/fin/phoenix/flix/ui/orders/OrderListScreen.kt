@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -67,7 +68,7 @@ fun OrderListScreen(navController: NavController) {
     val ordersState by viewModel.ordersState.collectAsState()
 
     // 角色选择（买家/卖家）
-    val roleOptions = listOf("买家", "卖家")
+    val roleOptions = listOf("作为买家", "作为卖家")
     val selectedRole = remember { mutableStateOf(roleOptions[0]) }
 
     // 订单状态筛选
@@ -89,7 +90,7 @@ fun OrderListScreen(navController: NavController) {
             "已退款" -> "refunded"
             else -> null
         }
-        viewModel.loadOrders(role = role, status = status)
+        viewModel.loadOrders(role = role, status = null)
     }
 
     Scaffold(
@@ -160,7 +161,7 @@ fun OrderListScreen(navController: NavController) {
                                         "已退款" -> "refunded"
                                         else -> null
                                     }
-                                    viewModel.loadOrders(role = role, status = status)
+                                    viewModel.loadOrders(role = role, status = null)
                                 }, colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
                             ) {
                                 Text("重试")
@@ -172,6 +173,20 @@ fun OrderListScreen(navController: NavController) {
                 is OrderViewModel.OrdersState.Success -> {
                     val orders = (ordersState as OrderViewModel.OrdersState.Success).orders.filter {
                         it.orderType == "product"
+                    }
+                    val refreshOrders = {
+                        val role = if (selectedRole.value == "买家") "buyer" else "seller"
+                        val status = when (selectedStatus.value) {
+                            "待处理" -> "pending"
+                            "等待支付" -> "payment_pending"
+                            "已支付" -> "paid"
+                            "已发货" -> "shipping"
+                            "已完成" -> "completed"
+                            "已取消" -> "cancelled"
+                            "已退款" -> "refunded"
+                            else -> null
+                        }
+                        viewModel.loadOrders(role = role, status = null)
                     }
 
                     if (orders.isEmpty()) {
@@ -197,6 +212,7 @@ fun OrderListScreen(navController: NavController) {
                                     },
                                     onCancelOrder = {
                                         viewModel.cancelOrder(order.orderId)
+                                        refreshOrders()
                                     })
                             }
 
@@ -300,12 +316,14 @@ fun OrderItem(
             .fillMaxWidth()
             .padding(vertical = 8.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .background(Color.Transparent)
         ) {
             // 订单ID和状态
             Row(
@@ -390,8 +408,7 @@ fun OrderItem(
                         }
 
                         OutlinedButton(
-                            onClick = onCancelOrder,
-                            colors = ButtonDefaults.outlinedButtonColors(
+                            onClick = onCancelOrder, colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = Color.Gray
                             )
                         ) {

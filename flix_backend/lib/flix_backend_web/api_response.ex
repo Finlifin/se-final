@@ -19,6 +19,29 @@ defmodule FlixBackendWeb.ApiResponse do
     }
   end
 
+  # --- 评论相关响应 ---
+
+  # 单个评论响应
+  def comment_response(comment, message \\ "获取评论成功") do
+    %{
+      success: true,
+      message: message,
+      data: comment
+    }
+  end
+
+  # 评论列表响应
+  def comment_list_response(comments, total_count, current_page, total_pages) do
+    %{
+      success: true,
+      message: "获取评论列表成功",
+      data: comments,
+      totalCount: total_count,
+      currentPage: current_page,
+      totalPages: total_pages
+    }
+  end
+
   # 单个产品响应
   def product_response(product) do
     %{

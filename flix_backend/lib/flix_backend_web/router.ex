@@ -44,6 +44,14 @@ defmodule FlixBackendWeb.Router do
       get "/:id", ProductController, :show
     end
 
+    # 评论相关公开API
+    scope "/comments" do
+      get "/product/:product_id", CommentController, :list_product_comments
+      get "/:id/replies", CommentController, :list_comment_replies
+      get "/:id", CommentController, :get_comment
+      get "/:id/context", CommentController, :get_comment_with_context
+    end
+
     # 消息相关公开API
     scope "/messages" do
       post "/sync", MessageController, :sync_messages
@@ -82,6 +90,7 @@ defmodule FlixBackendWeb.Router do
     scope "/auth" do
       post "/update_password", AuthController, :update_password  # 添加修改密码路由（需要认证）
       post "/set_password", AuthController, :set_initial_password  # 添加设置初始密码路由（已登录状态）
+      get "/check_password", AuthController, :check_password_set  # 检查当前用户是否已设置密码
     end
 
     # 这里放置需要认证的资源路由
@@ -92,6 +101,16 @@ defmodule FlixBackendWeb.Router do
       post "/:id/favorite", ProductController, :favorite
       delete "/:id/favorite", ProductController, :unfavorite
       get "/:id/is_favorite", ProductController, :is_favorite
+    end
+
+    # 评论相关需要认证的API
+    scope "/comments" do
+      post "/product/:product_id", CommentController, :create_comment
+      post "/:comment_id/reply", CommentController, :reply_to_comment
+      post "/:id/like", CommentController, :like_comment
+      delete "/:id/like", CommentController, :unlike_comment
+      get "/:id/liked", CommentController, :is_comment_liked
+      delete "/:id", CommentController, :delete_comment
     end
 
     scope "/profile" do

@@ -10,7 +10,7 @@
     
     <!-- Rose Red theme colors -->
     <color name="rose_red">#FFE91E63</color>
-    <color name="light_rose_red">#FFF8BBD0</color>
+    <color name="light_rose_red">#FFFFFFFF</color>
     <color name="dark_rose_red">#FFC2185B</color>
     <color name="warn_rose_red">#FFFF5252</color>
 </resources>

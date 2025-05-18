@@ -96,7 +96,7 @@ defmodule FlixBackendWeb.MessageChannel do
         end
 
       # 发送消息
-      case Messaging.send_private_message(user_id, receiver_id, message_content, message_id) do
+      case Messaging.send_private_message(user_id, receiver_id, message_content, message_id, false) do
         {:ok, message} ->
           # 将NaiveDateTime转为Unix时间戳（毫秒）
           timestamp =

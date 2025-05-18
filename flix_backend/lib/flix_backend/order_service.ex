@@ -292,6 +292,43 @@ defmodule FlixBackend.OrderService do
     end)
   end
 
+  @doc """
+  Transactional update of seller's sold product list and buyer's purchased product list.
+  This function is intended to be used within an Ecto.Multi chain.
+  """
+  def update_seller_and_buyer_product_lists_transactional(repo, order) do
+    unless order.order_type == "product" && order.product_id do
+      # Not a product order, or product_id is missing, so skip.
+      # Return {:ok, order} to allow the Multi chain to proceed.
+      {:ok, order}
+    else
+      buyer = repo.get(User, order.buyer_id)
+      seller = repo.get(User, order.seller_id)
+      product_id = order.product_id
+
+      if is_nil(buyer) or is_nil(seller) do
+        {:error, :user_not_found_for_list_update}
+      else
+        # Update seller's sold_product_ids
+        new_seller_sold_ids = [product_id | (seller.sold_product_ids || [])] |> Enum.uniq()
+        seller_changeset = User.changeset(seller, %{sold_product_ids: new_seller_sold_ids})
+
+        # Update buyer's purchased_product_ids
+        new_buyer_purchased_ids = [product_id | (buyer.purchased_product_ids || [])] |> Enum.uniq()
+        buyer_changeset = User.changeset(buyer, %{purchased_product_ids: new_buyer_purchased_ids})
+
+        # Chain the updates within the transaction
+        with {:ok, _updated_seller} <- repo.update(seller_changeset),
+             {:ok, _updated_buyer} <- repo.update(buyer_changeset) do
+          {:ok, order}
+        else
+          failed_operation_result ->
+            failed_operation_result
+        end
+      end
+    end
+  end
+
   # 私有辅助函数：检查状态变更是否合法
   defp is_valid_status_transition(current_status, new_status, user_id, order) do
     cond do
@@ -341,11 +378,12 @@ defmodule FlixBackend.OrderService do
       ]
 
       # 发送私信
+      message_id = "#{buyer.uid}-#{:os.system_time(:millisecond)}"
       Messaging.send_private_message(
         buyer.uid,  # 买家作为发送者
         seller.uid, # 卖家作为接收者
         content,
-        order.order_id
+        message_id
       )
     end
   end
@@ -367,11 +405,12 @@ defmodule FlixBackend.OrderService do
             %{type: "order", payload: order}
           ]
 
+          message_id = "#{seller.uid}-#{:os.system_time(:millisecond)}"
           Messaging.send_private_message(
             seller.uid, # 卖家作为发送者
             buyer.uid,  # 买家作为接收者
             content,
-            order.order_id
+            message_id
           )
 
         :completed when change_by_id == buyer.uid ->
@@ -384,11 +423,12 @@ defmodule FlixBackend.OrderService do
           ]
 
           # 向卖家发送消息
+          message_id = "#{buyer.uid}-#{:os.system_time(:millisecond)}"
           Messaging.send_private_message(
             buyer.uid,  # 买家作为发送者
             seller.uid, # 卖家作为接收者
             content,
-            order.order_id
+            message_id
           )
 
           # 同时通知买家
@@ -400,11 +440,12 @@ defmodule FlixBackend.OrderService do
           ]
 
           # 这里是系统向买家确认，可以用系统ID作为发送者
+          message_id = "server-#{:os.system_time(:millisecond)}"
           Messaging.send_private_message(
             nil, # 系统消息
             buyer.uid,
             buyer_content,
-            order.order_id
+            message_id
           )
 
         :cancelled ->
@@ -418,11 +459,12 @@ defmodule FlixBackend.OrderService do
               %{type: "order", payload: order}
             ]
 
+            message_id = "#{buyer.uid}-#{:os.system_time(:millisecond)}"
             Messaging.send_private_message(
               buyer.uid,  # 买家作为发送者
               seller.uid, # 卖家作为接收者
               content,
-              order.order_id
+              message_id
             )
           else
             # 卖家取消，通知买家
@@ -433,11 +475,12 @@ defmodule FlixBackend.OrderService do
               %{type: "order", payload: order}
             ]
 
+            message_id = "#{seller.uid}-#{:os.system_time(:millisecond)}"
             Messaging.send_private_message(
               seller.uid, # 卖家作为发送者
               buyer.uid,  # 买家作为接收者
               content,
-              order.order_id
+              message_id
             )
           end
 
@@ -450,11 +493,12 @@ defmodule FlixBackend.OrderService do
             %{type: "order", payload: order}
           ]
 
+          message_id = "#{seller.uid}-#{:os.system_time(:millisecond)}"
           Messaging.send_private_message(
             seller.uid, # 卖家作为发送者
             buyer.uid,  # 买家作为接收者
             content,
-            order.order_id
+            message_id
           )
 
         # 其他状态变更暂不处理

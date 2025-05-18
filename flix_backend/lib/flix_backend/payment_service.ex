@@ -4,6 +4,7 @@ defmodule FlixBackend.PaymentService do
   alias FlixBackend.Repo
   alias FlixBackend.Data.{Order, Product, User, Payment}
   alias FlixBackend.Messaging
+  alias FlixBackend.OrderService
 
   @doc """
   创建支付订单
@@ -115,9 +116,14 @@ defmodule FlixBackend.PaymentService do
       })
       |> repo.update()
     end)
+    |> Multi.run(:update_user_product_lists, fn repo, %{update_order: paid_order} ->
+      # If the order type is "product", update seller's sold list and buyer's purchased list
+      OrderService.update_seller_and_buyer_product_lists_transactional(repo, paid_order)
+    end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{update_order: order}} ->
+      # The result from update_user_product_lists is the order itself, so we use it here.
+      {:ok, %{update_user_product_lists: order}} ->
         # 根据订单类型发送不同的通知
         case order.order_type do
           "product" ->
@@ -136,6 +142,12 @@ defmodule FlixBackend.PaymentService do
 
       {:error, :process_payment, :user_not_found, _} ->
         {:error, :not_found, "用户不存在"}
+
+      {:error, :update_user_product_lists, {:error, :user_not_found_for_list_update}, _} ->
+        {:error, :internal_server_error, "处理失败: 更新用户商品列表时用户不存在"}
+
+      {:error, :update_user_product_lists, {:error, reason}, _changes} ->
+        {:error, :internal_server_error, "处理失败: #{inspect(reason)}"}
 
       {:error, _, reason, _} ->
         {:error, :internal_server_error, "处理失败: #{inspect(reason)}"}
@@ -213,9 +225,11 @@ defmodule FlixBackend.PaymentService do
       ]
 
       # 发送系统通知
+      message_id = "server-#{:os.system_time(:millisecond)}"
       Messaging.send_system_notification(
         buyer.uid, # 充值用户
-        content
+        content,
+        message_id
       )
     end
   end
@@ -343,22 +357,35 @@ defmodule FlixBackend.PaymentService do
       end
     end)
     |> Multi.run(:get_product, fn repo, %{get_order: order} ->
-      case repo.get(Product, order.product_id) do
-        nil -> {:error, :product_not_found}
-        product -> {:ok, product}
-      end
-    end)
-    |> Multi.run(:validate_product_status, fn _repo, %{get_product: product} ->
-      if product.status == :available do
-        {:ok, product}
+      # Only try to get product if it's a product order
+      if order.order_type == "product" && order.product_id do
+        case repo.get(Product, order.product_id) do
+          nil -> {:error, :product_not_found}
+          product -> {:ok, product}
+        end
       else
-        {:error, :product_not_available}
+        {:ok, nil} # Not a product order or no product_id, pass nil
       end
     end)
-    |> Multi.run(:update_product, fn repo, %{get_product: product} ->
-      product
-      |> Product.changeset(%{status: :sold})
-      |> repo.update()
+    |> Multi.run(:validate_product_status, fn _repo, %{get_order: order, get_product: product} ->
+      if order.order_type == "product" do
+        if product && product.status == :available do
+          {:ok, product}
+        else
+          if !product, do: {:error, :product_not_found}, else: {:error, :product_not_available}
+        end
+      else
+        {:ok, nil} # Not a product order
+      end
+    end)
+    |> Multi.run(:update_product, fn repo, %{get_order: order, get_product: product} ->
+      if order.order_type == "product" && product do
+        product
+        |> Product.changeset(%{status: :sold})
+        |> repo.update()
+      else
+        {:ok, nil} # Not a product order or no product to update
+      end
     end)
     |> Multi.run(:update_order, fn repo, %{get_order: order} ->
       order
@@ -368,35 +395,56 @@ defmodule FlixBackend.PaymentService do
       })
       |> repo.update()
     end)
-    |> Multi.run(:cancel_other_orders, fn repo, %{get_order: order} ->
-      from(o in Order,
-        where: o.product_id == ^order.product_id and o.order_id != ^order.order_id
-      )
-      |> repo.update_all(set: [status: :cancelled, cancel_reason: "商品已售出"])
-      {:ok, nil}
+    |> Multi.run(:update_user_product_lists, fn repo, %{update_order: paid_order} ->
+      # If the order type is "product", update seller's sold list and buyer's purchased list
+      OrderService.update_seller_and_buyer_product_lists_transactional(repo, paid_order)
     end)
-    |> Multi.run(:update_payment, fn repo, _ ->
-      payment
+    |> Multi.run(:cancel_other_orders, fn repo, %{update_user_product_lists: paid_order} ->
+      # Only cancel other orders if it's a product order
+      if paid_order.order_type == "product" && paid_order.product_id do
+        from(o in Order,
+          where: o.product_id == ^paid_order.product_id and o.order_id != ^paid_order.order_id
+        )
+        |> repo.update_all(set: [status: :cancelled, cancel_reason: "商品已售出"])
+        |> case do
+             {:ok, _} -> {:ok, nil}
+             {:error, reason} -> {:error, reason} # Propagate error
+           end
+      else
+        {:ok, nil} # Not a product order
+      end
+    end)
+    |> Multi.run(:update_payment, fn repo, _ -> # _ contains all previous successful steps
+      payment # The original payment object passed to the function
       |> Payment.changeset(%{status: :success})
       |> repo.update()
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{update_order: order}} ->
+      # The order for notification should be from update_user_product_lists
+      {:ok, %{update_user_product_lists: order, update_payment: _}} ->
         # 发送支付成功通知
-        notify_payment_success(order)
+        notify_payment_success(order) # Uses the order that has been processed by list updates
         {:ok, order}
 
       {:error, :get_order, :order_not_found, _} ->
         {:error, :order_not_found}
 
+      # Error from :get_product or :validate_product_status if product_id was present
       {:error, :get_product, :product_not_found, _} ->
         {:error, :product_not_found}
-
+      {:error, :validate_product_status, :product_not_found, _} ->
+        {:error, :product_not_found} # If product became nil due to race or issue
       {:error, :validate_product_status, :product_not_available, _} ->
         {:error, :product_not_available}
 
-      {:error, _, reason, _} ->
+      {:error, :update_user_product_lists, {:error, :user_not_found_for_list_update}, _} ->
+        {:error, :internal_server_error, "更新用户商品列表时用户不存在"}
+
+      {:error, :update_user_product_lists, {:error, reason}, _changes} ->
+        {:error, :internal_server_error, "处理失败: #{inspect(reason)}"}
+
+      {:error, _, reason, _} -> # Catch-all for other Multi errors
         {:error, reason}
     end
   end
@@ -420,33 +468,38 @@ defmodule FlixBackend.PaymentService do
       end
     end)
     |> Multi.run(:validate_status, fn _repo, %{get_order: order} ->
-      if order.status in [:pending_payment, :pending_shipment] do
+      if order.status in [:payment_pending, :pending_shipment] do # Corrected status atom here
         {:ok, order}
       else
         {:error, :invalid_status}
       end
     end)
     |> Multi.run(:get_product, fn repo, %{get_order: order} ->
-      case repo.get(Product, order.product_id) do
-        nil -> {:error, :product_not_found}
-        product -> {:ok, product}
+      # Only fetch product if it is a product order
+      if order.order_type == "product" && order.product_id do
+        case repo.get(Product, order.product_id) do
+          nil -> {:error, :product_not_found}
+          product -> {:ok, product}
+        end
+      else
+        {:ok, nil} # Not a product order, or no product_id
       end
     end)
     |> Multi.run(:update_product_status, fn repo, %{get_product: product, get_order: order} ->
-      # 只有在订单状态为 pending_payment 且商品状态为 :available 时才恢复商品状态
-      if order.status == :pending_payment and product.status == :available do
+      # Only update product status if it's a product order and product exists
+      if order.order_type == "product" && product && order.status == :payment_pending and product.status == :sold do # Check if product was marked sold
         product
         |> Product.changeset(%{status: :available})
         |> repo.update()
       else
-        {:ok, product}
+        {:ok, product} # Proceed without error if not applicable or no change needed
       end
     end)
     |> Multi.run(:update_order, fn repo, %{get_order: order} ->
       order
       |> Order.changeset(%{
         status: :cancelled,
-        # cancel_reason: cancel_reason,
+        # cancel_reason: cancel_reason, # Assuming cancel_reason is handled or stored elsewhere if needed
         # cancel_time: DateTime.to_unix(DateTime.utc_now())
       })
       |> repo.update()
@@ -466,6 +519,11 @@ defmodule FlixBackend.PaymentService do
       {:error, :validate_status, :invalid_status, _} ->
         {:error, :invalid_status}
 
+      # Handle potential error from :get_product if it was a product order
+      {:error, :get_product, :product_not_found, _} ->
+        {:error, :product_not_found}
+
+      # Catch-all for other Multi errors, including from :update_product_status or :update_order
       {:error, _, reason, _} ->
         {:error, reason}
     end
@@ -499,11 +557,12 @@ defmodule FlixBackend.PaymentService do
       ]
 
       # 发送私信
+      message_id = "#{buyer.uid}-#{:os.system_time(:millisecond)}"
       Messaging.send_private_message(
         buyer.uid,  # 买家作为发送者
         seller.uid, # 卖家作为接收者
         content,
-        order.order_id
+        message_id
       )
     end
   end
@@ -524,11 +583,12 @@ defmodule FlixBackend.PaymentService do
       ]
 
       # 发送私信
+      message_id = "#{buyer.uid}-#{:os.system_time(:millisecond)}"
       Messaging.send_private_message(
         buyer.uid,  # 买家作为发送者
         seller.uid, # 卖家作为接收者
         content,
-        order.order_id
+        message_id
       )
     end
   end
@@ -549,11 +609,12 @@ defmodule FlixBackend.PaymentService do
       ]
 
       # 发送私信
+      message_id = "#{seller.uid}-#{:os.system_time(:millisecond)}"
       Messaging.send_private_message(
         seller.uid, # 卖家作为发送者
         buyer.uid,  # 买家作为接收者
         content,
-        order.order_id
+        message_id
       )
     end
   end
@@ -574,11 +635,12 @@ defmodule FlixBackend.PaymentService do
       ]
 
       # 发送私信
+      message_id = "#{buyer.uid}-#{:os.system_time(:millisecond)}"
       Messaging.send_private_message(
         buyer.uid,  # 买家作为发送者
         seller.uid, # 卖家作为接收者
         content,
-        order.order_id
+        message_id
       )
     end
   end
@@ -599,11 +661,12 @@ defmodule FlixBackend.PaymentService do
       ]
 
       # 发送私信
+      message_id = "#{seller.uid}-#{:os.system_time(:millisecond)}"
       Messaging.send_private_message(
         seller.uid, # 卖家作为发送者
         buyer.uid,  # 买家作为接收者
         content,
-        order.order_id
+        message_id
       )
     end
   end
@@ -624,11 +687,12 @@ defmodule FlixBackend.PaymentService do
       ]
 
       # 发送私信
+      message_id = "#{seller.uid}-#{:os.system_time(:millisecond)}"
       Messaging.send_private_message(
         seller.uid, # 卖家作为发送者
         buyer.uid,  # 买家作为接收者
         content,
-        order.order_id
+        message_id
       )
     end
   end

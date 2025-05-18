@@ -1,12 +1,36 @@
 *.iml
-/.gradle
-/.idea/
-/.kotlin/
-/release/
+.gradle/
+.idea/
+.kotlin/
+release/
 /local.properties
 .DS_Store
-/build/
+build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# Generated files
+bin/
+gen/
+out/
+
+# Android Studio Navigation editor temp files
+.navigation/
+
+# Android Studio captures folder
+captures/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services (e.g. APIs or Firebase)
+google-services.json
+
+# Android Profiling
+*.hprof
+
+# Signing files
+.signing/

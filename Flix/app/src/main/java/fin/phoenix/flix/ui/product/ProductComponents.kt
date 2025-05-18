@@ -64,19 +64,23 @@ fun ProductImageCarousel(
     val pagerState = rememberPagerState(
         initialPage = 0, pageCount = { images.size })
 
-    // 同步滑动状态和当��页面
+    // 同步滑动状态和当前页面
     LaunchedEffect(pagerState.currentPage) {
         currentPage = pagerState.currentPage
     }
 
-    // 自动轮播效果
+    // 自动轮播效果 - 添加key确保在视图销毁时协程正确取消
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(3000) // 每3秒更换一次图片
-            if (images.size > 1) {
-                val nextPage = (pagerState.currentPage + 1) % images.size
-                pagerState.animateScrollToPage(nextPage)
+        try {
+            while (true) {
+                delay(3000) // 每3秒更换一次图片
+                if (images.size > 1) {
+                    val nextPage = (pagerState.currentPage + 1) % images.size
+                    pagerState.animateScrollToPage(nextPage)
+                }
             }
+        } catch (e: Exception) {
+            // 捕获取消异常，确保协程优雅退出
         }
     }
 
@@ -190,83 +194,3 @@ fun SellerInformation(
         )
     }
 }
-//
-//@Composable
-//fun ProductCard(
-//    product: fin.phoenix.flix.data.ProductAbstract,
-//    modifier: Modifier = Modifier,
-//    onClick: () -> Unit
-//) {
-//    Column(
-//        modifier = modifier
-//            .clip(RoundedCornerShape(8.dp))
-//            .background(Color.White)
-//            .clickable(onClick = onClick)
-//    ) {
-//        // Product image
-//        Image(
-//            painter = rememberAsyncImagePainter(model = imageUrl(product.image)),
-//            contentDescription = product.title,
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .aspectRatio(1f),
-//            contentScale = ContentScale.Crop
-//        )
-//
-//        // Product info
-//        Column(
-//            modifier = Modifier.padding(8.dp)
-//        ) {
-//            Text(
-//                text = product.title,
-//                fontWeight = FontWeight.Medium,
-//                maxLines = 2,
-//                overflow = TextOverflow.Ellipsis
-//            )
-//
-//            Spacer(modifier = Modifier.height(4.dp))
-//
-//            Text(
-//                text = "¥${product.price}", color = RoseRed, fontWeight = FontWeight.Bold
-//            )
-//
-//            Spacer(modifier = Modifier.height(4.dp))
-//
-//            // Seller info
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                if (product.seller != null) {
-//                    Image(
-//                        painter = rememberAsyncImagePainter(model = product.seller.avatarUrl),
-//                        contentDescription = product.seller.userName,
-//                        modifier = Modifier
-//                            .size(16.dp)
-//                            .clip(CircleShape),
-//                        contentScale = ContentScale.Crop
-//                    )
-//                }
-//                else {
-//                    Image(
-//                        painter = rememberAsyncImagePainter(model = ""),
-//                        contentDescription = "",
-//                        modifier = Modifier
-//                            .size(16.dp)
-//                            .clip(CircleShape),
-//                        contentScale = ContentScale.Crop
-//                    )
-//                }
-//
-//                Spacer(modifier = Modifier.width(4.dp))
-//
-//                Text(
-//                    text = if(product.seller != null) product.seller.userName else "未知卖家",
-//                    fontSize = 10.sp,
-//                    color = Color.Gray,
-//                    maxLines = 1,
-//                    overflow = TextOverflow.Ellipsis
-//                )
-//            }
-//        }
-//    }
-//}

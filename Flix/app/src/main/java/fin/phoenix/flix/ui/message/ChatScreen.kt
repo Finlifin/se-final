@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +71,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import fin.phoenix.flix.api.ConnectionState
+import fin.phoenix.flix.data.Comment
 import fin.phoenix.flix.data.ContentTypes
 import fin.phoenix.flix.data.Message
 import fin.phoenix.flix.data.MessageContentItem
@@ -81,6 +83,7 @@ import fin.phoenix.flix.repository.ImageRepository
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.ui.home.ProductCard
+import fin.phoenix.flix.ui.product.CommentAsMessage
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.formatTime
 import fin.phoenix.flix.util.imageUrl
@@ -407,10 +410,16 @@ fun MessageItem(
                     topEnd = if (isOutgoing) 0.dp else 8.dp,
                     bottomStart = 8.dp,
                     bottomEnd = 8.dp
-                ), color = if (isOutgoing) RoseRed else Color.White
+                ),
+                color = if (isOutgoing) RoseRed else Color.White,
+                // 添加阴影效果
+                shadowElevation = 4.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier
+                        .padding(8.dp)
+                        // 添加透明背景
+                        .background(Color.Transparent),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     for (content in message.content) {
@@ -435,6 +444,44 @@ fun MessageItem(
                                 )
                             }
 
+                            "comment" -> {
+                                // 使用CommentAsMessage组件处理评论类型消息
+                                when (content.payload) {
+                                    is Comment -> {
+                                        // 直接是Comment对象的情况
+                                        val comment = content.payload as Comment
+                                        fin.phoenix.flix.ui.product.CommentAsMessage(
+                                            comment = comment,
+                                            isReply = isOutgoing,
+                                            onClick = { /* 处理点击事件 */ },
+                                            onLikeClick = { /* 处理点赞事件 */ },
+                                            navController = navController
+                                        )
+                                    }
+                                    is Map<*, *> -> {
+                                        // 评论数据是Map的情况
+                                        val commentMap = content.payload as Map<*, *>
+                                        val commentText = commentMap["content"] as? String ?: "[评论内容]"
+                                        Text(
+                                            text = "评论: $commentText",
+                                            color = if (isOutgoing) Color.White else Color.Black
+                                        )
+                                    }
+                                    else -> {
+                                        // 其他情况，简单显示文本
+                                        val commentText = if (content.payload is String) {
+                                            content.payload as String
+                                        } else {
+                                            "[评论]"
+                                        }
+                                        Text(
+                                            text = commentText,
+                                            color = if (isOutgoing) Color.White else Color.Black
+                                        )
+                                    }
+                                }
+                            }
+
                             "product" -> {
                                 val product = content.payload as? Product
                                 if (product != null) {
@@ -454,10 +501,20 @@ fun MessageItem(
                                 if (payload != null) {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth(0.8f),
-                                        color = Color(0xFFF5F5F5)
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.8f)
+                                            .clickable {
+                                                navController.navigate("/orders/${payload.orderId}")
+                                            },
+                                        color = Color(0xFFF5F5F5),
+                                        // 为订单卡片添加阴影
+                                        shadowElevation = 2.dp
                                     ) {
-                                        Column(modifier = Modifier.padding(8.dp)) {
+                                        Column(
+                                            modifier = Modifier
+                                                .padding(8.dp)
+                                                .background(Color.Transparent)
+                                        ) {
                                             Text(
                                                 text = "[订单]",
                                                 fontSize = 12.sp,
@@ -624,20 +681,6 @@ fun MessageItem(
                     }
                 }
             }
-
-//            if (isOutgoing && message.status != "withdrawn") {
-//                Spacer(modifier = Modifier.width(8.dp))
-//                IconButton(
-//                    onClick = onWithdrawClick, modifier = Modifier.size(24.dp)
-//                ) {
-//                    Icon(
-//                        Icons.AutoMirrored.Filled.Undo,
-//                        contentDescription = "撤回消息",
-//                        tint = Color.Gray,
-//                        modifier = Modifier.size(16.dp)
-//                    )
-//                }
-//            }
         }
     }
 }

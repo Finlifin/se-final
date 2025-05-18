@@ -262,7 +262,7 @@ defmodule FlixBackend.Messaging do
   - {:ok, message} 成功
   - {:error, reason} 失败
   """
-  def send_private_message(sender_id, receiver_id, content, message_id) do
+  def send_private_message(sender_id, receiver_id, content, message_id, for_two \\ true) do
     # 创建消息参数
     message_params = %{
       message_id: message_id,
@@ -273,8 +273,8 @@ defmodule FlixBackend.Messaging do
       read: false
     }
 
-    # 保存消息并广播
-    create_message(message_params)
+# 保存消息并广播
+    create_message(message_params, for_two)
   end
 
   @doc """
@@ -349,7 +349,7 @@ defmodule FlixBackend.Messaging do
   end
 
   # 创建消息并广播
-  defp create_message(params) do
+  defp create_message(params, for_two \\ true) do
     changeset = Message.changeset(%Message{}, params)
 
     case Repo.insert(changeset) do
@@ -358,6 +358,14 @@ defmodule FlixBackend.Messaging do
         if message.receiver do
           FlixBackendWeb.Endpoint.broadcast!(
             "user:#{message.receiver}",
+            "new_message",
+            %{message: message}
+          )
+        end
+
+        if for_two and message.sender do
+          FlixBackendWeb.Endpoint.broadcast!(
+            "user:#{message.sender}",
             "new_message",
             %{message: message}
           )

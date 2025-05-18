@@ -6,6 +6,7 @@ import fin.phoenix.flix.data.User
 import fin.phoenix.flix.data.UserAbstract
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface AuthService {
@@ -44,6 +45,12 @@ interface AuthService {
      */
     @POST("auth/reset_password")
     suspend fun resetPassword(@Body request: ResetPasswordRequest): Response<GenericApiResponse<Unit>>
+
+    /**
+     * 检查当前用户是否已设置密码
+     */
+    @GET("auth/check_password")
+    suspend fun checkPasswordSet(): Response<GenericApiResponse<CheckPasswordResponse>>
 }
 
 // 登录请求
@@ -105,4 +112,9 @@ data class ResetPasswordRequest(
     @SerializedName("phone_number") val phoneNumber: String,
     @SerializedName("sms_code") val smsCode: String,
     @SerializedName("new_password") val newPassword: String
+)
+
+// 检查密码是否已设置响应
+data class CheckPasswordResponse(
+    @SerializedName("has_password") val hasPassword: Boolean
 )

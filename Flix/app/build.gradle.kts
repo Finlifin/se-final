@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     // Add kapt for Room
     kotlin("kapt")
+    id("kotlin-parcelize")
 }
 
 android {

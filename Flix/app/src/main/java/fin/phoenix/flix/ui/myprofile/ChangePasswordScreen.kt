@@ -23,7 +23,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.repository.AuthRepository
@@ -40,21 +39,33 @@ fun ChangePasswordScreen(navController: NavController) {
     val authRepository = remember { AuthRepository(context) }
     val userManager = UserManager.getInstance(context)
 
-    // 用于标识用户是否有密码（影响UI展示和API调用）
-    // 这里应该通过ViewModel或其他方式获取用户是否已有密码的信息
-    var hasExistingPassword by remember { mutableStateOf(true) }
+    // 用于标识用户是否有密码（默认为null，表示正在加载）
+    var hasExistingPassword by remember { mutableStateOf<Boolean?>(null) }
+    
+    // 检查用户是否已设置密码
+    LaunchedEffect(key1 = Unit) {
+        coroutineScope.launch {
+            val passwordResult = authRepository.checkPasswordSet()
+            if (passwordResult is Resource.Success) {
+                hasExistingPassword = passwordResult.data
+            } else {
+                // 如果API调用失败，默认显示设置密码界面
+                hasExistingPassword = false
+                Toast.makeText(context, "获取密码状态失败，将显示设置密码界面", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     
     // 模式切换 - 修改密码/设置密码
-    var passwordMode by remember { mutableStateOf(if (hasExistingPassword) "修改密码" else "设置密码") }
+    val screenTitle = when(hasExistingPassword) {
+        true -> "修改密码"
+        false -> "设置密码"
+        null -> "加载中..." // 正在加载状态
+    }
 
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    
-    // 短信验证相关（用于无密码用户）
-    var phoneNumber by remember { mutableStateOf("") }
-    var smsCode by remember { mutableStateOf("") }
-    var showSmsOption by remember { mutableStateOf(!hasExistingPassword) }
     
     var oldPasswordVisible by remember { mutableStateOf(false) }
     var newPasswordVisible by remember { mutableStateOf(false) }
@@ -116,37 +127,11 @@ fun ChangePasswordScreen(navController: NavController) {
             }
         }
     }
-    
-    // 发送短信验证码
-    fun sendSmsCode() {
-        if (phoneNumber.isBlank()) {
-            Toast.makeText(context, "请输入手机号", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        coroutineScope.launch {
-            isLoading = true
-            val result = authRepository.sendSmsCode(phoneNumber)
-            isLoading = false
-            
-            when (result) {
-                is Resource.Success -> {
-                    Toast.makeText(context, "验证码已发送", Toast.LENGTH_SHORT).show()
-                }
-                is Resource.Error -> {
-                    Toast.makeText(context, result.message ?: "发送验证码失败", Toast.LENGTH_SHORT).show()
-                }
-                else -> {
-                    Toast.makeText(context, "发送验证码出现未知错误", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(passwordMode) },
+                title = { Text(screenTitle) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -165,210 +150,123 @@ fun ChangePasswordScreen(navController: NavController) {
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // 切换模式 - 修改密码/设置密码
-                Row(
+            // 如果密码状态仍在加载，显示进度指示器
+            if (hasExistingPassword == null) {
+                CircularProgressIndicator(color = RoseRed)
+            } else {
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Button(
-                        onClick = {
-                            passwordMode = "修改密码"
-                            showSmsOption = false
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (passwordMode == "修改密码") RoseRed else Color.LightGray
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("修改密码")
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Button(
-                        onClick = {
-                            passwordMode = "设置密码"
-                            showSmsOption = true
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (passwordMode == "设置密码") RoseRed else Color.LightGray
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("设置密码")
-                    }
-                }
-                
-                if (showSmsOption) {
-                    // 手机号输入框（仅在设置密码模式下显示）
-                    CustomTextField(
-                        value = phoneNumber,
-                        onValueChange = { phoneNumber = it },
-                        label = "手机号码",
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-                    )
-                    
-                    // 短信验证码输入框和获取验证码按钮
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    // 仅在修改密码模式下显示旧密码输入框
+                    if (hasExistingPassword == true) {
                         CustomTextField(
-                            value = smsCode,
-                            onValueChange = { smsCode = it },
-                            label = "验证码",
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            value = oldPassword,
+                            onValueChange = { oldPassword = it },
+                            label = "当前密码",
+                            leadingIcon = {
+                                Icon(Icons.Default.Lock, contentDescription = "Password")
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (oldPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Toggle password visibility",
+                                    modifier = Modifier.clickable { oldPasswordVisible = !oldPasswordVisible }
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            visualTransformation = if (oldPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
                         )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Button(
-                            onClick = { sendSmsCode() },
-                            enabled = !isLoading && phoneNumber.isNotBlank(),
-                            colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
-                        ) {
-                            Text("获取验证码")
-                        }
+                    } else {
+                        Text(
+                            text = "您还未设置密码，请设置一个新密码",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
-                } else {
-                    // 旧密码输入框（仅在修改密码模式下显示）
+                    
+                    // 新密码输入框
                     CustomTextField(
-                        value = oldPassword,
-                        onValueChange = { oldPassword = it },
-                        label = "当前密码",
+                        value = newPassword,
+                        onValueChange = { 
+                            newPassword = it
+                            // 检查密码强度
+                            checkPasswordStrength(it) 
+                        },
+                        label = "新密码",
                         leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = "Password")
+                            Icon(Icons.Default.Lock, contentDescription = "New Password")
                         },
                         trailingIcon = {
                             Icon(
-                                imageVector = if (oldPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                imageVector = if (newPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                 contentDescription = "Toggle password visibility",
-                                modifier = Modifier.clickable { oldPasswordVisible = !oldPasswordVisible }
+                                modifier = Modifier.clickable { newPasswordVisible = !newPasswordVisible }
                             )
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        visualTransformation = if (oldPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
+                        visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
                     )
-                }
-                
-                // 新密码输入框
-                CustomTextField(
-                    value = newPassword,
-                    onValueChange = { 
-                        newPassword = it
-                        // 检查密码强度
-                        checkPasswordStrength(it) 
-                    },
-                    label = "新密码",
-                    leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = "New Password")
-                    },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = if (newPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = "Toggle password visibility",
-                            modifier = Modifier.clickable { newPasswordVisible = !newPasswordVisible }
+                    
+                    // 密码强度提示
+                    passwordStrength?.let {
+                        Text(
+                            text = it,
+                            color = passwordStrengthColor,
+                            fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.Start)
                         )
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
-                )
-                
-                // 密码强度提示
-                passwordStrength?.let {
+                    }
+                    
+                    // 密码要求提示
                     Text(
-                        text = it,
-                        color = passwordStrengthColor,
+                        text = "密码要求：6-16位字符，必须包含数字、大写字母、小写字母、特殊符号中的至少两种",
+                        color = Color.Gray,
                         fontSize = 12.sp,
                         modifier = Modifier.align(Alignment.Start)
                     )
-                }
-                
-                // 密码要求提示
-                Text(
-                    text = "密码要求：6-16位字符，必须包含数字、大写字母、小写字母、特殊符号中的至少两种",
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    modifier = Modifier.align(Alignment.Start)
-                )
-                
-                // 确认密码输入框
-                CustomTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = "确认新密码",
-                    leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = "Confirm Password")
-                    },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = "Toggle password visibility",
-                            modifier = Modifier.clickable { confirmPasswordVisible = !confirmPasswordVisible }
-                        )
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
-                )
-                
-                // 错误信息显示
-                errorMessage?.let {
-                    Text(
-                        text = it,
-                        color = Color.Red,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(top = 8.dp)
+                    
+                    // 确认密码输入框
+                    CustomTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = "确认新密码",
+                        leadingIcon = {
+                            Icon(Icons.Default.Lock, contentDescription = "Confirm Password")
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle password visibility",
+                                modifier = Modifier.clickable { confirmPasswordVisible = !confirmPasswordVisible }
+                            )
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
                     )
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 确认按钮
-                Button(
-                    onClick = {
-                        // 根据当前模式执行相应的密码操作
-                        if (passwordMode == "修改密码") {
-                            // 修改已有密码
-                            if (!validateUpdateInputs(context, oldPassword, newPassword, confirmPassword)) {
-                                return@Button
-                            }
-                            
-                            isLoading = true
-                            errorMessage = null
-                            
-                            coroutineScope.launch {
-                                val result = authRepository.updatePassword(oldPassword, newPassword)
-                                isLoading = false
-                                
-                                when (result) {
-                                    is Resource.Success -> {
-                                        Toast.makeText(context, "密码修改成功，请重新登录", Toast.LENGTH_LONG).show()
-                                        // 清除登录状态
-                                        userManager.clearCurrentUser()
-                                        // 跳转到登录页面，并清除回退栈
-                                        navController.navigate("/login") {
-                                            popUpTo("/home") { inclusive = true }
-                                        }
-                                    }
-                                    is Resource.Error -> {
-                                        errorMessage = result.message
-                                    }
-                                    else -> {
-                                        errorMessage = "修改密码时出现未知错误"
-                                    }
-                                }
-                            }
-                        } else {
-                            // 设置初始密码
-                            if (showSmsOption) {
-                                // 使用短信验证码设置密码
-                                if (!validateSetPasswordInputs(context, phoneNumber, smsCode, newPassword, confirmPassword)) {
+                    
+                    // 错误信息显示
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            color = Color.Red,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // 确认按钮
+                    Button(
+                        onClick = {
+                            // 根据当前模式执行相应的密码操作
+                            if (hasExistingPassword == true) {
+                                // 修改已有密码
+                                if (!validateUpdateInputs(context, oldPassword, newPassword, confirmPassword)) {
                                     return@Button
                                 }
                                 
@@ -376,12 +274,12 @@ fun ChangePasswordScreen(navController: NavController) {
                                 errorMessage = null
                                 
                                 coroutineScope.launch {
-                                    val result = authRepository.setInitialPasswordWithSms(phoneNumber, smsCode, newPassword)
+                                    val result = authRepository.updatePassword(oldPassword, newPassword)
                                     isLoading = false
                                     
                                     when (result) {
                                         is Resource.Success -> {
-                                            Toast.makeText(context, "密码设置成功，请登录", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "密码修改成功，请重新登录", Toast.LENGTH_LONG).show()
                                             // 清除登录状态
                                             userManager.clearCurrentUser()
                                             // 跳转到登录页面，并清除回退栈
@@ -393,7 +291,7 @@ fun ChangePasswordScreen(navController: NavController) {
                                             errorMessage = result.message
                                         }
                                         else -> {
-                                            errorMessage = "设置密码时出现未知错误"
+                                            errorMessage = "修改密码时出现未知错误"
                                         }
                                     }
                                 }
@@ -429,27 +327,27 @@ fun ChangePasswordScreen(navController: NavController) {
                                     }
                                 }
                             }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(25.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RoseRed),
+                        enabled = !isLoading && hasExistingPassword != null
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = if (hasExistingPassword == true) "确认修改" else "确认设置",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(25.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseRed),
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = if (passwordMode == "修改密码") "确认修改" else "确认设置",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
                 }
             }
@@ -467,35 +365,6 @@ private fun validateUpdateInputs(
     // 验证旧密码
     if (oldPassword.isEmpty()) {
         Toast.makeText(context, "请输入当前密码", Toast.LENGTH_SHORT).show()
-        return false
-    }
-    
-    return validateNewPasswordInputs(context, newPassword, confirmPassword)
-}
-
-// 验证设置初始密码的输入（使用短信验证码）
-private fun validateSetPasswordInputs(
-    context: Context,
-    phoneNumber: String,
-    smsCode: String,
-    newPassword: String,
-    confirmPassword: String
-): Boolean {
-    // 验证手机号
-    if (phoneNumber.isEmpty()) {
-        Toast.makeText(context, "请输入手机号", Toast.LENGTH_SHORT).show()
-        return false
-    }
-    
-    // 验证手机号格式
-    if (!phoneNumber.matches(Regex("^1\\d{10}$"))) {
-        Toast.makeText(context, "手机号格式不正确", Toast.LENGTH_SHORT).show()
-        return false
-    }
-    
-    // 验证验证码
-    if (smsCode.isEmpty()) {
-        Toast.makeText(context, "请输入验证码", Toast.LENGTH_SHORT).show()
         return false
     }
     
