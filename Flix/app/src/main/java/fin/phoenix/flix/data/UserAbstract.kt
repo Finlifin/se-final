@@ -13,7 +13,9 @@ import kotlinx.parcelize.Parcelize
 data class UserAbstract(
     @SerializedName("uid") val uid: String, // User ID
     @SerializedName("user_name") val userName: String, // Username
-    @SerializedName("avatar_url") val avatarUrl: String? // User avatar image URL
+    @SerializedName("avatar_url") val avatarUrl: String?, // User avatar image URL
+    @SerializedName("school_id") val schoolId: String? = null, // User's school ID
+    @SerializedName("campus_id") val campusId: String? = null  // User's campus ID
 ) : Parcelable
 
 val loadingUserAbstract = UserAbstract(

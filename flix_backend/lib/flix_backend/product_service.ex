@@ -19,6 +19,8 @@ defmodule FlixBackend.ProductService do
   - max_price: 可选的最高价格过滤
   - sort_by: 可选的排序字段
   - sort_order: 可选的排序方向
+  - available_status: 商品状态筛选
+  - campus_id: 可选的校区ID过滤
 
   ## 返回值
 
@@ -34,7 +36,8 @@ defmodule FlixBackend.ProductService do
         max_price \\ nil,
         sort_by \\ nil,
         sort_order \\ nil,
-        available_status \\ [:available, :sold]
+        available_status \\ [:available, :sold],
+        campus_id \\ nil
       ) do
     # 基础查询，排除 search_vector 字段
     query =
@@ -57,6 +60,7 @@ defmodule FlixBackend.ProductService do
             :favorite_count,
             :tags,
             :available_delivery_methods,
+            :campus_id,
             :inserted_at,
             :updated_at
           ])
@@ -73,6 +77,14 @@ defmodule FlixBackend.ProductService do
     query =
       if seller_id do
         from p in query, where: p.seller_id == ^seller_id
+      else
+        query
+      end
+
+    # 添加校区过滤
+    query =
+      if campus_id do
+        from p in query, where: p.campus_id == ^campus_id
       else
         query
       end
@@ -124,6 +136,7 @@ defmodule FlixBackend.ProductService do
                 :favorite_count,
                 :tags,
                 :available_delivery_methods,
+                :campus_id,
                 :inserted_at,
                 :updated_at
               ])

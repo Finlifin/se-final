@@ -6,12 +6,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import fin.phoenix.flix.data.Campus
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.repository.OrderRepository
 import fin.phoenix.flix.repository.PaymentRepository
 import fin.phoenix.flix.repository.ProductRepository
 import fin.phoenix.flix.repository.ProfileRepository
+import fin.phoenix.flix.repository.SchoolRepository
 import fin.phoenix.flix.util.Resource
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -22,6 +24,7 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
     private val userRepository = ProfileRepository(application.applicationContext)
     private val orderRepository = OrderRepository(application.applicationContext)
     private val paymentRepository = PaymentRepository(application.applicationContext)
+    private val schoolRepository = SchoolRepository(application.applicationContext)
 
     val currentUserId = application.applicationContext.getSharedPreferences("flix_prefs", 0)
         .getString("user_id", null) ?: ""
@@ -34,6 +37,9 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
 
     private val _isProductFavorite = MutableLiveData(false)
     val isProductFavorite: LiveData<Boolean> = _isProductFavorite
+
+    private val _campusState = MutableLiveData<Resource<Campus>>()
+    val campusState: LiveData<Resource<Campus>> = _campusState
 
     fun loadProductDetails(productId: String) {
         _productState.value = Resource.Loading
@@ -48,6 +54,12 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
                     loadSellerDetails(product.sellerId)
                     // 检查商品是否被收藏
                     checkIfProductIsFavorite(productId)
+                    // 如果商品有校区ID，加载校区信息
+                    if (product.campusId != null) {
+                        loadCampusDetails(product.campusId)
+                    } else {
+                        _campusState.value = Resource.Loading
+                    }
                 } else {
                     _productState.value = Resource.Error(
                         (productResponse as Resource.Error).message
@@ -70,6 +82,18 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
                 _sellerState.value = sellerResponse
             } catch (e: Exception) {
                 _sellerState.value = Resource.Error("获取卖家信息失败: ${e.message}")
+            }
+        }
+    }
+
+    private fun loadCampusDetails(campusId: String) {
+        _campusState.value = Resource.Loading
+        viewModelScope.launch {
+            try {
+                val campusResponse = schoolRepository.getCampus(campusId)
+                _campusState.value = campusResponse
+            } catch (e: Exception) {
+                _campusState.value = Resource.Error("获取校区信息失败: ${e.message}")
             }
         }
     }
@@ -182,6 +206,7 @@ class ProductDetailViewModel(application: Application) : AndroidViewModel(applic
         _productState.value = Resource.Loading
         _sellerState.value = Resource.Loading
         _isProductFavorite.value = false
+        _campusState.value = Resource.Loading
         // 取消所有可能的网络请求
         viewModelScope.launch {
             // 这里可以添加取消任何正在进行的网络请求

@@ -19,15 +19,29 @@ defmodule FlixBackendWeb.ProductController do
     sort_by = Map.get(params, "sort_by")
     sort_order = Map.get(params, "sort_order")
     available_status = Map.get(params, "_json", [:available, :sold])
-    IO.inspect(params)
 
-    case ProductService.get_products(offset, limit, category, seller_id, search_query, min_price, max_price, sort_by, sort_order, available_status) do
+    campus_id = Map.get(params, "campus_id")
+
+    case ProductService.get_products(
+           offset,
+           limit,
+           category,
+           seller_id,
+           search_query,
+           min_price,
+           max_price,
+           sort_by,
+           sort_order,
+           available_status,
+           campus_id
+         ) do
       {:ok, products, total_count} ->
-        products = Enum.map(products, fn product ->
-          images = Map.get(product, :images, [])
-          image = if length(images) > 0, do: List.first(images), else: nil
-          Map.put(product, :image, image)
-        end)
+        products =
+          Enum.map(products, fn product ->
+            images = Map.get(product, :images, [])
+            image = if length(images) > 0, do: List.first(images), else: nil
+            Map.put(product, :image, image)
+          end)
 
         currentPage = div(offset, limit) + 1
         totalPages = if total_count > 0, do: ceil(total_count / limit) |> trunc(), else: 1
@@ -35,6 +49,7 @@ defmodule FlixBackendWeb.ProductController do
         conn
         |> put_status(:ok)
         |> json(ApiResponse.product_list_response(products, total_count, currentPage, totalPages))
+
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
@@ -47,9 +62,11 @@ defmodule FlixBackendWeb.ProductController do
     case ProductService.get_product_by_id(id) do
       {:ok, product} ->
         ProductService.increment_view_count(id)
+
         conn
         |> put_status(:ok)
         |> json(ApiResponse.product_response(product))
+
       {:error, reason} ->
         conn
         |> put_status(:not_found)
@@ -65,6 +82,7 @@ defmodule FlixBackendWeb.ProductController do
   # 创建新产品
   def create(conn, params) do
     account = Guardian.Plug.current_resource(conn)
+
     product_params = %{
       seller_id: account.user_id,
       title: params["title"],
@@ -86,6 +104,7 @@ defmodule FlixBackendWeb.ProductController do
         conn
         |> put_status(:created)
         |> json(ApiResponse.product_response(product))
+
       {:error, changeset} ->
         conn
         |> put_status(:bad_request)
@@ -97,31 +116,35 @@ defmodule FlixBackendWeb.ProductController do
   def update(conn, %{"id" => id} = params) do
     account = Guardian.Plug.current_resource(conn)
 
-    product_params = %{}
-    |> add_param_if_exists(params, "title")
-    |> add_param_if_exists(params, "description")
-    |> add_param_if_exists(params, "price")
-    |> add_param_if_exists(params, "images")
-    |> add_param_if_exists(params, "category")
-    |> add_param_if_exists(params, "condition")
-    |> add_param_if_exists(params, "location")
-    |> add_param_if_exists(params, "status")
-    |> add_param_if_exists(params, "tags")
-    |> add_param_if_exists(params, "availableDeliveryMethods")
+    product_params =
+      %{}
+      |> add_param_if_exists(params, "title")
+      |> add_param_if_exists(params, "description")
+      |> add_param_if_exists(params, "price")
+      |> add_param_if_exists(params, "images")
+      |> add_param_if_exists(params, "category")
+      |> add_param_if_exists(params, "condition")
+      |> add_param_if_exists(params, "location")
+      |> add_param_if_exists(params, "status")
+      |> add_param_if_exists(params, "tags")
+      |> add_param_if_exists(params, "availableDeliveryMethods")
 
     case ProductService.update_product(id, product_params, account.user_id) do
       {:ok, product} ->
         conn
         |> put_status(:ok)
         |> json(ApiResponse.product_response(product))
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
         |> json(ApiResponse.error_response("产品不存在"))
+
       {:error, :unauthorized} ->
         conn
         |> put_status(:forbidden)
         |> json(ApiResponse.error_response("没有权限修改此产品"))
+
       {:error, changeset} ->
         conn
         |> put_status(:bad_request)
@@ -138,10 +161,12 @@ defmodule FlixBackendWeb.ProductController do
         conn
         |> put_status(:ok)
         |> json(ApiResponse.success_response("产品删除成功"))
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
         |> json(ApiResponse.error_response("产品不存在"))
+
       {:error, :unauthorized} ->
         conn
         |> put_status(:forbidden)
@@ -158,6 +183,7 @@ defmodule FlixBackendWeb.ProductController do
         conn
         |> put_status(:ok)
         |> json(ApiResponse.success_response("产品收藏成功"))
+
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
@@ -174,6 +200,7 @@ defmodule FlixBackendWeb.ProductController do
         conn
         |> put_status(:ok)
         |> json(ApiResponse.success_response("取消收藏成功"))
+
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
@@ -190,6 +217,7 @@ defmodule FlixBackendWeb.ProductController do
         conn
         |> put_status(:ok)
         |> json(ApiResponse.success_response("查询成功", is_favorite))
+
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
@@ -204,6 +232,7 @@ defmodule FlixBackendWeb.ProductController do
         conn
         |> put_status(:unauthorized)
         |> json(ApiResponse.unauthorized_response())
+
       current_user ->
         limit = Map.get(params, "limit", "10") |> String.to_integer() |> max(1)
         offset = Map.get(params, "offset", "1") |> String.to_integer() |> max(1)
@@ -215,7 +244,10 @@ defmodule FlixBackendWeb.ProductController do
 
             conn
             |> put_status(:ok)
-            |> json(ApiResponse.product_list_response(products, total_count, currentPage, totalPages))
+            |> json(
+              ApiResponse.product_list_response(products, total_count, currentPage, totalPages)
+            )
+
           {:error, reason} ->
             conn
             |> put_status(:bad_request)

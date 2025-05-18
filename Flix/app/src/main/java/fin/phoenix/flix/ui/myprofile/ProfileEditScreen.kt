@@ -6,26 +6,56 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,8 +63,6 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import fin.phoenix.flix.api.ProfileUpdateRequest
-import fin.phoenix.flix.api.toUpdateRequest
-import fin.phoenix.flix.data.User
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.imageUrl
@@ -47,7 +75,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     val userState by viewModel.userState.observeAsState(initial = Resource.Loading)
     val updateState by viewModel.updateState.observeAsState(initial = null)
     val avatarUpdateState by viewModel.avatarUpdateState.observeAsState(initial = null)
-    
+
     var userName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var addresses by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -58,15 +86,45 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     var isLoading by remember { mutableStateOf(false) }
     var isAvatarUploading by remember { mutableStateOf(false) }
 
-    // 预定义的学校和校区列表 (实际应用中应该从API获取)
-    val schoolOptions = listOf("未设置", "复旦大学", "上海交通大学", "同济大学", "华东师范大学")
-    val campusOptions = listOf("未设置", "邯郸校区", "枫林校区", "江湾校区", "张江校区")
+    // 收集学校和校区数据流
+    val schoolsState by viewModel.schoolsState.collectAsState()
+    val campusesState by viewModel.campusesState.collectAsState()
 
-    // Show error snackbar state
+    // 搜索学校状态
+    var schoolSearchQuery by remember { mutableStateOf("") }
+    var campusSearchQuery by remember { mutableStateOf("") }
+
+    // 显示的学校和校区名称（用于UI展示）
+    var schoolName by remember { mutableStateOf("未设置") }
+    var campusName by remember { mutableStateOf("未设置") }
+
+    // 底部表单状态
+    var showSchoolBottomSheet by remember { mutableStateOf(false) }
+    var showCampusBottomSheet by remember { mutableStateOf(false) }
+
+    // 新学校和新校区的对话框状态
+    var showAddSchoolDialog by remember { mutableStateOf(false) }
+    var showAddCampusDialog by remember { mutableStateOf(false) }
+
+    // 新学校和新校区的输入状态
+    var newSchoolName by remember { mutableStateOf("") }
+    var newSchoolCode by remember { mutableStateOf("未知代码") }
+    var newCampusName by remember { mutableStateOf("") }
+    var newCampusAddress by remember { mutableStateOf("") }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
+
+    // 当搜索查询变化时执行即时搜索
+    LaunchedEffect(schoolSearchQuery) {
+        if (schoolSearchQuery.length > 1) {
+            viewModel.searchSchools(schoolSearchQuery)
+        } else if (schoolSearchQuery.isEmpty()) {
+            viewModel.loadSchools()
+        }
+    }
 
     // Load user data when screen is first displayed
     LaunchedEffect(userId) {
@@ -81,8 +139,20 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
             phone = user.phoneNumber
             addresses = user.addresses
             currentAddress = user.currentAddress ?: ""
-            schoolId = user.schoolId ?: "未设置"
-            campusId = user.campusId ?: "未设置"
+            schoolId = user.schoolId ?: ""
+            campusId = user.campusId ?: ""
+
+            // 如果用户已选择学校，加载相应的校区
+            if (!schoolId.isNullOrBlank() && schoolId != "未设置") {
+                viewModel.loadCampuses(schoolId)
+            }
+        }
+    }
+
+    // 当学校ID变化时，加载对应的校区列表
+    LaunchedEffect(schoolId) {
+        if (!schoolId.isBlank() && schoolId != "未设置") {
+            viewModel.loadCampuses(schoolId)
         }
     }
 
@@ -92,16 +162,18 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
             is Resource.Success<*> -> {
                 navController.popBackStack()
             }
+
             is Resource.Error -> {
                 isLoading = false
                 scope.launch {
                     snackbarHostState.showSnackbar("保存失败: ${(updateState as Resource.Error).message}")
                 }
             }
+
             else -> {}
         }
     }
-    
+
     // Handle avatar update state changes
     LaunchedEffect(avatarUpdateState) {
         when (avatarUpdateState) {
@@ -111,15 +183,18 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                     snackbarHostState.showSnackbar("头像上传成功")
                 }
             }
+
             is Resource.Error -> {
                 isAvatarUploading = false
                 scope.launch {
                     snackbarHostState.showSnackbar("头像上传失败: ${(avatarUpdateState as Resource.Error).message}")
                 }
             }
+
             is Resource.Loading -> {
                 isAvatarUploading = true
             }
+
             else -> {}
         }
     }
@@ -128,7 +203,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { 
+        uri?.let {
             avatarUri = it
             // 上传头像到服务器
             if (userState is Resource.Success<ProfileUpdateRequest>) {
@@ -144,60 +219,52 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("编辑个人资料") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            isLoading = true
-                            if (userState is Resource.Success<ProfileUpdateRequest>) {
-                                val currentUser = (userState as Resource.Success<ProfileUpdateRequest>).data
-                                val updatedUser = currentUser.copy(
-                                    userName = userName,
-                                    addresses = addresses,
-                                    currentAddress = currentAddress.takeIf { it.isNotBlank() && it != "未设置" },
-                                    schoolId = schoolId.takeIf { it.isNotBlank() && it != "未设置" },
-                                    campusId = campusId.takeIf { it.isNotBlank() && it != "未设置" }
-                                )
-                                viewModel.updateProfile(updatedUser) { success ->
-                                    if (success) {
-                                        Toast.makeText(context, "保存成功", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        isLoading = false
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("保存失败，请重试")
-                                        }
-                                    }
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text("编辑个人资料") }, navigationIcon = {
+            IconButton(onClick = { navController.popBackStack() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            }
+        }, actions = {
+            TextButton(
+                onClick = {
+                    isLoading = true
+                    if (userState is Resource.Success<ProfileUpdateRequest>) {
+                        val currentUser = (userState as Resource.Success<ProfileUpdateRequest>).data
+                        val updatedUser = currentUser.copy(
+                            userName = userName,
+                            addresses = addresses,
+                            currentAddress = currentAddress.takeIf { it.isNotBlank() && it != "未设置" },
+                            schoolId = schoolId.takeIf { it.isNotBlank() && it != "未设置" },
+                            campusId = campusId.takeIf { it.isNotBlank() && it != "未设置" })
+                        viewModel.updateProfile(updatedUser) { success ->
+                            if (success) {
+                                Toast.makeText(context, "保存成功", Toast.LENGTH_SHORT).show()
+                            } else {
+                                isLoading = false
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("保存失败，请重试")
                                 }
                             }
-                        },
-                        enabled = !isLoading && !isAvatarUploading && userName.isNotBlank()
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("保存", color = RoseRed)
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
-            )
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { paddingValues ->
+                }, enabled = !isLoading && !isAvatarUploading && userName.isNotBlank()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("保存", color = RoseRed)
+                }
+            }
+        }, colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.White
+        )
+        )
+    }, snackbarHost = { SnackbarHost(hostState = snackbarHostState) }) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -208,17 +275,15 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
             when (userState) {
                 is Resource.Loading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = RoseRed)
                     }
                 }
-                
+
                 is Resource.Error -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "加载失败：${(userState as Resource.Error).message}",
@@ -226,10 +291,10 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                         )
                     }
                 }
-                
+
                 is Resource.Success -> {
                     val user = (userState as Resource.Success<ProfileUpdateRequest>).data
-                    
+
                     // Avatar section
                     Box(
                         modifier = Modifier
@@ -245,8 +310,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(LocalContext.current)
                                         .data(avatarUri ?: imageUrl(user.avatarUrl ?: ""))
-                                        .crossfade(true)
-                                        .build(),
+                                        .crossfade(true).build(),
                                     contentDescription = "头像",
                                     modifier = Modifier
                                         .size(100.dp)
@@ -254,7 +318,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                                         .background(Color.LightGray),
                                     contentScale = ContentScale.Crop
                                 )
-                                
+
                                 // Edit icon overlay
                                 IconButton(
                                     onClick = { if (!isAvatarUploading) imagePicker.launch("image/*") },
@@ -280,22 +344,21 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                                     }
                                 }
                             }
-                            
+
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                if (isAvatarUploading) "正在上传..." else "点击更换头像", 
-                                color = Color.Gray, 
+                                if (isAvatarUploading) "正在上传..." else "点击更换头像",
+                                color = Color.Gray,
                                 fontSize = 14.sp
                             )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     // Form sections
                     FormSection(
-                        title = "基本信息",
-                        icon = Icons.Default.Person
+                        title = "基本信息", icon = Icons.Default.Person
                     ) {
                         EnhancedFormField(
                             label = "用户名",
@@ -303,9 +366,9 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                             onValueChange = { userName = it },
                             icon = Icons.Default.EditNote
                         )
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         EnhancedFormField(
                             label = "手机号",
                             value = phone,
@@ -314,121 +377,104 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                             icon = Icons.Default.Phone
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     // School & Campus Section
                     FormSection(
-                        title = "学校信息",
-                        icon = Icons.Default.School
+                        title = "学校信息", icon = Icons.Default.School
                     ) {
-                        // School Dropdown
-                        var schoolExpanded by remember { mutableStateOf(false) }
+                        // School selector
                         Column {
                             Text(
                                 text = "学校",
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
-                            
-                            ExposedDropdownMenuBox(
-                                expanded = schoolExpanded,
-                                onExpandedChange = { schoolExpanded = it },
-                            ) {
-                                OutlinedTextField(
-                                    value = schoolId,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor(),
-                                    trailingIcon = { 
-                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = schoolExpanded) 
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.School, contentDescription = null, tint = RoseRed)
-                                    },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = RoseRed,
-                                        unfocusedBorderColor = Color.Gray
+
+                            OutlinedTextField(
+                                value = schoolName,
+                                onValueChange = {},
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showSchoolBottomSheet = true },
+                                placeholder = { Text("点击选择学校", modifier = Modifier.clickable {showSchoolBottomSheet = true}) },
+                                readOnly = true,
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.School,
+                                        contentDescription = null,
+                                        tint = RoseRed
                                     )
-                                )
-                                
-                                ExposedDropdownMenu(
-                                    expanded = schoolExpanded,
-                                    onDismissRequest = { schoolExpanded = false }
-                                ) {
-                                    schoolOptions.forEach { option ->
-                                        DropdownMenuItem(
-                                            text = { Text(option) },
-                                            onClick = { 
-                                                schoolId = option
-                                                schoolExpanded = false
-                                            }
+                                },
+                                trailingIcon = {
+                                    IconButton(onClick = { showSchoolBottomSheet = true }) {
+                                        Icon(
+                                            Icons.Default.ArrowDropDown,
+                                            contentDescription = "选择学校"
                                         )
                                     }
-                                }
-                            }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
+                                )
+                            )
                         }
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Campus Dropdown
-                        var campusExpanded by remember { mutableStateOf(false) }
+
+                        // Campus selector
                         Column {
                             Text(
                                 text = "校区",
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
-                            
-                            ExposedDropdownMenuBox(
-                                expanded = campusExpanded,
-                                onExpandedChange = { campusExpanded = it },
-                            ) {
-                                OutlinedTextField(
-                                    value = campusId,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor(),
-                                    trailingIcon = { 
-                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = campusExpanded) 
+
+                            OutlinedTextField(
+                                value = campusName,
+                                onValueChange = {},
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        enabled = !schoolId.isNullOrBlank() && schoolId != "未设置"
+                                    ) {
+                                        if (!schoolId.isNullOrBlank() && schoolId != "未设置") {
+                                            showCampusBottomSheet = true
+                                        }
                                     },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = RoseRed)
-                                    },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = RoseRed,
-                                        unfocusedBorderColor = Color.Gray
+                                placeholder = { Text("请先选择学校") },
+                                readOnly = true,
+                                enabled = !schoolId.isNullOrBlank() && schoolId != "未设置",
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = RoseRed
                                     )
-                                )
-                                
-                                ExposedDropdownMenu(
-                                    expanded = campusExpanded,
-                                    onDismissRequest = { campusExpanded = false }
-                                ) {
-                                    campusOptions.forEach { option ->
-                                        DropdownMenuItem(
-                                            text = { Text(option) },
-                                            onClick = { 
-                                                campusId = option
-                                                campusExpanded = false
-                                            }
-                                        )
+                                },
+                                trailingIcon = {
+                                    if (!schoolId.isNullOrBlank() && schoolId != "未设置") {
+                                        IconButton(onClick = { showCampusBottomSheet = true }) {
+                                            Icon(
+                                                Icons.Default.ArrowDropDown,
+                                                contentDescription = "选择校区"
+                                            )
+                                        }
                                     }
-                                }
-                            }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
+                                )
+                            )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     // Addresses Section
                     FormSection(
-                        title = "地址管理",
-                        icon = Icons.Default.LocationOn
+                        title = "地址管理", icon = Icons.Default.LocationOn
                     ) {
                         EnhancedAddressesManager(
                             addresses = addresses,
@@ -444,277 +490,111 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                                 if (currentAddress == addr) {
                                     currentAddress = addresses.firstOrNull() ?: ""
                                 }
-                            }
-                        )
+                            })
                     }
-                    
+
                     // Bottom padding for scrolling
                     Spacer(modifier = Modifier.height(40.dp))
                 }
             }
         }
     }
-}
 
-@Composable
-fun FormSection(
-    title: String,
-    icon: ImageVector,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        colors = CardColors(Color.White, Color.Black, Color.White, Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = RoseRed,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
-            
-            HorizontalDivider(
-                modifier = Modifier.padding(bottom = 16.dp),
-                thickness = 1.dp,
-                color = Color(0xFFEEEEEE)
-            )
-            
-            content()
-        }
-    }
-}
+    // 学校选择底部表单
+    SchoolSelectionBottomSheet(
+        isVisible = showSchoolBottomSheet,
+        schoolSearchQuery = schoolSearchQuery,
+        onSearchQueryChange = { schoolSearchQuery = it },
+        schoolsState = schoolsState,
+        onSchoolSelected = { id, name ->
+            schoolId = id
+            schoolName = name
+            schoolSearchQuery = ""
+            campusId = ""
+            campusName = "未设置"
+            showSchoolBottomSheet = false
+        },
+        onAddSchoolClick = {
+            showAddSchoolDialog = true
+            newSchoolName = ""
+            newSchoolCode = ""
+        },
+        onDismiss = { showSchoolBottomSheet = false })
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EnhancedFormField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    icon: ImageVector,
-    enabled: Boolean = true
-) {
-    Column {
-        Text(
-            text = label,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            leadingIcon = {
-                Icon(icon, contentDescription = null, tint = RoseRed)
-            },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = RoseRed,
-                unfocusedBorderColor = Color.Gray
-            )
-        )
-    }
-}
+    // 校区选择底部表单
+    CampusSelectionBottomSheet(
+        isVisible = showCampusBottomSheet,
+        schoolName = schoolName,
+        campusSearchQuery = campusSearchQuery,
+        onSearchQueryChange = { campusSearchQuery = it },
+        campusesState = campusesState,
+        onCampusSelected = { id, name ->
+            campusId = id
+            campusName = name
+            campusSearchQuery = ""
+            showCampusBottomSheet = false
+        },
+        onAddCampusClick = {
+            showAddCampusDialog = true
+            newCampusName = ""
+            newCampusAddress = ""
+        },
+        onDismiss = { showCampusBottomSheet = false })
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EnhancedAddressesManager(
-    addresses: List<String>,
-    currentAddress: String,
-    onCurrentAddressChanged: (String) -> Unit,
-    onAddressAdded: (String) -> Unit,
-    onAddressRemoved: (String) -> Unit
-) {
-    var newAddress by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
-    
-    Column {
-        // Current address selection
-        Text(
-            text = "当前地址",
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-        ) {
-            OutlinedTextField(
-                value = currentAddress.ifEmpty { "请选择地址" },
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                leadingIcon = {
-                    Icon(Icons.Default.Home, contentDescription = null, tint = RoseRed)
-                },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = RoseRed,
-                    unfocusedBorderColor = Color.Gray
-                )
-            )
-            
-            if (addresses.isNotEmpty()) {
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    addresses.forEach { address ->
-                        DropdownMenuItem(
-                            text = { Text(address) },
-                            onClick = { 
-                                onCurrentAddressChanged(address)
-                                expanded = false
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    tint = if (address == currentAddress) RoseRed else Color.Gray
-                                )
-                            }
-                        )
+    // 添加新学校对话框
+    AddSchoolDialog(
+        isVisible = showAddSchoolDialog,
+        schoolName = newSchoolName,
+        onSchoolNameChange = { newSchoolName = it },
+        schoolCode = newSchoolCode,
+        onSchoolCodeChange = { newSchoolCode = it },
+        onAddClick = {
+            viewModel.addSchool(newSchoolName, newSchoolCode) { success, newId, message ->
+                if (success && newId != null) {
+                    schoolId = newId
+                    schoolName = newSchoolName
+                    campusId = ""
+                    campusName = "未设置"
+                    showAddSchoolDialog = false
+                    scope.launch {
+                        Toast.makeText(context, "学校添加成功", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    scope.launch {
+                        Toast.makeText(context, "添加失败: $message", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Address list
-        Text(
-            text = "我的地址列表",
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-        
-        if (addresses.isEmpty()) {
-            Text(
-                text = "暂无保存的地址",
-                color = Color.Gray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                textAlign = TextAlign.Center
-            )
-        } else {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    addresses.forEach { address ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    tint = if (address == currentAddress) RoseRed else Color.Gray,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = address,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            
-                            IconButton(
-                                onClick = { onAddressRemoved(address) },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "删除地址",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        
-                        if (address != addresses.last()) {
-                            HorizontalDivider(thickness = 1.dp, color = Color(0xFFEEEEEE))
-                        }
+        },
+        onDismiss = { showAddSchoolDialog = false })
+
+    // 添加新校区对话框
+    AddCampusDialog(
+        isVisible = showAddCampusDialog,
+        schoolName = schoolName,
+        campusName = newCampusName,
+        onCampusNameChange = { newCampusName = it },
+        campusAddress = newCampusAddress,
+        onCampusAddressChange = { newCampusAddress = it },
+        onAddClick = {
+            viewModel.addCampus(
+                schoolId,
+                newCampusName,
+                newCampusAddress
+            ) { success, newId, message ->
+                if (success && newId != null) {
+                    campusId = newId
+                    campusName = newCampusName
+                    showAddCampusDialog = false
+                    scope.launch {
+                        Toast.makeText(context, "校区添加成功", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    scope.launch {
+                        Toast.makeText(context, "添加失败: $message", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Add new address
-        Text(
-            text = "添加新地址",
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            OutlinedTextField(
-                value = newAddress,
-                onValueChange = { newAddress = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("输入新的地址") },
-                leadingIcon = {
-                    Icon(Icons.Default.AddLocation, contentDescription = null, tint = RoseRed)
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = RoseRed,
-                    unfocusedBorderColor = Color.Gray
-                )
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Button(
-                onClick = {
-                    onAddressAdded(newAddress.trim())
-                    newAddress = ""
-                },
-                enabled = newAddress.trim().isNotBlank(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = RoseRed,
-                    disabledContainerColor = Color.LightGray
-                ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
-            ) {
-                Text("添加")
-            }
-        }
-    }
+        },
+        onDismiss = { showAddCampusDialog = false })
 }

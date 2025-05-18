@@ -42,11 +42,13 @@ defmodule FlixBackendWeb.MessageChannel do
         ts when is_binary(ts) ->
           case Integer.parse(ts) do
             {unix_timestamp, _} -> DateTime.from_unix!(unix_timestamp, :millisecond)
-            :error -> DateTime.utc_now() # 默认为当前时间
+            # 默认为当前时间
+            :error -> DateTime.utc_now()
           end
 
         _ ->
-          DateTime.utc_now() # 默认为当前时间
+          # 默认为当前时间
+          DateTime.utc_now()
       end
 
     # 获取该用户最近的消息
@@ -62,10 +64,12 @@ defmodule FlixBackendWeb.MessageChannel do
         case latest_message.inserted_at do
           %DateTime{} = dt ->
             DateTime.to_unix(dt, :millisecond)
+
           %NaiveDateTime{} = ndt ->
             ndt
             |> DateTime.from_naive!("Etc/UTC")
             |> DateTime.to_unix(:millisecond)
+
           _ ->
             DateTime.to_unix(DateTime.utc_now(), :millisecond)
         end
@@ -87,46 +91,57 @@ defmodule FlixBackendWeb.MessageChannel do
     with {:ok, content} <- Map.fetch(payload, "content"),
          {:ok, receiver_id} <- Map.fetch(payload, "receiver_id"),
          {:ok, message_id} <- Map.fetch(payload, "message_id") do
-
       # 构造消息内容
       message_content =
         case is_list(content) do
-          true -> content  # 已经是数组格式
-          false -> [%{type: "chat", text: content}]  # 转换为数组格式，默认为聊天消息
+          # 已经是数组格式
+          true -> content
+          # 转换为数组格式，默认为聊天消息
+          false -> [%{type: "chat", text: content}]
         end
 
       # 发送消息
-      case Messaging.send_private_message(user_id, receiver_id, message_content, message_id, false) do
+      case Messaging.send_private_message(
+             user_id,
+             receiver_id,
+             message_content,
+             message_id,
+             false
+           ) do
         {:ok, message} ->
           # 将NaiveDateTime转为Unix时间戳（毫秒）
           timestamp =
             case message.inserted_at do
               %DateTime{} = dt ->
                 DateTime.to_unix(dt, :millisecond)
+
               %NaiveDateTime{} = ndt ->
                 ndt
                 |> DateTime.from_naive!("Etc/UTC")
                 |> DateTime.to_unix(:millisecond)
+
               _ ->
                 DateTime.to_unix(DateTime.utc_now(), :millisecond)
             end
 
           # 回复发送方确认
           {:reply,
-            {:ok,
-              %{
-                id: message.id,
-                message_id: message.message_id,
-                server_timestamp: timestamp,
-                status: "sent"
-              }}, socket}
+           {:ok,
+            %{
+              id: message.id,
+              message_id: message.message_id,
+              server_timestamp: timestamp,
+              status: "sent"
+            }}, socket}
 
         {:error, reason} ->
           {:reply, {:error, %{reason: reason}}, socket}
       end
     else
       :error ->
-        {:reply, {:error, %{reason: "missing required parameters (content, receiver_id, message_id)"}}, socket}
+        {:reply,
+         {:error, %{reason: "missing required parameters (content, receiver_id, message_id)"}},
+         socket}
     end
   end
 
@@ -156,11 +171,12 @@ defmodule FlixBackendWeb.MessageChannel do
     offset = Map.get(params, "offset", 0)
     message_type = Map.get(params, "message_type")
 
-    messages = Messaging.get_messages_for_user(user_id, [
-      limit: limit,
-      offset: offset,
-      message_type: message_type
-    ])
+    messages =
+      Messaging.get_messages_for_user(user_id,
+        limit: limit,
+        offset: offset,
+        message_type: message_type
+      )
 
     {:reply, {:ok, %{messages: messages}}, socket}
   end
@@ -189,10 +205,11 @@ defmodule FlixBackendWeb.MessageChannel do
       limit = Map.get(params, "limit", 20)
       message_type = Map.get(params, "message_type")
 
-      messages = Messaging.get_messages_before(user_id, datetime, [
-        limit: limit,
-        message_type: message_type
-      ])
+      messages =
+        Messaging.get_messages_before(user_id, datetime,
+          limit: limit,
+          message_type: message_type
+        )
 
       {:reply, {:ok, %{messages: messages}}, socket}
     else
@@ -214,7 +231,6 @@ defmodule FlixBackendWeb.MessageChannel do
   def handle_in("send_system_notification", payload, socket) do
     with {:ok, content} <- Map.fetch(payload, "content"),
          {:ok, recipient_id} <- Map.fetch(payload, "recipient_id") do
-
       # 确保内容是数组格式
       message_content =
         case is_list(content) do
@@ -239,7 +255,6 @@ defmodule FlixBackendWeb.MessageChannel do
   def handle_in("send_order_message", payload, socket) do
     with {:ok, content} <- Map.fetch(payload, "content"),
          {:ok, recipient_id} <- Map.fetch(payload, "recipient_id") do
-
       # 确保内容是数组格式
       message_content =
         case is_list(content) do
@@ -264,7 +279,6 @@ defmodule FlixBackendWeb.MessageChannel do
   def handle_in("send_payment_message", payload, socket) do
     with {:ok, content} <- Map.fetch(payload, "content"),
          {:ok, recipient_id} <- Map.fetch(payload, "recipient_id") do
-
       # 确保内容是数组格式
       message_content =
         case is_list(content) do
@@ -291,7 +305,6 @@ defmodule FlixBackendWeb.MessageChannel do
 
     with {:ok, content} <- Map.fetch(payload, "content"),
          {:ok, recipient_id} <- Map.fetch(payload, "recipient_id") do
-
       # 确保内容是数组格式
       message_content =
         case is_list(content) do
@@ -305,27 +318,36 @@ defmodule FlixBackendWeb.MessageChannel do
       # 获取客户端提供的 message_id，如果没有则生成新的 message_id
       message_id = Map.get(payload, "message_id", "#{user_id}-#{:os.system_time(:millisecond)}")
 
-      case Messaging.send_interaction_message(recipient_id, message_content, sender_id, message_id) do
+      case Messaging.send_interaction_message(
+             recipient_id,
+             message_content,
+             sender_id,
+             message_id
+           ) do
         {:ok, message} ->
           # 将NaiveDateTime转为Unix时间戳（毫秒）
           timestamp =
             case message.inserted_at do
               %DateTime{} = dt ->
                 DateTime.to_unix(dt, :millisecond)
+
               %NaiveDateTime{} = ndt ->
                 ndt
                 |> DateTime.from_naive!("Etc/UTC")
                 |> DateTime.to_unix(:millisecond)
+
               _ ->
                 DateTime.to_unix(DateTime.utc_now(), :millisecond)
             end
 
-          {:reply, {:ok, %{
-            id: message.id,
-            message_id: message.message_id,
-            server_timestamp: timestamp,
-            status: "sent"
-          }}, socket}
+          {:reply,
+           {:ok,
+            %{
+              id: message.id,
+              message_id: message.message_id,
+              server_timestamp: timestamp,
+              status: "sent"
+            }}, socket}
 
         {:error, reason} ->
           {:reply, {:error, %{reason: reason}}, socket}

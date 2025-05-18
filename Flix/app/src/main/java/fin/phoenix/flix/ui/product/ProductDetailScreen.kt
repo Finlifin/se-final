@@ -3,8 +3,6 @@ package fin.phoenix.flix.ui.product
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,9 +57,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.rememberAsyncImagePainter
 import fin.phoenix.flix.api.navigateToChat
+import fin.phoenix.flix.data.Campus
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.ui.colors.RoseRed
@@ -102,37 +100,34 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
     // 评论回复底部弹窗
     if (showReplySheet.value) {
         CommentReplySheet(
-            viewModel = commentViewModel,
-            onDismiss = {
+            viewModel = commentViewModel, onDismiss = {
                 showReplySheet.value = false
                 commentViewModel.clearSelectedComment()
-            }
-        )
+            })
     }
 
     Scaffold(modifier = Modifier.padding(WindowInsets.statusBars.asPaddingValues()), topBar = {
-        ProductDetailTopBar(
-            onBackClick = { navController.popBackStack() },
-            onShareClick = { 
-                // 获取当前商品数据
-                if (productState is Resource.Success) {
-                    val product = (productState as Resource.Success<Product>).data
-                    val shareText = "这是一件Flix上的商品: ${product.title}, https://example.com/product/${product.id}"
-                    
-                    // 创建分享意图
-                    val sendIntent: Intent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                        type = "text/plain"
-                    }
-                    
-                    // 创建选择器并启动分享活动
-                    val shareIntent = Intent.createChooser(sendIntent, "分享商品")
-                    context.startActivity(shareIntent)
-                } else {
-                    Toast.makeText(context, "商品信息加载中，请稍后再试", Toast.LENGTH_SHORT).show()
+        ProductDetailTopBar(onBackClick = { navController.popBackStack() }, onShareClick = {
+            // 获取当前商品数据
+            if (productState is Resource.Success) {
+                val product = (productState as Resource.Success<Product>).data
+                val shareText =
+                    "这是一件Flix上的商品: ${product.title}, https://example.com/product/${product.id}"
+
+                // 创建分享意图
+                val sendIntent: Intent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                    type = "text/plain"
                 }
-            })
+
+                // 创建选择器并启动分享活动
+                val shareIntent = Intent.createChooser(sendIntent, "分享商品")
+                context.startActivity(shareIntent)
+            } else {
+                Toast.makeText(context, "商品信息加载中，请稍后再试", Toast.LENGTH_SHORT).show()
+            }
+        })
     }, bottomBar = {
         when (productState) {
             is Resource.Success -> {
@@ -145,7 +140,7 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
                     onContactClick = {
                         scope.launch {
                             navigateToChat(product.sellerId) {
-                                 navController.navigate(it)
+                                navController.navigate(it)
                             }
                         }
                     },
@@ -176,9 +171,9 @@ fun ProductDetailScreen(navController: NavController, productId: String) {
                 is Resource.Success -> {
                     val product = (productState as Resource.Success<Product>).data
                     ProductDetailContent(
-                        product = product, 
-                        sellerState = sellerState, 
-                        navController = navController, 
+                        product = product,
+                        sellerState = sellerState,
+                        navController = navController,
                         showReplySheet = showReplySheet,
                         commentViewModel = commentViewModel
                     )
@@ -217,6 +212,9 @@ private fun ProductDetailContent(
     showReplySheet: MutableState<Boolean>,
     commentViewModel: CommentViewModel
 ) {
+    val viewModel: ProductDetailViewModel = viewModel()
+    val campusState by viewModel.campusState.observeAsState(Resource.Loading)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -371,9 +369,41 @@ private fun ProductDetailContent(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = product.location, color = Color.DarkGray, fontSize = 14.sp
-                            )
+                            // 根据 campusId 显示不同的地址信息
+                            when {
+                                product.campusId != null && campusState is Resource.Success && (campusState as Resource.Success<Campus?>).data != null -> {
+                                    val campus = (campusState as Resource.Success<Campus>).data
+                                    Text(
+                                        text = "${campus.name} - ${campus.address ?: "地址未知"}",
+                                        color = Color.DarkGray,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                product.campusId != null && campusState is Resource.Loading -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(12.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.Gray
+                                    )
+                                }
+
+                                product.campusId != null && campusState is Resource.Error -> {
+                                    Text(
+                                        text = product.location,
+                                        color = Color.DarkGray,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                else -> {
+                                    Text(
+                                        text = product.location,
+                                        color = Color.DarkGray,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -418,7 +448,6 @@ private fun ProductDetailContent(
                     }
                 }
             }
-
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -486,8 +515,7 @@ private fun ProductDetailContent(
                 onShowReplySheet = { comment ->
                     commentViewModel.selectComment(comment)
                     showReplySheet.value = true
-                }
-            )
+                })
 
             // 底部空间，防止内容被底部操作栏遮挡
             Spacer(modifier = Modifier.height(80.dp))

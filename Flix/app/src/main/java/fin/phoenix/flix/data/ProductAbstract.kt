@@ -13,5 +13,6 @@ data class ProductAbstract(
     @SerializedName("images") val image: String, // Product image URL
     @SerializedName("status") val status: ProductStatus, // Product status
     @SerializedName("condition") val condition: String? = null, // Product condition
-    @SerializedName("seller") val seller: UserAbstract? = null // Seller information
+    @SerializedName("seller") val seller: UserAbstract? = null, // Seller information
+    @SerializedName("campus_id") val campusId: String? = null // Campus ID
 )

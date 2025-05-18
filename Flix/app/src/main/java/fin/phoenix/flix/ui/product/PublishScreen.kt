@@ -46,6 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +60,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import fin.phoenix.flix.data.Campus
+import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.repository.ProductRepository
+import fin.phoenix.flix.repository.SchoolRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +75,7 @@ import kotlinx.coroutines.withContext
 fun PublishScreen(navController: NavController) {
     val context = LocalContext.current
     val productRepository = remember { ProductRepository(context) }
+    val schoolRepository = remember { SchoolRepository(context) }
     val coroutineScope = rememberCoroutineScope()
 
     val images = remember { mutableStateListOf<Uri>() }
@@ -87,6 +92,17 @@ fun PublishScreen(navController: NavController) {
     var category by remember { mutableStateOf("数码") }
     var condition by remember { mutableStateOf("全新") }
     var location by remember { mutableStateOf("北京市海淀区") }
+    
+    // 校区选择相关状态
+    var campusList by remember { mutableStateOf<List<Campus>>(emptyList()) }
+    var selectedCampus by remember { mutableStateOf<Campus?>(null) }
+    var campusExpanded by remember { mutableStateOf(false) }
+    var isLoadingCampuses by remember { mutableStateOf(false) }
+    var useCustomLocation by remember { mutableStateOf(true) }
+    
+    // 用户当前校区ID
+    val userManager = remember { UserManager.getInstance(context) }
+    val currentUser by userManager.currentUser.observeAsState()
     
     // 新增标签和配送方式
     val tags = remember { mutableStateListOf<String>() }
@@ -109,6 +125,37 @@ fun PublishScreen(navController: NavController) {
 
     var categoryExpanded by remember { mutableStateOf(false) }
     var conditionExpanded by remember { mutableStateOf(false) }
+
+    // 加载用户学校的校区列表
+    LaunchedEffect(currentUser?.schoolId) {
+        if (currentUser?.schoolId != null) {
+            isLoadingCampuses = true
+            try {
+                val result = schoolRepository.getCampusesBySchoolId(currentUser!!.schoolId!!)
+                when (result) {
+                    is Resource.Success -> {
+                        campusList = result.data
+                        // 如果用户已设置校区，默认选择该校区
+                        if (currentUser?.campusId != null) {
+                            selectedCampus = campusList.find { it.id == currentUser!!.campusId }
+                            // 如果找到用户的校区，默认使用校区地址
+                            if (selectedCampus != null) {
+                                useCustomLocation = false
+                            }
+                        }
+                    }
+                    is Resource.Error -> {
+                        Toast.makeText(context, "加载校区失败: ${result.message}", Toast.LENGTH_SHORT).show()
+                    }
+                    is Resource.Loading -> {}
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "加载校区异常: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLoadingCampuses = false
+            }
+        }
+    }
 
     // 显示错误信息
     LaunchedEffect(publishError) {
@@ -252,19 +299,106 @@ fun PublishScreen(navController: NavController) {
                     }
                 }
             }
-
-            // Location
-            OutlinedTextField(
-                value = location,
-                onValueChange = { location = it },
-                label = { Text("所在地") },  // 修改标签名
-                placeholder = { Text("请输入所在地，例如：北京市海淀区") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                leadingIcon = {
-                    Icon(Icons.Default.LocationOn, contentDescription = "所在地")
+            
+            // 校区选择和地址信息
+            Text("交易地点", fontWeight = FontWeight.Bold)
+            
+            // 校区选择选项
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Checkbox(
+                    checked = !useCustomLocation,
+                    onCheckedChange = { useCustomLocation = !it }
+                )
+                Text("使用校区地址")
+            }
+            
+            // 校区选择下拉框
+            if (!useCustomLocation) {
+                if (isLoadingCampuses) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = RoseRed
+                    )
+                } else if (campusList.isNotEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = selectedCampus?.name ?: "请选择校区",
+                            onValueChange = {},
+                            label = { Text("校区") },
+                            placeholder = { Text("请选择校区") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            leadingIcon = {
+                                Icon(Icons.Default.LocationOn, contentDescription = "校区")
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.ArrowDropDown,
+                                    contentDescription = "选择校区",
+                                    modifier = Modifier.clickable { campusExpanded = true }
+                                )
+                            }
+                        )
+                        
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { campusExpanded = true }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = campusExpanded,
+                            onDismissRequest = { campusExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            campusList.forEach { campus ->
+                                DropdownMenuItem(
+                                    text = { Text(campus.name) },
+                                    onClick = {
+                                        selectedCampus = campus
+                                        campusExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // 显示所选校区地址
+                    selectedCampus?.address?.let { address ->
+                        Text(
+                            text = "地址：$address",
+                            color = Color.Gray,
+                            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "没有可用的校区信息，请设置或使用自定义地址",
+                        color = Color.Red,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
                 }
-            )
+            }
+            
+            // 自定义地址输入框
+            if (useCustomLocation) {
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("所在地") },
+                    placeholder = { Text("请输入所在地，例如：北京市海淀区") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(Icons.Default.LocationOn, contentDescription = "所在地")
+                    }
+                )
+            }
 
             // Description
             OutlinedTextField(
@@ -372,7 +506,7 @@ fun PublishScreen(navController: NavController) {
                             category,
                             condition,
                             description,
-                            location,
+                            if (useCustomLocation) location else selectedCampus?.address ?: "",
                             images.size
                         )
                     ) {
@@ -400,10 +534,11 @@ fun PublishScreen(navController: NavController) {
                                     price = priceValue,
                                     category = category,
                                     condition = condition,
-                                    location = location,
+                                    location = if (useCustomLocation) location else selectedCampus?.address ?: "",
                                     imageUris = images,
                                     tags = tags.toList(),
-                                    availableDeliveryMethods = availableDeliveryMethods.toList()
+                                    availableDeliveryMethods = availableDeliveryMethods.toList(),
+                                    campusId = if (!useCustomLocation) selectedCampus?.id else null
                                 )
 
                                 withContext(Dispatchers.Main) {
@@ -447,9 +582,9 @@ fun PublishScreen(navController: NavController) {
                     category,
                     condition,
                     description,
-                    location,
+                    if (useCustomLocation) location else selectedCampus?.address ?: "",
                     images.size
-                ) && !isPublishing
+                ) && !isPublishing && (!(!useCustomLocation && selectedCampus == null))
             ) {
                 if (isPublishing) {
                     CircularProgressIndicator(

@@ -71,14 +71,14 @@ defmodule FlixBackendWeb.Router do
     # 学校与校区相关公开API
     scope "/schools" do
       get "/", SchoolController, :index
-      get "/search", SchoolController, :search # 新增搜索路由
+      get "/search", SchoolController, :search
       get "/:id", SchoolController, :show
-      get "/:id/campuses", SchoolController, :list_campuses
+      get "/:school_id/campuses", SchoolController, :get_campuses
     end
 
     scope "/campuses" do
-      get "/", CampusController, :index # 公开获取所有校区列表
-      get "/:id", CampusController, :show # 公开获取单个校区详情
+      get "/", CampusController, :index
+      get "/:id", CampusController, :show
     end
   end
 
@@ -121,15 +121,15 @@ defmodule FlixBackendWeb.Router do
       get "/favorites", ProductController, :favorites
     end
 
-    # 学校与校区相关需认证API
+    # 学校与校区相关需认证API（管理员操作）
     scope "/schools" do
       post "/", SchoolController, :create
       put "/:id", SchoolController, :update
       delete "/:id", SchoolController, :delete
-      post "/:id/campuses", SchoolController, :add_campus
     end
 
     scope "/campuses" do
+      post "/", CampusController, :create
       put "/:id", CampusController, :update
       delete "/:id", CampusController, :delete
     end

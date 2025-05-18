@@ -25,6 +25,8 @@ interface ProductService {
         @Query("max_price") maxPrice: Double? = null,
         @Query("sort_by") sortBy: String? = null,
         @Query("sort_order") sortOrder: String? = null,
+        @Query("school_id") schoolId: String? = null,
+        @Query("campus_id") campusId: String? = null,
         @Body availableStatuses: List<String>? = null,
     ): Response<ProductListResponse>
 
@@ -95,6 +97,7 @@ data class CreateProductRequest(
     val location: String,
     val tags: List<String>,
     val availableDeliveryMethods: List<String>,
+    val campusId: String?
 )
 
 /**
@@ -111,6 +114,7 @@ data class UpdateProductRequest(
     val status: String? = null,
     val tags: List<String>? = null,
     val availableDeliveryMethods: List<String>? = null,
+    val campusId: String? = null
 )
 
 /**

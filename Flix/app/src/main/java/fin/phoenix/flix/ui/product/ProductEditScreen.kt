@@ -46,6 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,9 +61,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import fin.phoenix.flix.data.Campus
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.ProductStatus
+import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.repository.ProductRepository
+import fin.phoenix.flix.repository.SchoolRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.imageUrl
@@ -75,13 +79,14 @@ import kotlinx.coroutines.withContext
 fun ProductEditScreen(navController: NavController, productId: String) {
     val context = LocalContext.current
     val productRepository = remember { ProductRepository(context) }
+    val schoolRepository = remember { SchoolRepository(context) }
     val coroutineScope = rememberCoroutineScope()
 
     // State variables
     var product by remember { mutableStateOf<Product?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    
+
     // Form state
     val initialImages = remember { mutableStateListOf<String>() }
     val newImages = remember { mutableStateListOf<Uri>() }
@@ -91,7 +96,18 @@ fun ProductEditScreen(navController: NavController, productId: String) {
     var category by remember { mutableStateOf("") }
     var condition by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    
+
+    // 校区选择相关状态
+    var campusList by remember { mutableStateOf<List<Campus>>(emptyList()) }
+    var selectedCampus by remember { mutableStateOf<Campus?>(null) }
+    var campusExpanded by remember { mutableStateOf(false) }
+    var isLoadingCampuses by remember { mutableStateOf(false) }
+    var useCustomLocation by remember { mutableStateOf(true) }
+
+    // 用户当前校区ID
+    val userManager = remember { UserManager.getInstance(context) }
+    val currentUser by userManager.currentUser.observeAsState()
+
     // Tags and delivery methods
     val tags = remember { mutableStateListOf<String>() }
     var currentTag by remember { mutableStateOf("") }
@@ -108,7 +124,8 @@ fun ProductEditScreen(navController: NavController, productId: String) {
     var updateError by remember { mutableStateOf<String?>(null) }
 
     val categories = listOf("数码", "服装", "图书", "家具", "运动", "生活用品", "学习用品", "其他")
-    val conditions = listOf("全新", "99新", "95新", "9成新", "8成新", "7成新", "6成新", "5成新及以下")
+    val conditions =
+        listOf("全新", "99新", "95新", "9成新", "8成新", "7成新", "6成新", "5成新及以下")
 
     var categoryExpanded by remember { mutableStateOf(false) }
     var conditionExpanded by remember { mutableStateOf(false) }
@@ -131,9 +148,12 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                             Toast.makeText(context, "商品已删除", Toast.LENGTH_SHORT).show()
                             navController.popBackStack()
                         }
+
                         is Resource.Error -> {
-                            Toast.makeText(context, result.message ?: "删除失败", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, result.message ?: "删除失败", Toast.LENGTH_LONG)
+                                .show()
                         }
+
                         is Resource.Loading -> {
                             // Nothing to do
                         }
@@ -148,13 +168,43 @@ fun ProductEditScreen(navController: NavController, productId: String) {
         }
     }
 
+    // 加载用户学校的校区列表
+    LaunchedEffect(currentUser?.schoolId) {
+        if (currentUser?.schoolId != null) {
+            isLoadingCampuses = true
+            try {
+                val result = schoolRepository.getCampusesBySchoolId(currentUser!!.schoolId!!)
+                when (result) {
+                    is Resource.Success -> {
+                        campusList = result.data
+                        // 商品加载完成后会设置selectedCampus
+                    }
+
+                    is Resource.Error -> {
+                        Toast.makeText(
+                            context,
+                            "加载校区失败: ${result.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
+                    is Resource.Loading -> {}
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "加载校区异常: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLoadingCampuses = false
+            }
+        }
+    }
+
     // Load product data
     LaunchedEffect(productId) {
         isLoading = true
         when (val result = productRepository.getProductById(productId)) {
             is Resource.Success -> {
                 product = result.data
-                
+
                 // Initialize form with product data
                 title = product?.title ?: ""
                 price = product?.price?.toString() ?: ""
@@ -162,25 +212,35 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                 category = product?.category ?: ""
                 condition = product?.condition ?: ""
                 location = product?.location ?: ""
-                
+
                 // Initialize images
                 initialImages.clear()
                 product?.images?.forEach { initialImages.add(imageUrl(it)) }
-                
+
                 // Initialize tags
                 tags.clear()
                 product?.tags?.forEach { tags.add(it) }
-                
+
                 // Initialize delivery methods
                 availableDeliveryMethods.clear()
                 product?.availableDeliveryMethods?.forEach { availableDeliveryMethods.add(it) }
-                
+
+                // 处理校区信息
+                if (product?.campusId != null && campusList.isNotEmpty()) {
+                    selectedCampus = campusList.find { it.id == product?.campusId }
+                    useCustomLocation = selectedCampus == null
+                } else {
+                    useCustomLocation = true
+                }
+
                 isLoading = false
             }
+
             is Resource.Error -> {
                 error = result.message
                 isLoading = false
             }
+
             is Resource.Loading -> {
                 // Already set isLoading to true
             }
@@ -194,7 +254,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
             error = null
         }
     }
-    
+
     // Display update error if any
     LaunchedEffect(updateError) {
         updateError?.let {
@@ -218,7 +278,9 @@ fun ProductEditScreen(navController: NavController, productId: String) {
     // Add delete confirmation dialog
     if (showDeleteConfirmDialog) {
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
+            onDismissRequest = {
+                showDeleteConfirmDialog = false
+            },
             title = { Text("确认删除") },
             text = { Text("确定要删除此商品吗？若要撤销请联系管理员") },
             confirmButton = {
@@ -226,38 +288,30 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                     onClick = {
                         showDeleteConfirmDialog = false
                         deleteProduct()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    }, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {
                     Text("删除")
                 }
             },
             dismissButton = {
                 Button(
-                    onClick = { showDeleteConfirmDialog = false }
-                ) {
+                    onClick = { showDeleteConfirmDialog = false }) {
                     Text("取消")
                 }
-            }
-        )
+            })
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("编辑商品") }, 
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
+            TopAppBar(title = { Text("编辑商品") }, navigationIcon = {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
-            )
-        }
-    ) { paddingValues ->
+            })
+        }) { paddingValues ->
         if (isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = RoseRed)
             }
@@ -287,7 +341,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                     .size(100.dp)
                                     .align(Alignment.Center)
                             )
-                            
+
                             IconButton(
                                 onClick = { initialImages.removeAt(index) },
                                 modifier = Modifier.align(Alignment.TopEnd)
@@ -300,7 +354,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                             }
                         }
                     }
-                    
+
                     // New images placeholder
                     newImages.forEachIndexed { index, uri ->
                         Box(
@@ -313,7 +367,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                     .size(100.dp)
                                     .align(Alignment.Center)
                             )
-                            
+
                             IconButton(
                                 onClick = { newImages.removeAt(index) },
                                 modifier = Modifier.align(Alignment.TopEnd)
@@ -326,7 +380,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                             }
                         }
                     }
-                    
+
                     // Add image button
                     if (initialImages.size + newImages.size < 5) {
                         Box(
@@ -370,8 +424,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
-                    leadingIcon = { Text("¥", fontWeight = FontWeight.Bold) }
-                )
+                    leadingIcon = { Text("¥", fontWeight = FontWeight.Bold) })
 
                 // Category dropdown
                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -386,17 +439,14 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                             Icon(
                                 Icons.Default.ArrowDropDown,
                                 contentDescription = "选择分类",
-                                modifier = Modifier.clickable { categoryExpanded = true }
-                            )
-                        }
-                    )
+                                modifier = Modifier.clickable { categoryExpanded = true })
+                        })
 
                     // Invisible clickable overlay
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .clickable { categoryExpanded = true }
-                    )
+                            .clickable { categoryExpanded = true })
 
                     DropdownMenu(
                         expanded = categoryExpanded,
@@ -404,13 +454,10 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
                         categories.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    category = option
-                                    categoryExpanded = false
-                                }
-                            )
+                            DropdownMenuItem(text = { Text(option) }, onClick = {
+                                category = option
+                                categoryExpanded = false
+                            })
                         }
                     }
                 }
@@ -428,17 +475,14 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                             Icon(
                                 Icons.Default.ArrowDropDown,
                                 contentDescription = "选择成色",
-                                modifier = Modifier.clickable { conditionExpanded = true }
-                            )
-                        }
-                    )
+                                modifier = Modifier.clickable { conditionExpanded = true })
+                        })
 
                     // Invisible clickable overlay
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .clickable { conditionExpanded = true }
-                    )
+                            .clickable { conditionExpanded = true })
 
                     DropdownMenu(
                         expanded = conditionExpanded,
@@ -446,29 +490,103 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
                         conditions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    condition = option
-                                    conditionExpanded = false
-                                }
-                            )
+                            DropdownMenuItem(text = { Text(option) }, onClick = {
+                                condition = option
+                                conditionExpanded = false
+                            })
                         }
                     }
                 }
 
-                // Location
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("所在地") },
-                    placeholder = { Text("请输入所在地，例如：北京市海淀区") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(Icons.Default.LocationOn, contentDescription = "所在地")
+                // 校区选择和地址信息
+                Text("交易地点", fontWeight = FontWeight.Bold)
+
+                // 校区选择选项
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(
+                        checked = !useCustomLocation, onCheckedChange = { useCustomLocation = !it })
+                    Text("使用校区地址")
+                }
+
+                // 校区选择下拉框
+                if (!useCustomLocation) {
+                    if (isLoadingCampuses) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp), color = RoseRed
+                        )
+                    } else if (campusList.isNotEmpty()) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = selectedCampus?.name ?: "请选择校区",
+                                onValueChange = {},
+                                label = { Text("校区") },
+                                placeholder = { Text("请选择校区") },
+                                modifier = Modifier.fillMaxWidth(),
+                                readOnly = true,
+                                leadingIcon = {
+                                    Icon(Icons.Default.LocationOn, contentDescription = "校区")
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = "选择校区",
+                                        modifier = Modifier.clickable { campusExpanded = true })
+                                })
+
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable { campusExpanded = true })
+
+                            DropdownMenu(
+                                expanded = campusExpanded,
+                                onDismissRequest = { campusExpanded = false },
+                                modifier = Modifier.fillMaxWidth(0.9f)
+                            ) {
+                                campusList.forEach { campus ->
+                                    DropdownMenuItem(text = { Text(campus.name) }, onClick = {
+                                        selectedCampus = campus
+                                        campusExpanded = false
+                                    })
+                                }
+                            }
+                        }
+
+                        // 显示所选校区地址
+                        selectedCampus?.address?.let { address ->
+                            Text(
+                                text = "地址：$address",
+                                color = Color.Gray,
+                                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "没有可用的校区信息，请设置或使用自定义地址",
+                            color = Color.Red,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
                     }
-                )
+                }
+
+                // 自定义地址输入框
+                if (useCustomLocation) {
+                    OutlinedTextField(
+                        value = location,
+                        onValueChange = { location = it },
+                        label = { Text("所在地") },
+                        placeholder = { Text("请输入所在地，例如：北京市海淀区") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(Icons.Default.LocationOn, contentDescription = "所在地")
+                        })
+                }
 
                 // Description
                 OutlinedTextField(
@@ -480,8 +598,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                         .fillMaxWidth()
                         .height(200.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = RoseRed,
-                        unfocusedBorderColor = Color.Gray
+                        focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
                     )
                 )
 
@@ -506,13 +623,12 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                 tags.add(currentTag)
                                 currentTag = ""
                             }
-                        },
-                        enabled = currentTag.isNotBlank() && tags.size < 5
+                        }, enabled = currentTag.isNotBlank() && tags.size < 5
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "添加标签")
                     }
                 }
-                
+
                 if (tags.isNotEmpty()) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -527,10 +643,8 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                     Icon(
                                         Icons.Default.Close,
                                         contentDescription = "移除标签",
-                                        modifier = Modifier.clickable { tags.remove(tag) }
-                                    )
-                                }
-                            )
+                                        modifier = Modifier.clickable { tags.remove(tag) })
+                                })
                         }
                     }
                 }
@@ -552,15 +666,13 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                         availableDeliveryMethods.add(method)
                                     }
                                 }
-                                .padding(vertical = 8.dp)
-                        ) {
+                                .padding(vertical = 8.dp)) {
                             Checkbox(
                                 checked = availableDeliveryMethods.contains(method),
                                 onCheckedChange = {
                                     if (it) availableDeliveryMethods.add(method)
                                     else availableDeliveryMethods.remove(method)
-                                }
-                            )
+                                })
                             Text(deliveryMethodLabels[method] ?: method)
                         }
                     }
@@ -577,7 +689,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                 category,
                                 condition,
                                 description,
-                                location,
+                                if (useCustomLocation) location else selectedCampus?.address ?: "",
                                 initialImages.size + newImages.size
                             )
                         ) {
@@ -594,11 +706,13 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                         price = priceValue,
                                         category = category,
                                         condition = condition,
-                                        location = location,
+                                        location = if (useCustomLocation) location else selectedCampus?.address
+                                            ?: "",
                                         status = ProductStatus.AVAILABLE,  // Keep the same status
                                         imageUris = if (newImages.isEmpty()) null else newImages,
                                         tags = tags.toList(),
-                                        availableDeliveryMethods = availableDeliveryMethods.toList()
+                                        availableDeliveryMethods = availableDeliveryMethods.toList(),
+                                        campusId = if (!useCustomLocation) selectedCampus?.id else null
                                     )
 
                                     withContext(Dispatchers.Main) {
@@ -607,9 +721,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                                         when (result) {
                                             is Resource.Success -> {
                                                 Toast.makeText(
-                                                    context,
-                                                    "商品更新成功！",
-                                                    Toast.LENGTH_SHORT
+                                                    context, "商品更新成功！", Toast.LENGTH_SHORT
                                                 ).show()
                                                 navController.popBackStack()
                                             }
@@ -640,14 +752,13 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                         category,
                         condition,
                         description,
-                        location,
+                        if (useCustomLocation) location else selectedCampus?.address ?: "",
                         initialImages.size + newImages.size
-                    ) && !isUpdating
+                    ) && !isUpdating && (!(!useCustomLocation && selectedCampus == null))
                 ) {
                     if (isUpdating) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White
+                            modifier = Modifier.size(24.dp), color = Color.White
                         )
                     } else {
                         Text("更新", modifier = Modifier.padding(vertical = 8.dp))
@@ -665,8 +776,7 @@ fun ProductEditScreen(navController: NavController, productId: String) {
                 ) {
                     if (isDeleting) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White
+                            modifier = Modifier.size(24.dp), color = Color.White
                         )
                     } else {
                         Text("删除商品", modifier = Modifier.padding(vertical = 8.dp))
@@ -687,11 +797,5 @@ private fun validateForm(
     location: String,
     imageCount: Int
 ): Boolean {
-    return title.isNotBlank() && 
-           price.isNotBlank() && 
-           category.isNotBlank() && 
-           condition.isNotBlank() && 
-           description.isNotBlank() && 
-           location.isNotBlank() && 
-           imageCount > 0
+    return title.isNotBlank() && price.isNotBlank() && category.isNotBlank() && condition.isNotBlank() && description.isNotBlank() && location.isNotBlank() && imageCount > 0
 }

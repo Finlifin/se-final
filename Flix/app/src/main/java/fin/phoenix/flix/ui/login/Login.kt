@@ -282,7 +282,9 @@ fun SignInSignUpScreen(onLoginSuccess: () -> Unit = {}) {
                                         val user = UserAbstract(
                                             uid = result.data.user.uid,
                                             userName = result.data.user.userName,
-                                            avatarUrl = result.data.user.avatarUrl
+                                            avatarUrl = result.data.user.avatarUrl,
+                                            schoolId = result.data.user.schoolId,
+                                            campusId = result.data.user.campusId
                                         )
                                         userManager.setCurrentUser(user)
                                         

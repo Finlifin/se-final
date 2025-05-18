@@ -20,7 +20,8 @@ defmodule FlixBackend.Data.Product do
              :view_count,
              :favorite_count,
              :tags,
-             :available_delivery_methods
+             :available_delivery_methods,
+             :campus_id
            ]}
   schema "products" do
     # field :seller_id, :string  # 引用 User 的 UID
@@ -47,6 +48,12 @@ defmodule FlixBackend.Data.Product do
       foreign_key: :seller_id,
       references: :uid,
       type: :binary_id
+
+    # 添加校区关联
+    belongs_to :campus, FlixBackend.Data.Campus,
+      foreign_key: :campus_id,
+      references: :id,
+      type: :binary_id
   end
 
   def changeset(product, attrs) do
@@ -65,7 +72,8 @@ defmodule FlixBackend.Data.Product do
       :view_count,
       :favorite_count,
       :tags,
-      :available_delivery_methods
+      :available_delivery_methods,
+      :campus_id
     ])
     |> validate_required([
       :seller_id,

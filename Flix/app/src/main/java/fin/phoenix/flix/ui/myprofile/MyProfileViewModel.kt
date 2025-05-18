@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import fin.phoenix.flix.api.ProfileUpdateRequest
 import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.User
+import fin.phoenix.flix.data.UserAbstract
+import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.util.Resource
 import kotlinx.coroutines.launch
@@ -15,6 +17,7 @@ import kotlinx.coroutines.launch
 class MyProfileViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = ProfileRepository(application)
+    private val userManager = UserManager.getInstance(application)
 
     private val _userProfileState = MutableLiveData<Resource<User>>()
     val userProfileState: LiveData<Resource<User>> = _userProfileState
@@ -39,7 +42,27 @@ class MyProfileViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val result = repository.getUserProfile(userId)
             _userProfileState.value = result
+            
+            // 如果获取成功，更新UserManager
+            if (result is Resource.Success) {
+                updateUserManager(result.data)
+            }
         }
+    }
+
+    /**
+     * 更新UserManager中的用户信息
+     */
+    private fun updateUserManager(user: User) {
+        // 创建UserAbstract并更新到UserManager
+        val userAbstract = UserAbstract(
+            uid = user.uid,
+            userName = user.userName,
+            avatarUrl = user.avatarUrl,
+            schoolId = user.schoolId,
+            campusId = user.campusId
+        )
+        userManager.setCurrentUser(userAbstract)
     }
 
     /**

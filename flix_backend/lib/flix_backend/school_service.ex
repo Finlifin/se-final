@@ -2,106 +2,147 @@ defmodule FlixBackend.SchoolService do
   import Ecto.Query, warn: false
   alias FlixBackend.Repo
   alias FlixBackend.Data.School
+  alias FlixBackend.CampusService
 
   @doc """
-  获取学校列表，支持分页
-
-  ## 参数
-
-  - offset: 偏移量
-  - limit: 每页条数
+  获取所有学校
 
   ## 返回值
 
-  返回 {:ok, schools, total_count} 或 {:error, reason}
+  返回 {:ok, schools} 或 {:error, reason}
   """
-  def list_schools(offset, limit) do
-    query = from s in School
-
-    # 计算总数
-    total_count = Repo.aggregate(query, :count, :id)
-
-    # 添加分页和排序
-    query = from s in query,
-            order_by: [asc: s.name],
-            limit: ^limit,
-            offset: ^((offset - 1) * limit)
-
-    schools = Repo.all(query)
-
-    {:ok, schools, total_count}
+  def get_schools() do
+    schools = Repo.all(School)
+    {:ok, schools}
   end
 
   @doc """
-  搜索学校，支持分页
+  根据ID获取学校详情
 
   ## 参数
 
-  - query: 搜索关键词
-  - offset: 偏移量
-  - limit: 每页条数
+  - id: 学校ID
 
   ## 返回值
 
-  返回 {:ok, schools, total_count} 或 {:error, reason}
+  返回 {:ok, school} 或 {:error, reason}
   """
-  def search_schools(search_query, offset, limit) when is_binary(search_query) and byte_size(search_query) > 0 do
-    search_term = "%#{search_query}%"
-
-    query = from s in School,
-            where: ilike(s.name, ^search_term) or ilike(s.description, ^search_term)
-
-    # 计算总数
-    total_count = Repo.aggregate(query, :count, :id)
-
-    # 添加分页和排序
-    query = from s in query,
-            order_by: [asc: s.name],
-            limit: ^limit,
-            offset: ^((offset - 1) * limit)
-
-    schools = Repo.all(query)
-
-    {:ok, schools, total_count}
-  end
-
-  def search_schools(_search_query, offset, limit) do
-    # 如果搜索关键词为空，则返回所有学校
-    list_schools(offset, limit)
-  end
-
-  @doc """
-  获取单个学校
-  """
-  def get_school(id) do
+  def get_school_by_id(id) do
     case Repo.get(School, id) do
-      nil -> {:error, "School not found"}
+      nil -> {:error, :not_found, "学校不存在"}
       school -> {:ok, school}
     end
   end
 
   @doc """
-  创建学校
+  根据名称搜索学校
+
+  ## 参数
+
+  - query: 搜索关键词
+
+  ## 返回值
+
+  返回 {:ok, schools} 或 {:error, reason}
+  """
+  def search_schools(query) do
+    if query && String.length(query) > 0 do
+      pattern = "%#{query}%"
+
+      schools =
+        from(s in School,
+          where: ilike(s.name, ^pattern) or ilike(s.code, ^pattern),
+          order_by: [asc: s.name]
+        )
+        |> Repo.all()
+
+      {:ok, schools}
+    else
+      get_schools()
+    end
+  end
+
+  @doc """
+  创建新学校
+
+  ## 参数
+
+  - attrs: 学校属性
+
+  ## 返回值
+
+  返回 {:ok, school} 或 {:error, reason}
   """
   def create_school(attrs) do
     %School{}
     |> School.changeset(attrs)
     |> Repo.insert()
+    |> case do
+      {:ok, school} -> {:ok, school}
+      {:error, changeset} -> {:error, :validation_error, changeset}
+    end
   end
 
   @doc """
-  更新学校
+  更新学校信息
+
+  ## 参数
+
+  - id: 学校ID
+  - attrs: 要更新的属性
+
+  ## 返回值
+
+  返回 {:ok, school} 或 {:error, reason}
   """
-  def update_school(%School{} = school, attrs) do
-    school
-    |> School.changeset(attrs)
-    |> Repo.update()
+  def update_school(id, attrs) do
+    with {:ok, school} <- get_school_by_id(id) do
+      school
+      |> School.changeset(attrs)
+      |> Repo.update()
+      |> case do
+        {:ok, updated_school} -> {:ok, updated_school}
+        {:error, changeset} -> {:error, :validation_error, changeset}
+      end
+    end
   end
 
   @doc """
   删除学校
+
+  ## 参数
+
+  - id: 学校ID
+
+  ## 返回值
+
+  返回 {:ok, school} 或 {:error, reason}
   """
-  def delete_school(%School{} = school) do
-    Repo.delete(school)
+  def delete_school(id) do
+    with {:ok, school} <- get_school_by_id(id) do
+      # 检查是否有关联的校区
+      case CampusService.get_school_campuses(id) do
+        {:ok, campuses} when length(campuses) > 0 ->
+          {:error, :constraint_error, "该学校下存在校区，无法删除"}
+
+        _ ->
+          Repo.delete(school)
+      end
+    end
+  end
+
+  @doc """
+  获取学校的所有校区
+
+  ## 参数
+
+  - school_id: 学校ID
+
+  ## 返回值
+
+  返回 {:ok, campuses} 或 {:error, reason}
+  """
+  def get_school_campuses(school_id) do
+    CampusService.get_school_campuses(school_id)
   end
 end

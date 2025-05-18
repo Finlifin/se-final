@@ -39,6 +39,7 @@ data class Product(
     @SerializedName("view_count") val viewCount: Int = 0, // Product view count, default 0
     @SerializedName("favorite_count") val favoriteCount: Int = 0, // Product favorite count, default 0
     @SerializedName("tags") val tags: List<String> = emptyList(), // Product tags
+    @SerializedName("campus_id") val campusId: String? = null, // Campus ID (可空)
     @SerializedName("available_delivery_methods") val availableDeliveryMethods: List<String> = listOf("express", "pickup") // Available delivery methods
 ) {
     fun toAbstract(): ProductAbstract {
@@ -46,9 +47,10 @@ data class Product(
             id = id,
             title = title,
             price = price,
-            image = images.first(),
+            image = images.firstOrNull() ?: "",
             condition = condition,
             status = status ?: ProductStatus.DELETE,
-        )
+            campusId = campusId,
+                         )
     }
 }

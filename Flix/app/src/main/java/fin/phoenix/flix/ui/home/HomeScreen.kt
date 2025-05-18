@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +69,7 @@ import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import fin.phoenix.flix.data.ProductStatus
 import fin.phoenix.flix.data.UserManager
+import fin.phoenix.flix.ui.campus.CampusScreen
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.ui.message.MessageCenterScreen
 import fin.phoenix.flix.ui.myprofile.MyFavoritesViewModel
@@ -77,8 +79,9 @@ import kotlinx.coroutines.launch
 // Define navigation destinations
 sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
     data object Browse : Screen("browse", Icons.Default.Search, "浏览")
+    data object Campus : Screen("campus", Icons.Default.School, "校内") // 添加校内选项卡
     data object Favorites : Screen("favorites", Icons.Default.FavoriteBorder, "收藏")
-    data object Inbox : Screen("messages", Icons.Default.Inbox, "消息")
+    data object Inbox : Screen("messages", Icons.AutoMirrored.Filled.Message, "消息")
     data object Profile : Screen("profile", Icons.Default.Person, "我的")
 }
 
@@ -91,7 +94,7 @@ fun HomeScreen(navController: NavController) {
             val navBackStackEntry by mainNavController.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
 
-            val screens = listOf(Screen.Browse, Screen.Favorites, Screen.Inbox, Screen.Profile)
+            val screens = listOf(Screen.Browse, Screen.Campus, Screen.Favorites, Screen.Inbox, Screen.Profile)
 
             screens.forEach { screen ->
                 NavigationBarItem(
@@ -129,6 +132,10 @@ fun HomeScreen(navController: NavController) {
         ) {
             composable(Screen.Browse.route) {
                 BrowseScreen(navController)
+            }
+            
+            composable(Screen.Campus.route) {
+                CampusScreen(navController)
             }
 
             composable(Screen.Favorites.route) {

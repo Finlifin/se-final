@@ -93,7 +93,8 @@ class ProductRepository(context: Context) {
         tags: List<String>,
         availableDeliveryMethods: List<String>,
         location: String,
-        imageUris: List<Uri>
+        imageUris: List<Uri>,
+        campusId: String? = null
     ): Resource<Product> = withContext(Dispatchers.IO) {
         try {
             // 先上传图片
@@ -118,7 +119,8 @@ class ProductRepository(context: Context) {
                 condition = condition,
                 location = location,
                 tags = tags,
-                availableDeliveryMethods = availableDeliveryMethods
+                availableDeliveryMethods = availableDeliveryMethods,
+                campusId = campusId
             )
             
             productService.createProduct(request).toResource("商品发布失败")
@@ -141,7 +143,8 @@ class ProductRepository(context: Context) {
         status: ProductStatus? = null,
         imageUris: List<Uri>? = null,
         tags: List<String>? = null,
-        availableDeliveryMethods: List<String>? = null
+        availableDeliveryMethods: List<String>? = null,
+        campusId: String? = null
     ): Resource<Product> = withContext(Dispatchers.IO) {
         try {
             // 如果有新图片，先上传
@@ -166,7 +169,8 @@ class ProductRepository(context: Context) {
                 status = status?.name,
                 images = imageUrls,
                 tags = tags,
-                availableDeliveryMethods = availableDeliveryMethods
+                availableDeliveryMethods = availableDeliveryMethods,
+                campusId = campusId
             )
             
             productService.updateProduct(productId, request).toResource("商品更新失败")
@@ -182,6 +186,47 @@ class ProductRepository(context: Context) {
         productService.deleteProduct(productId).toResource("商品删除失败")
     }
 
+    /**
+     * 获取校区内商品
+     * 根据学校ID和校区ID获取特定校区的商品
+     */
+    suspend fun getCampusProducts(
+        schoolId: String,
+        campusId: String,
+        page: Int = 1,
+        limit: Int = 20,
+        searchQuery: String? = null
+    ): Resource<List<Product>> = withContext(Dispatchers.IO) {
+        try {
+            if (schoolId.isEmpty() || campusId.isEmpty()) {
+                return@withContext Resource.Error("学校或校区ID不能为空")
+            }
+            
+            val response = productService.getProducts(
+                page = page,
+                limit = limit,
+                schoolId = schoolId,
+                campusId = campusId,
+                searchQuery = searchQuery,
+                sortBy = "postTime",
+                sortOrder = "desc",
+                availableStatuses = listOf("available")
+            )
+            
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.success) {
+                    return@withContext Resource.Success(body.data)
+                } else {
+                    return@withContext Resource.Error(body.message)
+                }
+            } else {
+                return@withContext Resource.Error("获取校区商品失败: ${response.message()}")
+            }
+        } catch (e: Exception) {
+            return@withContext Resource.Error("获取校区商品失败: ${e.message}")
+        }
+    }
 
     suspend fun isProductFavorite(productId: String): Resource<Boolean> =
         withContext(Dispatchers.IO) {

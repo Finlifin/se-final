@@ -79,7 +79,7 @@ fun OrderListScreen(navController: NavController) {
 
     // 加载订单
     LaunchedEffect(selectedRole.value, selectedStatus.value) {
-        val role = if (selectedRole.value == "买家") "buyer" else "seller"
+        val role = if (selectedRole.value == "作为买家") "buyer" else "seller"
         val status = when (selectedStatus.value) {
             "待处理" -> "pending"
             "等待支付" -> "payment_pending"
@@ -90,7 +90,7 @@ fun OrderListScreen(navController: NavController) {
             "已退款" -> "refunded"
             else -> null
         }
-        viewModel.loadOrders(role = role, status = null)
+        viewModel.loadOrders(role = role, status = status)
     }
 
     Scaffold(
@@ -112,12 +112,11 @@ fun OrderListScreen(navController: NavController) {
                 selectedOption = selectedRole.value,
                 onOptionSelected = { selectedRole.value = it })
 
-            // // 状态筛选器
-            // StatusFilterChips(
-            //     options = statusOptions,
-            //     selectedOption = selectedStatus.value,
-            //     onOptionSelected = { selectedStatus.value = it }
-            // )
+            // 状态筛选器
+            StatusFilterChips(
+                options = statusOptions,
+                selectedOption = selectedStatus.value,
+                onOptionSelected = { selectedStatus.value = it })
 
             // 订单列表
             when (ordersState) {
@@ -150,7 +149,7 @@ fun OrderListScreen(navController: NavController) {
                             Button(
                                 onClick = {
                                     val role =
-                                        if (selectedRole.value == "买家") "buyer" else "seller"
+                                        if (selectedRole.value == "作为买家") "buyer" else "seller"
                                     val status = when (selectedStatus.value) {
                                         "待处理" -> "pending"
                                         "等待支付" -> "payment_pending"
@@ -161,7 +160,7 @@ fun OrderListScreen(navController: NavController) {
                                         "已退款" -> "refunded"
                                         else -> null
                                     }
-                                    viewModel.loadOrders(role = role, status = null)
+                                    viewModel.loadOrders(role = role, status = status)
                                 }, colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
                             ) {
                                 Text("重试")
@@ -175,7 +174,7 @@ fun OrderListScreen(navController: NavController) {
                         it.orderType == "product"
                     }
                     val refreshOrders = {
-                        val role = if (selectedRole.value == "买家") "buyer" else "seller"
+                        val role = if (selectedRole.value == "作为买家") "buyer" else "seller"
                         val status = when (selectedStatus.value) {
                             "待处理" -> "pending"
                             "等待支付" -> "payment_pending"
@@ -186,7 +185,7 @@ fun OrderListScreen(navController: NavController) {
                             "已退款" -> "refunded"
                             else -> null
                         }
-                        viewModel.loadOrders(role = role, status = null)
+                        viewModel.loadOrders(role = role, status = status)
                     }
 
                     if (orders.isEmpty()) {
@@ -205,7 +204,7 @@ fun OrderListScreen(navController: NavController) {
                                 items = orders, key = { order -> order.orderId }) { order ->
                                 OrderItem(
                                     order = order,
-                                    isSellerMode = selectedRole.value == "卖家",
+                                    isSellerMode = selectedRole.value == "作为卖家",
                                     onClick = { navController.navigate("/orders/${order.orderId}") },
                                     onGotoPayment = {
                                         navController.navigate("/payment/confirm/${order.orderId}")
@@ -288,14 +287,10 @@ fun StatusFilterChips(
                     selectedLeadingIconColor = RoseRed
                 ),
                 border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
                     selectedBorderColor = RoseRed,
-                    borderWidth = 1.dp,
-                    enabled = TODO(),
-                    selected = TODO(),
-                    borderColor = TODO(),
-                    disabledBorderColor = TODO(),
-                    disabledSelectedBorderColor = TODO(),
-                    selectedBorderWidth = TODO()
+                    borderWidth = 1.dp
                 ),
                 modifier = Modifier.padding(end = 8.dp)
             )
@@ -317,13 +312,15 @@ fun OrderItem(
             .padding(vertical = 8.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .background(Color.Transparent)
         ) {
             // 订单ID和状态
             Row(
