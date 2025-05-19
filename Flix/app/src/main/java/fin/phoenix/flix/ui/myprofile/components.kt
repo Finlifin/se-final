@@ -1,6 +1,5 @@
 package fin.phoenix.flix.ui.myprofile
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -75,34 +75,40 @@ import fin.phoenix.flix.data.Campus
 import fin.phoenix.flix.data.School
 import fin.phoenix.flix.data.User
 import fin.phoenix.flix.ui.colors.RoseRed
-import fin.phoenix.flix.ui.colors.WarnRoseRed
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.imageUrl
 
 @Composable
-fun ProfileContent(user: User, navController: NavController) {
-    val ctx = LocalContext.current
+fun ProfileContent(user: User, navController: NavController, viewModel: MyProfileViewModel) {
+    LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         // Profile header with user info
-        ProfileHeader(user, onEditProfile = { navController.navigate("/my_profile/edit") })
+        ProfileHeader(
+            user,
+            onEditProfile = { navController.navigate("/my_profile/edit") },
+            viewModel = viewModel
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // Wallet section
         WalletSection(
-            balance = user.balance, onTopUpClick = { navController.navigate("/my_profile/recharge") })
+            balance = user.balance,
+            onTopUpClick = { navController.navigate("/my_profile/recharge") })
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // My Transactions section
         MenuSection(
-            title = "我的交易", items = listOf(
+            title = "我的交易",
+            items = listOf(
                 MenuItem("我的订单") { navController.navigate("/orders") },
-                MenuItem("收藏夹") { navController.navigate("/my_profile/favorites") },)
+                MenuItem("收藏夹") { navController.navigate("/my_profile/favorites") },
+            )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -119,7 +125,11 @@ fun ProfileContent(user: User, navController: NavController) {
 }
 
 @Composable
-private fun ProfileHeader(user: User, onEditProfile: () -> Unit) {
+fun ProfileHeader(user: User, onEditProfile: () -> Unit, viewModel: MyProfileViewModel) {
+    // 观察学校和校区名称状态
+    val schoolNameState by viewModel.schoolNameState.observeAsState(initial = Resource.Loading)
+    val campusNameState by viewModel.campusNameState.observeAsState(initial = Resource.Loading)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -153,19 +163,56 @@ private fun ProfileHeader(user: User, onEditProfile: () -> Unit) {
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "地址: ${user.currentAddress ?: "未设置"}", fontSize = 14.sp, color = Color.Gray
+                text = "地址: ${user.currentAddress ?: "未设置"}",
+                fontSize = 14.sp,
+                color = Color.Gray
             )
-            
-            // 添加学校和校区信息
+
+            // 显示学校信息
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "学校: ${user.schoolId ?: "未设置"}", fontSize = 14.sp, color = Color.Gray
-            )
-            
+            when (schoolNameState) {
+                is Resource.Loading -> {
+                    Text(
+                        text = "学校: 加载中...", fontSize = 14.sp, color = Color.Gray
+                    )
+                }
+
+                is Resource.Error -> {
+                    Text(
+                        text = "学校: 获取失败", fontSize = 14.sp, color = Color.Gray
+                    )
+                }
+
+                is Resource.Success -> {
+                    val schoolName = (schoolNameState as Resource.Success<String>).data
+                    Text(
+                        text = "学校: $schoolName", fontSize = 14.sp, color = Color.Gray
+                    )
+                }
+            }
+
+            // 显示校区信息
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "校区: ${user.campusId ?: "未设置"}", fontSize = 14.sp, color = Color.Gray
-            )
+            when (campusNameState) {
+                is Resource.Loading -> {
+                    Text(
+                        text = "校区: 加载中...", fontSize = 14.sp, color = Color.Gray
+                    )
+                }
+
+                is Resource.Error -> {
+                    Text(
+                        text = "校区: 获取失败", fontSize = 14.sp, color = Color.Gray
+                    )
+                }
+
+                is Resource.Success -> {
+                    val campusName = (campusNameState as Resource.Success<String>).data
+                    Text(
+                        text = "校区: $campusName", fontSize = 14.sp, color = Color.Gray
+                    )
+                }
+            }
         }
 
         // Edit profile button
@@ -516,8 +563,7 @@ fun SchoolSelectionBottomSheet(
     if (isVisible) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            sheetState = sheetState
+            onDismissRequest = onDismiss, sheetState = sheetState
         ) {
             Column(
                 modifier = Modifier
@@ -531,7 +577,7 @@ fun SchoolSelectionBottomSheet(
                     fontSize = 18.sp,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                
+
                 // 搜索输入框
                 OutlinedTextField(
                     value = schoolSearchQuery,
@@ -540,20 +586,17 @@ fun SchoolSelectionBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = {
                         Icon(
-                            Icons.Default.Search,
-                            contentDescription = "搜索",
-                            tint = RoseRed
+                            Icons.Default.Search, contentDescription = "搜索", tint = RoseRed
                         )
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = RoseRed,
-                        unfocusedBorderColor = Color.Gray
+                        focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
                     ),
                     singleLine = true
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // 学校列表
                 Box(modifier = Modifier.weight(1f)) {
                     when (val state = schoolsState) {
@@ -567,6 +610,7 @@ fun SchoolSelectionBottomSheet(
                                 CircularProgressIndicator(color = RoseRed)
                             }
                         }
+
                         is Resource.Error -> {
                             Column(
                                 modifier = Modifier
@@ -596,6 +640,7 @@ fun SchoolSelectionBottomSheet(
                                 }
                             }
                         }
+
                         is Resource.Success -> {
                             val schools = state.data
                             val filteredSchools = if (schoolSearchQuery.isBlank()) {
@@ -603,8 +648,7 @@ fun SchoolSelectionBottomSheet(
                             } else {
                                 schools.filter {
                                     it.name.contains(
-                                        schoolSearchQuery,
-                                        ignoreCase = true
+                                        schoolSearchQuery, ignoreCase = true
                                     )
                                 }
                             }
@@ -617,8 +661,7 @@ fun SchoolSelectionBottomSheet(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        "没有找到匹配的学校",
-                                        color = Color.Gray
+                                        "没有找到匹配的学校", color = Color.Gray
                                     )
                                 }
                             } else {
@@ -631,8 +674,7 @@ fun SchoolSelectionBottomSheet(
                                             name = "不设置校区",
                                             icon = Icons.Default.Close,
                                             iconTint = Color.Gray,
-                                            onClick = { onSchoolSelected("", "未设置") }
-                                        )
+                                            onClick = { onSchoolSelected("", "未设置") })
                                     }
 
                                     // 学校列表
@@ -642,15 +684,14 @@ fun SchoolSelectionBottomSheet(
                                             subText = school.city,
                                             icon = Icons.Default.School,
                                             iconTint = RoseRed,
-                                            onClick = { onSchoolSelected(school.id, school.name) }
-                                        )
+                                            onClick = { onSchoolSelected(school.id, school.name) })
                                     }
                                 }
                             }
                         }
                     }
                 }
-                
+
                 // 底部添加按钮
                 Button(
                     onClick = onAddSchoolClick,
@@ -688,8 +729,7 @@ fun CampusSelectionBottomSheet(
     if (isVisible) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            sheetState = sheetState
+            onDismissRequest = onDismiss, sheetState = sheetState
         ) {
             Column(
                 modifier = Modifier
@@ -699,18 +739,14 @@ fun CampusSelectionBottomSheet(
                 // 顶部标题和学校名称
                 Column(modifier = Modifier.padding(bottom = 16.dp)) {
                     Text(
-                        text = "选择校区",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                        text = "选择校区", fontWeight = FontWeight.Bold, fontSize = 18.sp
                     )
-                    
+
                     Text(
-                        text = "当前学校：$schoolName",
-                        color = Color.Gray,
-                        fontSize = 14.sp
+                        text = "当前学校：$schoolName", color = Color.Gray, fontSize = 14.sp
                     )
                 }
-                
+
                 // 搜索输入框
                 OutlinedTextField(
                     value = campusSearchQuery,
@@ -719,20 +755,17 @@ fun CampusSelectionBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = {
                         Icon(
-                            Icons.Default.Search,
-                            contentDescription = "搜索",
-                            tint = RoseRed
+                            Icons.Default.Search, contentDescription = "搜索", tint = RoseRed
                         )
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = RoseRed,
-                        unfocusedBorderColor = Color.Gray
+                        focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
                     ),
                     singleLine = true
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // 校区列表
                 Box(modifier = Modifier.weight(1f)) {
                     when (val state = campusesState) {
@@ -746,6 +779,7 @@ fun CampusSelectionBottomSheet(
                                 CircularProgressIndicator(color = RoseRed)
                             }
                         }
+
                         is Resource.Error -> {
                             Column(
                                 modifier = Modifier
@@ -775,6 +809,7 @@ fun CampusSelectionBottomSheet(
                                 }
                             }
                         }
+
                         is Resource.Success -> {
                             val campuses = state.data
                             val filteredCampuses = if (campusSearchQuery.isBlank()) {
@@ -782,8 +817,7 @@ fun CampusSelectionBottomSheet(
                             } else {
                                 campuses.filter {
                                     it.name.contains(
-                                        campusSearchQuery,
-                                        ignoreCase = true
+                                        campusSearchQuery, ignoreCase = true
                                     )
                                 }
                             }
@@ -796,11 +830,8 @@ fun CampusSelectionBottomSheet(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        if (campuses.isEmpty()) 
-                                            "该学校暂无校区信息" 
-                                        else 
-                                            "没有找到匹配的校区",
-                                        color = Color.Gray
+                                        if (campuses.isEmpty()) "该学校暂无校区信息"
+                                        else "没有找到匹配的校区", color = Color.Gray
                                     )
                                 }
                             } else {
@@ -813,8 +844,7 @@ fun CampusSelectionBottomSheet(
                                             name = "不设置校区",
                                             icon = Icons.Default.Close,
                                             iconTint = Color.Gray,
-                                            onClick = { onCampusSelected("", "未设置") }
-                                        )
+                                            onClick = { onCampusSelected("", "未设置") })
                                     }
 
                                     // 校区列表
@@ -824,15 +854,14 @@ fun CampusSelectionBottomSheet(
                                             address = campus.address,
                                             icon = Icons.Default.LocationOn,
                                             iconTint = RoseRed,
-                                            onClick = { onCampusSelected(campus.id, campus.name) }
-                                        )
+                                            onClick = { onCampusSelected(campus.id, campus.name) })
                                     }
                                 }
                             }
                         }
                     }
                 }
-                
+
                 // 底部添加按钮
                 Button(
                     onClick = onAddCampusClick,
@@ -867,30 +896,26 @@ fun AddSchoolDialog(
     onDismiss: () -> Unit
 ) {
     if (isVisible) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text("添加新学校", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(
+        AlertDialog(onDismissRequest = onDismiss, title = {
+            Text("添加新学校", fontWeight = FontWeight.Bold)
+        }, text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = schoolName,
+                    onValueChange = onSchoolNameChange,
+                    label = { Text("学校名称") },
+                    placeholder = { Text("请输入学校名称") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedTextField(
-                        value = schoolName,
-                        onValueChange = onSchoolNameChange,
-                        label = { Text("学校名称") },
-                        placeholder = { Text("请输入学校名称") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = RoseRed,
-                            unfocusedBorderColor = Color.Gray
-                        )
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
                     )
+                )
 
-                    // 学校代码相关已弃用，以下为遗留代码，已注释
+                // 学校代码相关已弃用，以下为遗留代码，已注释
 //                    OutlinedTextField(
 //                        value = schoolCode,
 //                        onValueChange = onSchoolCodeChange,
@@ -909,24 +934,21 @@ fun AddSchoolDialog(
 //                        fontSize = 12.sp,
 //                        color = Color.Gray
 //                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = onAddClick,
-                    // enabled = schoolName.isNotBlank() && schoolCode.isNotBlank(), // 学校代码已弃用
-                    enabled = schoolName.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
-                ) {
-                    Text("添加")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
-                }
             }
-        )
+        }, confirmButton = {
+            Button(
+                onClick = onAddClick,
+                // enabled = schoolName.isNotBlank() && schoolCode.isNotBlank(), // 学校代码已弃用
+                enabled = schoolName.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+            ) {
+                Text("添加")
+            }
+        }, dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        })
     }
 }
 
@@ -944,74 +966,62 @@ fun AddCampusDialog(
     onDismiss: () -> Unit
 ) {
     if (isVisible) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text("添加新校区", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(
+        AlertDialog(onDismissRequest = onDismiss, title = {
+            Text("添加新校区", fontWeight = FontWeight.Bold)
+        }, text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "所属学校：$schoolName",
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Gray
+                )
+
+                OutlinedTextField(
+                    value = campusName,
+                    onValueChange = onCampusNameChange,
+                    label = { Text("校区名称") },
+                    placeholder = { Text("请输入校区名称") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "所属学校：$schoolName",
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Gray
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
                     )
-                    
-                    OutlinedTextField(
-                        value = campusName,
-                        onValueChange = onCampusNameChange,
-                        label = { Text("校区名称") },
-                        placeholder = { Text("请输入校区名称") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = RoseRed,
-                            unfocusedBorderColor = Color.Gray
-                        )
+                )
+
+                OutlinedTextField(
+                    value = campusAddress,
+                    onValueChange = onCampusAddressChange,
+                    label = { Text("校区地址") },
+                    placeholder = { Text("请输入校区地址") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RoseRed, unfocusedBorderColor = Color.Gray
                     )
-                    
-                    OutlinedTextField(
-                        value = campusAddress,
-                        onValueChange = onCampusAddressChange,
-                        label = { Text("校区地址") },
-                        placeholder = { Text("请输入校区地址") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = RoseRed,
-                            unfocusedBorderColor = Color.Gray
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = onAddClick,
-                    enabled = campusName.isNotBlank() && campusAddress.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
-                ) {
-                    Text("添加")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
-                }
+                )
             }
-        )
+        }, confirmButton = {
+            Button(
+                onClick = onAddClick,
+                enabled = campusName.isNotBlank() && campusAddress.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = RoseRed)
+            ) {
+                Text("添加")
+            }
+        }, dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        })
     }
 }
 
 // 学校列表项组件
 @Composable
 fun SchoolItem(
-    name: String,
-    subText: String? = null,
-    icon: ImageVector,
-    iconTint: Color,
-    onClick: () -> Unit
+    name: String, subText: String? = null, icon: ImageVector, iconTint: Color, onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -1030,16 +1040,14 @@ fun SchoolItem(
                 tint = iconTint,
                 modifier = Modifier.size(24.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = name)
                 if (subText != null) {
                     Text(
-                        text = subText,
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = subText, fontSize = 12.sp, color = Color.Gray
                     )
                 }
             }
@@ -1050,11 +1058,7 @@ fun SchoolItem(
 // 校区列表项组件
 @Composable
 fun CampusItem(
-    name: String,
-    address: String? = null,
-    icon: ImageVector,
-    iconTint: Color,
-    onClick: () -> Unit
+    name: String, address: String? = null, icon: ImageVector, iconTint: Color, onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -1073,16 +1077,14 @@ fun CampusItem(
                 tint = iconTint,
                 modifier = Modifier.size(24.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = name)
                 if (address != null) {
                     Text(
-                        text = address,
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = address, fontSize = 12.sp, color = Color.Gray
                     )
                 }
             }

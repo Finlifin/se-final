@@ -94,7 +94,8 @@ defmodule FlixBackendWeb.ProductController do
       location: params["location"],
       post_time: :os.system_time(:seconds),
       tags: params["tags"] || [],
-      available_delivery_methods: params["availableDeliveryMethods"] || []
+      available_delivery_methods: params["available_delivery_methods"] || [],
+      campus_id: params["campus_id"]
     }
 
     case ProductService.create_product(product_params) do
@@ -125,9 +126,9 @@ defmodule FlixBackendWeb.ProductController do
       |> add_param_if_exists(params, "category")
       |> add_param_if_exists(params, "condition")
       |> add_param_if_exists(params, "location")
-      |> add_param_if_exists(params, "status")
       |> add_param_if_exists(params, "tags")
-      |> add_param_if_exists(params, "availableDeliveryMethods")
+      |> add_param_if_exists(params, "available_delivery_methods")
+      |> add_param_if_exists(params, "campus_id")
 
     case ProductService.update_product(id, product_params, account.user_id) do
       {:ok, product} ->

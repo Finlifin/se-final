@@ -2,10 +2,12 @@ package fin.phoenix.flix.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import fin.phoenix.flix.data.UserManager
 
 class PreferencesManager(context: Context) {
     private val settingsPrefs: SharedPreferences = context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
     private val userPrefs: SharedPreferences = context.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE)
+    private val userManager = UserManager.getInstance(context)
 
     // Settings preferences
     var isDarkMode: Boolean
@@ -33,7 +35,12 @@ class PreferencesManager(context: Context) {
         userPrefs.edit().apply {
             remove("auth_token")
             remove("user_id")
+            remove("user_name")
+            remove("avatar_url")
+            remove("campus_id")
+            remove("school_id")
             apply()
         }
+        userManager.clearCurrentUser()
     }
 }

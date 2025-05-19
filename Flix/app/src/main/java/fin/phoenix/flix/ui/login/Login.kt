@@ -326,17 +326,6 @@ fun SignInSignUpScreen(onLoginSuccess: () -> Unit = {}) {
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Additional login methods placeholder
-                Text(
-                    text = "其他登录方式 (暂未实现)",
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     }

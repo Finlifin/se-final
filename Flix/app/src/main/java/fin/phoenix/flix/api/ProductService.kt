@@ -1,5 +1,6 @@
 package fin.phoenix.flix.api
 
+import com.google.gson.annotations.SerializedName
 import fin.phoenix.flix.data.Product
 import retrofit2.Response
 import retrofit2.http.Body
@@ -9,6 +10,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+
 
 /**
  * 商品API服务接口
@@ -83,43 +85,30 @@ data class ProductListData(
     val totalPages: Int = 1
 )
 
-/**
- * 创建商品请求
- */
 data class CreateProductRequest(
-    val sellerId: String,
-    val title: String,
-    val description: String,
-    val price: Double,
-    val images: List<String>,
-    val category: String,
-    val condition: String,
-    val location: String,
-    val tags: List<String>,
-    val availableDeliveryMethods: List<String>,
-    val campusId: String?
+    @SerializedName("seller_id") val sellerId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("price") val price: Double,
+    @SerializedName("images") val images: List<String>,
+    @SerializedName("category") val category: String,
+    @SerializedName("condition") val condition: String,
+    @SerializedName("location") val location: String,
+    @SerializedName("tags") val tags: List<String>,
+    @SerializedName("available_delivery_methods") val availableDeliveryMethods: List<String>,
+    @SerializedName("campus_id") val campusId: String?
 )
 
-/**
- * 更新商品请求
- */
 data class UpdateProductRequest(
-    val title: String? = null,
-    val description: String? = null,
-    val price: Double? = null,
-    val images: List<String>? = null,
-    val category: String? = null,
-    val condition: String? = null,
-    val location: String? = null,
-    val status: String? = null,
-    val tags: List<String>? = null,
-    val availableDeliveryMethods: List<String>? = null,
-    val campusId: String? = null
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("price") val price: Double? = null,
+    @SerializedName("images") val images: List<String>? = null,
+    @SerializedName("category") val category: String? = null,
+    @SerializedName("condition") val condition: String? = null,
+    @SerializedName("location") val location: String? = null,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("tags") val tags: List<String>? = null,
+    @SerializedName("available_delivery_methods") val availableDeliveryMethods: List<String>? = null,
+    @SerializedName("campus_id") val campusId: String? = null
 )
-
-/**
- * 基础响应结构
- */
-data class BaseResponse(
-    override val success: Boolean, override val message: String? = null
-) : ApiResponse

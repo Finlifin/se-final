@@ -146,7 +146,8 @@ fun MyProfileContent(navController: NavController, userId: String) {
                             contentPadding = PaddingValues(16.dp)
                         ) {
                             item {
-                                ProfileContent(user, navController)
+                                // 将viewModel传递给ProfileContent
+                                ProfileContent(user, navController, myProfileViewModel)
                             }
                         }
                     }

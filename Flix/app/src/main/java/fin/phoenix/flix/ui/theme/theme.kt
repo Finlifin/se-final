@@ -27,7 +27,8 @@ private val LightColorScheme = lightColorScheme(
     secondary = DarkRoseRed, 
     error = WarnRoseRed,
     surface = Color.White,
-    background = Color(0xFFF8F8F8)
+    background = Color.White,
+    secondaryContainer = Color.White
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -39,11 +40,6 @@ private val DarkColorScheme = darkColorScheme(
     background = Color(0xFF121212)
 )
 
-// 自定义Card颜色提供者
-//val LocalCardColors = staticCompositionLocalOf {
-//    CardDefaults.cardColors(containerColor = Color.White)
-//}
-
 @Composable
 fun FlixTheme(
     content: @Composable () -> Unit
@@ -53,6 +49,12 @@ fun FlixTheme(
     val darkTheme = remember { mutableStateOf(preferencesManager.isDarkMode) }
 
     val colorScheme = if (darkTheme.value) DarkColorScheme else LightColorScheme
+    
+    // 默认Card颜色设置
+    val cardColors = CardDefaults.cardColors(
+        containerColor = Color.White,
+        contentColor = if (darkTheme.value) Color.White else Color.Black
+    )
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -72,7 +74,12 @@ fun FlixTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme, 
-        content = content
+        colorScheme = colorScheme,
+        content = {
+            // 提供Card颜色
+            androidx.compose.runtime.CompositionLocalProvider(
+                content = content
+            )
+        }
     )
 }

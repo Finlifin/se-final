@@ -7,16 +7,20 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import fin.phoenix.flix.api.ProfileUpdateRequest
 import fin.phoenix.flix.data.Product
+import fin.phoenix.flix.data.School
+import fin.phoenix.flix.data.Campus
 import fin.phoenix.flix.data.User
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.repository.ProfileRepository
+import fin.phoenix.flix.repository.SchoolRepository
 import fin.phoenix.flix.util.Resource
 import kotlinx.coroutines.launch
 
 class MyProfileViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = ProfileRepository(application)
+    private val schoolRepository = SchoolRepository(application)
     private val userManager = UserManager.getInstance(application)
 
     private val _userProfileState = MutableLiveData<Resource<User>>()
@@ -33,6 +37,13 @@ class MyProfileViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _userFavoritesState = MutableLiveData<Resource<List<Product>>>()
     val userFavoritesState: LiveData<Resource<List<Product>>> = _userFavoritesState
+    
+    // 添加学校和校区名称的状态
+    private val _schoolNameState = MutableLiveData<Resource<String>>(Resource.Loading)
+    val schoolNameState: LiveData<Resource<String>> = _schoolNameState
+    
+    private val _campusNameState = MutableLiveData<Resource<String>>(Resource.Loading)
+    val campusNameState: LiveData<Resource<String>> = _campusNameState
 
     /**
      * 获取用户个人资料
@@ -43,9 +54,80 @@ class MyProfileViewModel(application: Application) : AndroidViewModel(applicatio
             val result = repository.getUserProfile(userId)
             _userProfileState.value = result
             
-            // 如果获取成功，更新UserManager
+            // 如果获取成功，更新UserManager并获取学校和校区名称
             if (result is Resource.Success) {
                 updateUserManager(result.data)
+                
+                // 获取学校和校区的名称
+                result.data.schoolId?.let {
+                    if (it.isNotEmpty()) {
+                        getSchoolName(it)
+                    } else {
+                        _schoolNameState.value = Resource.Success("未设置")
+                    }
+                } ?: run {
+                    _schoolNameState.value = Resource.Success("未设置")
+                }
+                
+                result.data.campusId?.let {
+                    if (it.isNotEmpty()) {
+                        getCampusName(it)
+                    } else {
+                        _campusNameState.value = Resource.Success("未设置")
+                    }
+                } ?: run {
+                    _campusNameState.value = Resource.Success("未设置")
+                }
+            }
+        }
+    }
+    
+    /**
+     * 获取学校名称
+     */
+    private fun getSchoolName(schoolId: String) {
+        _schoolNameState.value = Resource.Loading
+        viewModelScope.launch {
+            try {
+                val result = schoolRepository.getSchool(schoolId)
+                when (result) {
+                    is Resource.Success -> {
+                        _schoolNameState.value = Resource.Success(result.data.name)
+                    }
+                    is Resource.Error -> {
+                        _schoolNameState.value = Resource.Error(result.message ?: "获取学校信息失败")
+                    }
+                    is Resource.Loading -> {
+                        _schoolNameState.value = Resource.Loading
+                    }
+                }
+            } catch (e: Exception) {
+                _schoolNameState.value = Resource.Error("获取学校信息失败: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 获取校区名称
+     */
+    private fun getCampusName(campusId: String) {
+        _campusNameState.value = Resource.Loading
+        viewModelScope.launch {
+            try {
+                val result = schoolRepository.getCampus(campusId)
+                when (result) {
+                    is Resource.Success -> {
+                        _campusNameState.value = Resource.Success(result.data.name)
+                    }
+                    is Resource.Error -> {
+                        _campusNameState.value = Resource.Error(result.message ?: "获取校区信息失败")
+                    }
+                    is Resource.Loading -> {
+                        _campusNameState.value = Resource.Loading
+                    }
+                }
+            } catch (e: Exception) {
+                _campusNameState.value = Resource.Error("获取校区信息失败: ${e.message}")
             }
         }
     }

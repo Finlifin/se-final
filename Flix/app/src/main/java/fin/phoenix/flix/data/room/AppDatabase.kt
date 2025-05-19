@@ -11,8 +11,8 @@ import androidx.room.TypeConverters
  * 该类管理为不同用户维护的隔离数据库
  */
 @Database(
-    entities = [MessageEntity::class, ConversationEntity::class],
-    version = 2,
+    entities = [MessageEntity::class, ConversationEntity::class, UserAbstractEntity::class],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -20,6 +20,7 @@ abstract class AppDatabase : RoomDatabase() {
     
     abstract fun messageDao(): MessageDao
     abstract fun conversationDao(): ConversationDao
+    abstract fun userAbstractDao(): UserAbstractDao
 
     companion object {
         private const val DB_NAME_PREFIX = "flix_db_"

@@ -39,206 +39,182 @@ defmodule FlixBackend.ProductService do
         available_status \\ [:available, :sold],
         campus_id \\ nil
       ) do
-    # 基础查询，排除 search_vector 字段
-    query =
-      from p in Product,
-        where: p.status in ^available_status,
-        select:
-          map(p, [
-            :id,
-            :seller_id,
-            :title,
-            :description,
-            :price,
-            :images,
-            :category,
-            :condition,
-            :location,
-            :post_time,
-            :status,
-            :view_count,
-            :favorite_count,
-            :tags,
-            :available_delivery_methods,
-            :campus_id,
-            :inserted_at,
-            :updated_at
-          ])
+    # 构建基础查询
+    query = build_base_query(available_status)
 
-    # 添加分类过滤
-    query =
-      if category do
-        from p in query, where: p.category == ^category
-      else
-        query
-      end
-
-    # 添加卖家过滤
-    query =
-      if seller_id do
-        from p in query, where: p.seller_id == ^seller_id
-      else
-        query
-      end
-
-    # 添加校区过滤
-    query =
-      if campus_id do
-        from p in query, where: p.campus_id == ^campus_id
-      else
-        query
-      end
-
-    # 添加搜索过滤 - 使用全文搜索结合模糊匹配
-    processed_query =
-      if search_query && search_query != "" do
-        # 准备搜索词，移除特殊字符并准备为tsquery格式
-        search_query
-        |> String.replace(~r/[^\p{L}\p{N}_\s]/u, "")
-        |> String.split(~r/\s+/)
-        |> Enum.filter(&(String.length(&1) > 0))
-        |> Enum.map(&(&1 <> ":*"))
-        |> Enum.join(" & ")
-      else
-        ""
-      end
-
-    query =
-      if search_query && search_query != "" do
-        # 准备模糊查询的模式字符串
-        fuzzy_pattern = "%#{search_query}%"
-
-        if processed_query != "" do
-          # 使用全文搜索结合模糊匹配
-          from p in Product,
-            where:
-              p.status in ^available_status and
-                (fragment("search_vector @@ to_tsquery('simple', ?)", ^processed_query) or
-                   ilike(p.title, ^fuzzy_pattern) or
-                   ilike(p.description, ^fuzzy_pattern)),
-            order_by: [
-              desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query)
-            ],
-            select:
-              map(p, [
-                :id,
-                :seller_id,
-                :title,
-                :description,
-                :price,
-                :images,
-                :category,
-                :condition,
-                :location,
-                :post_time,
-                :status,
-                :view_count,
-                :favorite_count,
-                :tags,
-                :available_delivery_methods,
-                :campus_id,
-                :inserted_at,
-                :updated_at
-              ])
-        else
-          # 如果处理后的查询为空，仅使用模糊匹配
-          from p in query,
-            where: ilike(p.title, ^fuzzy_pattern) or ilike(p.description, ^fuzzy_pattern)
-        end
-      else
-        query
-      end
-
-    # 添加价格过滤
-    query =
-      if min_price do
-        from p in query, where: p.price >= ^min_price
-      else
-        query
-      end
-
-    query =
-      if max_price do
-        from p in query, where: p.price <= ^max_price
-      else
-        query
-      end
-
-    # 添加排序
-    query =
-      if search_query && String.length(search_query) > 0 && processed_query != "" do
-        # 全文搜索结果的排序
-        base_query =
-          from p in query,
-            order_by: [
-              desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query)
-            ]
-
-        # 在保持相关性排序的基础上应用用户请求的排序
-        cond do
-          sort_by == "price" && sort_order == "asc" ->
-            from p in base_query, order_by: [asc: p.price, asc: p.id]
-
-          sort_by == "price" && sort_order == "desc" ->
-            from p in base_query, order_by: [desc: p.price, asc: p.id]
-
-          sort_by == "post_time" && sort_order == "asc" ->
-            from p in base_query, order_by: [asc: p.post_time, asc: p.id]
-
-          sort_by == "post_time" && sort_order == "desc" ->
-            from p in base_query, order_by: [desc: p.post_time, asc: p.id]
-
-          sort_by == "view_count" && sort_order == "desc" ->
-            from p in base_query, order_by: [desc: p.view_count, asc: p.id]
-
-          true ->
-            # 默认排序，保持相关性为主要排序条件，添加ID作为二级排序
-            from p in base_query, order_by: [asc: p.id]
-        end
-      else
-        # 非搜索情况下的排序
-        cond do
-          sort_by == "price" && sort_order == "asc" ->
-            from p in query, order_by: [asc: p.price, asc: p.id]
-
-          sort_by == "price" && sort_order == "desc" ->
-            from p in query, order_by: [desc: p.price, asc: p.id]
-
-          sort_by == "post_time" && sort_order == "asc" ->
-            from p in query, order_by: [asc: p.post_time, asc: p.id]
-
-          sort_by == "post_time" && sort_order == "desc" ->
-            from p in query, order_by: [desc: p.post_time, asc: p.id]
-
-          sort_by == "view_count" && sort_order == "desc" ->
-            from p in query, order_by: [desc: p.view_count, asc: p.id]
-
-          true ->
-            # 默认按发布时间降序排序，并添加ID作为二级排序
-            from p in query, order_by: [desc: p.post_time, asc: p.id]
-        end
-      end
+    # 应用过滤条件
+    query = apply_filters(query, %{
+      category: category,
+      seller_id: seller_id,
+      campus_id: campus_id,
+      search_query: search_query,
+      min_price: min_price,
+      max_price: max_price
+    })
 
     # 计算总数
-    count_query =
-      query
-      |> exclude(:order_by)
-      |> exclude(:select)
-      |> select([p], count(p.id))
-
+    count_query = query |> exclude(:order_by) |> exclude(:select) |> select([p], count(p.id))
     total_count = Repo.one(count_query)
 
-    # 添加分页
-    offset = (offset - 1) * limit
+    # 应用排序
+    query = apply_sorting(query, sort_by, sort_order, search_query)
 
-    query =
-      from p in query,
-        limit: ^limit,
-        offset: ^offset
+    # 应用分页
+    page_offset = (offset - 1) * limit
+    query = from p in query, limit: ^limit, offset: ^page_offset
 
+    # 执行查询
     products = Repo.all(query)
 
     {:ok, products, total_count}
+  end
+
+  # 构建基础查询
+  defp build_base_query(available_status) do
+    from p in Product,
+      where: p.status in ^available_status,
+      select: map(p, [
+        :id,
+        :seller_id,
+        :title,
+        :description,
+        :price,
+        :images,
+        :category,
+        :condition,
+        :location,
+        :post_time,
+        :status,
+        :view_count,
+        :favorite_count,
+        :tags,
+        :available_delivery_methods,
+        :campus_id,
+        :inserted_at,
+        :updated_at
+      ])
+  end
+
+  # 应用所有过滤条件
+  defp apply_filters(query, filters) do
+    query
+    |> apply_category_filter(filters.category)
+    |> apply_seller_filter(filters.seller_id)
+    |> apply_campus_filter(filters.campus_id)
+    |> apply_search_filter(filters.search_query)
+    |> apply_price_filter(filters.min_price, filters.max_price)
+  end
+
+  # 应用分类过滤
+  defp apply_category_filter(query, nil), do: query
+  defp apply_category_filter(query, category) do
+    from p in query, where: p.category == ^category
+  end
+
+  # 应用卖家过滤
+  defp apply_seller_filter(query, nil), do: query
+  defp apply_seller_filter(query, seller_id) do
+    from p in query, where: p.seller_id == ^seller_id
+  end
+
+  # 应用校区过滤
+  defp apply_campus_filter(query, nil), do: query
+  defp apply_campus_filter(query, campus_id) do
+    from p in query, where: p.campus_id == ^campus_id
+  end
+
+  # 应用价格过滤
+  defp apply_price_filter(query, min_price, max_price) do
+    query
+    |> apply_min_price(min_price)
+    |> apply_max_price(max_price)
+  end
+
+  defp apply_min_price(query, nil), do: query
+  defp apply_min_price(query, min_price) do
+    from p in query, where: p.price >= ^min_price
+  end
+
+  defp apply_max_price(query, nil), do: query
+  defp apply_max_price(query, max_price) do
+    from p in query, where: p.price <= ^max_price
+  end
+
+  # 应用搜索过滤
+  defp apply_search_filter(query, nil), do: query
+  defp apply_search_filter(query, ""), do: query
+  defp apply_search_filter(query, search_query) do
+    # 准备全文搜索查询
+    processed_query = prepare_ts_query(search_query)
+    # 准备模糊匹配模式
+    fuzzy_pattern = "%#{search_query}%"
+
+    if processed_query != "" do
+      # 使用全文搜索和模糊匹配的组合，但保留原查询的其他条件
+      from p in query,
+        where: fragment("search_vector @@ to_tsquery('simple', ?)", ^processed_query) or
+               ilike(p.title, ^fuzzy_pattern) or
+               ilike(p.description, ^fuzzy_pattern)
+    else
+      # 仅使用模糊匹配
+      from p in query,
+        where: ilike(p.title, ^fuzzy_pattern) or ilike(p.description, ^fuzzy_pattern)
+    end
+  end
+
+  # 准备全文搜索查询
+  defp prepare_ts_query(search_query) do
+    search_query
+    |> String.replace(~r/[^\p{L}\p{N}_\s]/u, "")
+    |> String.split(~r/\s+/)
+    |> Enum.filter(&(String.length(&1) > 0))
+    |> Enum.map(&(&1 <> ":*"))
+    |> Enum.join(" & ")
+  end
+
+  # 应用排序
+  defp apply_sorting(query, sort_by, sort_order, search_query) do
+    # 检查是否是搜索查询并且有有效的处理后查询
+    is_search = search_query && search_query != ""
+    processed_query = if is_search, do: prepare_ts_query(search_query), else: ""
+    has_ts_query = is_search && processed_query != ""
+
+    cond do
+      # 搜索查询时按相关性排序，并应用二级排序
+      has_ts_query ->
+        base_query = from p in query,
+          order_by: [desc: fragment("ts_rank(search_vector, to_tsquery('simple', ?))", ^processed_query)]
+
+        apply_secondary_sorting(base_query, sort_by, sort_order)
+
+      # 非搜索查询时直接应用请求的排序
+      true ->
+        apply_primary_sorting(query, sort_by, sort_order)
+    end
+  end
+
+  # 应用二级排序（在搜索相关性之后）
+  defp apply_secondary_sorting(query, sort_by, sort_order) do
+    case {sort_by, sort_order} do
+      {"price", "asc"} -> from p in query, order_by: [asc: p.price, asc: p.id]
+      {"price", "desc"} -> from p in query, order_by: [desc: p.price, asc: p.id]
+      {"post_time", "asc"} -> from p in query, order_by: [asc: p.post_time, asc: p.id]
+      {"post_time", "desc"} -> from p in query, order_by: [desc: p.post_time, asc: p.id]
+      {"view_count", "desc"} -> from p in query, order_by: [desc: p.view_count, asc: p.id]
+      _ -> from p in query, order_by: [asc: p.id] # 保持相关性排序，添加ID作为二级排序
+    end
+  end
+
+  # 应用主要排序（非搜索情况）
+  defp apply_primary_sorting(query, sort_by, sort_order) do
+    case {sort_by, sort_order} do
+      {"price", "asc"} -> from p in query, order_by: [asc: p.price, asc: p.id]
+      {"price", "desc"} -> from p in query, order_by: [desc: p.price, asc: p.id]
+      {"post_time", "asc"} -> from p in query, order_by: [asc: p.post_time, asc: p.id]
+      {"post_time", "desc"} -> from p in query, order_by: [desc: p.post_time, asc: p.id]
+      {"view_count", "desc"} -> from p in query, order_by: [desc: p.view_count, asc: p.id]
+      _ -> from p in query, order_by: [desc: p.post_time, asc: p.id] # 默认按发布时间降序
+    end
   end
 
   @doc """

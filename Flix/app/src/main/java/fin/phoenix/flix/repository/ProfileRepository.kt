@@ -9,6 +9,10 @@ import fin.phoenix.flix.data.Product
 import fin.phoenix.flix.data.Seller
 import fin.phoenix.flix.data.User
 import fin.phoenix.flix.data.UserAbstract
+import fin.phoenix.flix.data.UserManager
+import fin.phoenix.flix.data.room.AppDatabase
+import fin.phoenix.flix.data.room.UserAbstractDao
+import fin.phoenix.flix.data.room.UserAbstractEntity
 import fin.phoenix.flix.util.Resource
 import fin.phoenix.flix.util.toResource
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +24,23 @@ import kotlinx.coroutines.withContext
 class ProfileRepository(private val context: Context) {
     private val userService = RetrofitClient.createService(ProfileService::class.java, context)
     private val productRepository = ProductRepository(context)
+    private val userManager = UserManager.getInstance(context)
+    private val currentUserId = userManager.currentUserId.value
+
+    // 缓存有效期 (毫秒)
+    private val CACHE_VALID_TIME = 1000 * 60 * 10 // 10分钟
+
+    // 获取用户数据库实例和DAO
+    private fun getUserAbstractDao(): UserAbstractDao? {
+        return try {
+            val userId = currentUserId ?: return null
+            val db = AppDatabase.getInstance(context, userId)
+            db.userAbstractDao()
+        } catch (e: Exception) {
+            Log.e("ProfileRepository", "获取UserAbstractDao失败", e)
+            null
+        }
+    }
 
     /**
      * 获取热门卖家
@@ -31,10 +52,41 @@ class ProfileRepository(private val context: Context) {
 
     /**
      * 根据用户ID获取用户简要信息
+     * 首先尝试从本地缓存获取，如果缓存不存在或已过期，则从网络获取并更新缓存
      */
     suspend fun getUserAbstract(userId: String): Resource<UserAbstract> =
         withContext(Dispatchers.IO) {
-            userService.getUserAbstract(userId).toResource("获取用户信息失败")
+            try {
+                // 1. 尝试从缓存获取
+                val dao = getUserAbstractDao()
+                if (dao != null) {
+                    val cachedEntity = dao.getUserAbstract(userId)
+
+                    // 检查缓存是否有效
+                    val now = System.currentTimeMillis()
+                    if (cachedEntity != null && (now - cachedEntity.timestamp < CACHE_VALID_TIME)) {
+                        Log.d("ProfileRepository", "从缓存获取用户信息成功: $userId")
+                        return@withContext Resource.Success(cachedEntity.toUserAbstract())
+                    }
+                }
+
+                // 2. 从网络获取
+                val response = userService.getUserAbstract(userId).toResource("获取用户信息失败")
+
+                // 3. 如果网络请求成功，更新缓存
+                if (response is Resource.Success) {
+                    dao?.insertUserAbstract(UserAbstractEntity.fromUserAbstract(response.data))
+
+                    // 4. 定期清理过期缓存
+                    val cleanupTime = System.currentTimeMillis() - CACHE_VALID_TIME * 2
+                    dao?.deleteOldCache(cleanupTime)
+                }
+
+                response
+            } catch (e: Exception) {
+                Log.e("ProfileRepository", "获取用户信息异常", e)
+                Resource.Error("获取用户信息失败: ${e.message}")
+            }
         }
 
     /**
