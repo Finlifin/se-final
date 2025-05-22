@@ -7,7 +7,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import fin.phoenix.flix.data.Conversation
 import fin.phoenix.flix.data.UserManager
-import fin.phoenix.flix.data.repository.MessageRepository
+import fin.phoenix.flix.repository.MessageRepository
 import kotlinx.coroutines.launch
 
 /**

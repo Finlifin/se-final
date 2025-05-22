@@ -226,10 +226,10 @@ defmodule FlixBackend.PaymentService do
 
       # 发送系统通知
       message_id = "server-#{:os.system_time(:millisecond)}"
-      Messaging.send_system_notification(
+      Messaging.send_order_message(
+        message_id,
         buyer.uid, # 充值用户
-        content,
-        message_id
+        content
       )
     end
   end

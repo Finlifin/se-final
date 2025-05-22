@@ -1,12 +1,11 @@
 package fin.phoenix.flix.data.room
 
-import android.util.Log
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import fin.phoenix.flix.data.Message
 import fin.phoenix.flix.data.MessageContentItem
 import fin.phoenix.flix.data.UserAbstract
-import fin.phoenix.flix.data.repository.getConversationId
+import fin.phoenix.flix.repository.getConversationId
 import java.util.Date
 
 /**

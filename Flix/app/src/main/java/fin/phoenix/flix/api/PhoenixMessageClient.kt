@@ -10,7 +10,7 @@ import fin.phoenix.flix.data.MessageStatus
 import fin.phoenix.flix.data.MessageTypes
 import fin.phoenix.flix.data.SyncResult
 import fin.phoenix.flix.data.UnreadCounts
-import fin.phoenix.flix.data.repository.getConversationId
+import fin.phoenix.flix.repository.getConversationId
 import fin.phoenix.flix.util.GsonConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

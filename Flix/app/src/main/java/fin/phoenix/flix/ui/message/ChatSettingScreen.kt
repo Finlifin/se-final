@@ -1,6 +1,5 @@
 package fin.phoenix.flix.ui.message
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -57,7 +56,7 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
-import fin.phoenix.flix.data.repository.MessageRepository
+import fin.phoenix.flix.repository.MessageRepository
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.ui.colors.VeryLightRoseRed

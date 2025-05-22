@@ -95,8 +95,8 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     var campusSearchQuery by remember { mutableStateOf("") }
 
     // 显示的学校和校区名称（用于UI展示）
-    var schoolName by remember { mutableStateOf("未设置") }
-    var campusName by remember { mutableStateOf("未设置") }
+    val schoolName by viewModel.schoolNameState.observeAsState(initial = Resource.Loading)
+    val campusName by viewModel.campusNameState.observeAsState(initial = Resource.Loading)
 
     // 底部表单状态
     var showSchoolBottomSheet by remember { mutableStateOf(false) }
@@ -393,12 +393,18 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                             )
 
                             OutlinedTextField(
-                                value = schoolName,
+                                value = schoolName.show(),
                                 onValueChange = {},
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { showSchoolBottomSheet = true },
-                                placeholder = { Text("点击选择学校", modifier = Modifier.clickable {showSchoolBottomSheet = true}) },
+                                placeholder = {
+                                    Text(
+                                        "点击选择学校",
+                                        modifier = Modifier.clickable {
+                                            showSchoolBottomSheet = true
+                                        })
+                                },
                                 readOnly = true,
                                 leadingIcon = {
                                     Icon(
@@ -432,7 +438,7 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
                             )
 
                             OutlinedTextField(
-                                value = campusName,
+                                value = campusName.show(),
                                 onValueChange = {},
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -508,10 +514,10 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
         schoolsState = schoolsState,
         onSchoolSelected = { id, name ->
             schoolId = id
-            schoolName = name
+            viewModel.setSchoolName(name)
             schoolSearchQuery = ""
             campusId = ""
-            campusName = "未设置"
+            viewModel.setCampusName("未设置")
             showSchoolBottomSheet = false
         },
         onAddSchoolClick = {
@@ -524,13 +530,13 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     // 校区选择底部表单
     CampusSelectionBottomSheet(
         isVisible = showCampusBottomSheet,
-        schoolName = schoolName,
+        schoolName = schoolName.show(),
         campusSearchQuery = campusSearchQuery,
         onSearchQueryChange = { campusSearchQuery = it },
         campusesState = campusesState,
         onCampusSelected = { id, name ->
             campusId = id
-            campusName = name
+            viewModel.setCampusName(name)
             campusSearchQuery = ""
             showCampusBottomSheet = false
         },
@@ -552,9 +558,9 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
             viewModel.addSchool(newSchoolName, newSchoolCode) { success, newId, message ->
                 if (success && newId != null) {
                     schoolId = newId
-                    schoolName = newSchoolName
+                    viewModel.setSchoolName(newSchoolName)
                     campusId = ""
-                    campusName = "未设置"
+                    viewModel.setCampusName("未设置")
                     showAddSchoolDialog = false
                     scope.launch {
                         Toast.makeText(context, "学校添加成功", Toast.LENGTH_SHORT).show()
@@ -571,20 +577,18 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
     // 添加新校区对话框
     AddCampusDialog(
         isVisible = showAddCampusDialog,
-        schoolName = schoolName,
+        schoolName = schoolName.show(),
         campusName = newCampusName,
         onCampusNameChange = { newCampusName = it },
         campusAddress = newCampusAddress,
         onCampusAddressChange = { newCampusAddress = it },
         onAddClick = {
             viewModel.addCampus(
-                schoolId,
-                newCampusName,
-                newCampusAddress
+                schoolId, newCampusName, newCampusAddress
             ) { success, newId, message ->
                 if (success && newId != null) {
                     campusId = newId
-                    campusName = newCampusName
+                    viewModel.setCampusName(newCampusName)
                     showAddCampusDialog = false
                     scope.launch {
                         Toast.makeText(context, "校区添加成功", Toast.LENGTH_SHORT).show()
@@ -597,4 +601,11 @@ fun ProfileEditScreen(navController: NavController, userId: String) {
             }
         },
         onDismiss = { showAddCampusDialog = false })
+}
+
+fun Resource<String>.show(): String {
+    return when (this) {
+        is Resource.Success -> this.data
+        else -> "未设置"
+    }
 }

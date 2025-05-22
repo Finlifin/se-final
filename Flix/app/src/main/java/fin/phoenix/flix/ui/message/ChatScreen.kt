@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.motionEventSpy
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -392,7 +393,7 @@ fun MessageItem(
             if (!isOutgoing) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl(message.sender?.avatarUrl ?: "loading_avatar.png"))
+                        .data(imageUrl(message.sender?.avatarUrl))
                         .crossfade(true).build(),
                     contentDescription = "头像",
                     modifier = Modifier
@@ -499,71 +500,82 @@ fun MessageItem(
                             "order" -> {
                                 val payload = content.payload as? Order
                                 if (payload != null) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.8f)
-                                            .clickable {
-                                                navController.navigate("/orders/${payload.orderId}")
-                                            },
-                                        color = Color(0xFFF5F5F5),
-                                        // 为订单卡片添加阴影
-                                        shadowElevation = 2.dp
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .padding(8.dp)
-                                                .background(Color.Transparent)
-                                        ) {
+                                    if (payload.orderType == "recharge") {
+                                        Column {
                                             Text(
-                                                text = "[订单]",
-                                                fontSize = 12.sp,
-                                                color = Color.Gray
+                                                text = "充值成功，共充值 ${payload.price} 元",
+
+                                                color = if (isOutgoing) Color.White else Color.Gray
                                             )
-
-                                            Row(
-                                                modifier = Modifier.padding(vertical = 8.dp),
-                                                verticalAlignment = Alignment.CenterVertically
+                                        }
+                                    } else {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.8f)
+                                                .clickable {
+                                                    navController.navigate("/orders/${payload.orderId}")
+                                                },
+                                            color = Color(0xFFF5F5F5),
+                                            // 为订单卡片添加阴影
+                                            shadowElevation = 2.dp
+                                        ) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .padding(8.dp)
+                                                    .background(Color.Transparent)
                                             ) {
-                                                Column {
-                                                    Text(
-                                                        text = payload.productId,
-                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                                        maxLines = 2,
-                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                                    )
+                                                Text(
+                                                    text = "[订单]",
+                                                    fontSize = 12.sp,
+                                                    color = Color.Gray
+                                                )
 
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
+                                                Row(
+                                                    modifier = Modifier.padding(vertical = 8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column {
                                                         Text(
-                                                            text = "¥${payload.price}",
-                                                            color = RoseRed,
-                                                            fontSize = 14.sp,
-                                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                                            text = payload.productId,
+                                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                            maxLines = 2,
+                                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                                         )
 
-                                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                                        Surface(
-                                                            shape = RoundedCornerShape(4.dp),
-                                                            color = getOrderStatusColor(payload.status.toString()).first
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically
                                                         ) {
                                                             Text(
-                                                                text = getOrderStatusText(payload.status.toString()),
-                                                                color = getOrderStatusColor(payload.status.toString()).second,
-                                                                fontSize = 12.sp,
-                                                                modifier = Modifier.padding(
-                                                                    horizontal = 4.dp,
-                                                                    vertical = 2.dp
-                                                                )
+                                                                text = "¥${payload.price}",
+                                                                color = RoseRed,
+                                                                fontSize = 14.sp,
+                                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                                                             )
+
+                                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                                            Surface(
+                                                                shape = RoundedCornerShape(4.dp),
+                                                                color = getOrderStatusColor(payload.status.toString()).first
+                                                            ) {
+                                                                Text(
+                                                                    text = getOrderStatusText(payload.status.toString()),
+                                                                    color = getOrderStatusColor(payload.status.toString()).second,
+                                                                    fontSize = 12.sp,
+                                                                    modifier = Modifier.padding(
+                                                                        horizontal = 4.dp,
+                                                                        vertical = 2.dp
+                                                                    )
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
                                     }
+
                                 } else {
                                     Text(
                                         text = "[订单信息]",

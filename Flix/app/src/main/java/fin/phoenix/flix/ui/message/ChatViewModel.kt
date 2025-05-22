@@ -10,7 +10,7 @@ import fin.phoenix.flix.data.Message
 import fin.phoenix.flix.data.MessageContentItem
 import fin.phoenix.flix.data.MessageTypes
 import fin.phoenix.flix.data.UserManager
-import fin.phoenix.flix.data.repository.MessageRepository
+import fin.phoenix.flix.repository.MessageRepository
 import kotlinx.coroutines.launch
 import kotlin.uuid.ExperimentalUuidApi
 

@@ -118,18 +118,18 @@ fun UserProfileHeader(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("发消息")
             }
-
-            // Follow button
-            Button(
-                onClick = onFollowClick,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = RoseRed
-                )
-            ) {
-                Text("关注")
-            }
+//
+//            // Follow button
+//            Button(
+//                onClick = onFollowClick,
+//                modifier = Modifier.weight(1f),
+//                shape = RoundedCornerShape(24.dp),
+//                colors = ButtonDefaults.buttonColors(
+//                    containerColor = RoseRed
+//                )
+//            ) {
+//                Text("关注")
+//            }
         }
     }
 }

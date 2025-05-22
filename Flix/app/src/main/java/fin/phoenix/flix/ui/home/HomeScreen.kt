@@ -106,7 +106,7 @@ fun HomeScreen(navController: NavController) {
                             // Pop up to the start destination of the graph to
                             // avoid building up a large stack of destinations
                             popUpTo(mainNavController.graph.findStartDestination().id) {
-                                saveState = true
+                                saveState = false
                             }
                             // Avoid multiple copies of the same destination
                             launchSingleTop = true

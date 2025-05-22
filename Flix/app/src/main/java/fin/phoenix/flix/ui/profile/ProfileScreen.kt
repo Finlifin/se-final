@@ -38,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import fin.phoenix.flix.api.PhoenixMessageClient
 import fin.phoenix.flix.api.navigateToChat
+import fin.phoenix.flix.data.ProductStatus
 import fin.phoenix.flix.data.UserManager
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.ui.components.ErrorMessage
@@ -181,7 +182,7 @@ fun UserScreen(navController: NavController, userId: String) {
                                         is Resource.Success -> {
                                             // Here we're still using mockProducts as a temporary solution
                                             // In a real app, you would fetch the actual products using the IDs
-                                            val products = productsState.data
+                                            val products = productsState.data.filter { it.status == ProductStatus.AVAILABLE }
 
                                             UserProductGrid(
                                                 products = products,

@@ -67,7 +67,7 @@ import fin.phoenix.flix.api.ConnectionState
 import fin.phoenix.flix.data.Conversation
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
-import fin.phoenix.flix.data.repository.MessageRepository
+import fin.phoenix.flix.repository.MessageRepository
 import fin.phoenix.flix.repository.ProfileRepository
 import fin.phoenix.flix.ui.colors.RoseRed
 import fin.phoenix.flix.util.Resource

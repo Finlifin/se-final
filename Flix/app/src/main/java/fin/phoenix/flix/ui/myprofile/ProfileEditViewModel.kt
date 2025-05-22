@@ -8,8 +8,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import fin.phoenix.flix.api.ProfileUpdateRequest
 import fin.phoenix.flix.api.toProfileUpdateRequestResource
-import fin.phoenix.flix.data.School
 import fin.phoenix.flix.data.Campus
+import fin.phoenix.flix.data.School
 import fin.phoenix.flix.data.User
 import fin.phoenix.flix.data.UserAbstract
 import fin.phoenix.flix.data.UserManager
@@ -33,7 +33,7 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _updateState = MutableLiveData<Resource<User>?>()
     val updateState: LiveData<Resource<User>?> = _updateState
-    
+
     private val _avatarUpdateState = MutableLiveData<Resource<User>?>()
     val avatarUpdateState: LiveData<Resource<User>?> = _avatarUpdateState
 
@@ -45,9 +45,47 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
     private val _campusesState = MutableStateFlow<Resource<List<Campus>>>(Resource.Loading)
     val campusesState: StateFlow<Resource<List<Campus>>> = _campusesState.asStateFlow()
 
+    private val _schoolNameState = MutableLiveData<Resource<String>>(Resource.Loading)
+    val schoolNameState: LiveData<Resource<String>> = _schoolNameState
+
+    private val _campusNameState = MutableLiveData<Resource<String>>(Resource.Loading)
+    val campusNameState: LiveData<Resource<String>> = _campusNameState
+
+
     // 初始化时加载学校列表
     init {
         loadSchools()
+        loadCurrentCampusAndSchool()
+    }
+
+    fun loadCurrentCampusAndSchool() {
+        viewModelScope.launch {
+            userManager.currentUser.value?.schoolId?.let { schoolId ->
+                _schoolNameState.postValue(
+                    when (val result = schoolRepository.getSchool(schoolId)) {
+                        is Resource.Success -> Resource.Success(result.data.name)
+                        else -> Resource.Loading
+                    }
+                )
+            }
+
+            userManager.currentUser.value?.campusId?.let { campusId ->
+                _campusNameState.postValue(
+                    when (val result = schoolRepository.getCampus(campusId)) {
+                        is Resource.Success -> Resource.Success(result.data.name)
+                        else -> Resource.Loading
+                    }
+                )
+            }
+        }
+    }
+
+    fun setSchoolName(new: String) {
+        _schoolNameState.postValue(Resource.Success(new))
+    }
+
+    fun setCampusName(new: String) {
+        _campusNameState.postValue(Resource.Success(new))
     }
 
     fun getUserProfile(userId: String) {
@@ -69,6 +107,7 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
                     updateUserManager(result.data)
                     onComplete(true)
                 }
+
                 else -> onComplete(false)
             }
         }
@@ -90,6 +129,7 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
                             updateUserManager(result.data)
                             onComplete(true)
                         }
+
                         else -> onComplete(false)
                     }
                 } else {
@@ -103,7 +143,7 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
-    
+
     // 更新UserManager
     private fun updateUserManager(user: User) {
         // 创建UserAbstract并更新到UserManager
@@ -132,16 +172,20 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
             _campusesState.value = Resource.Success(emptyList())
             return
         }
-        
+
         viewModelScope.launch {
             _campusesState.value = Resource.Loading
             val result = schoolRepository.getCampusesBySchoolId(schoolId)
             _campusesState.value = result
         }
     }
-    
+
     // 添加新学校
-    fun addSchool(name: String, code: String, onComplete: (success: Boolean, schoolId: String?, message: String) -> Unit) {
+    fun addSchool(
+        name: String,
+        code: String,
+        onComplete: (success: Boolean, schoolId: String?, message: String) -> Unit
+    ) {
         viewModelScope.launch {
             try {
                 val result = schoolRepository.createSchool(name)
@@ -151,9 +195,11 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
                         loadSchools()
                         onComplete(true, result.data.id, "学校添加成功")
                     }
+
                     is Resource.Error -> {
                         onComplete(false, null, result.message)
                     }
+
                     else -> onComplete(false, null, "添加失败")
                 }
             } catch (e: Exception) {
@@ -161,14 +207,19 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
-    
+
     // 添加新校区
-    fun addCampus(schoolId: String, name: String, address: String, onComplete: (success: Boolean, campusId: String?, message: String) -> Unit) {
+    fun addCampus(
+        schoolId: String,
+        name: String,
+        address: String,
+        onComplete: (success: Boolean, campusId: String?, message: String) -> Unit
+    ) {
         if (schoolId.isBlank() || schoolId == "未设置") {
             onComplete(false, null, "请先选择学校")
             return
         }
-        
+
         viewModelScope.launch {
             try {
                 val result = schoolRepository.createCampus(schoolId, name, address)
@@ -178,9 +229,11 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
                         loadCampuses(schoolId)
                         onComplete(true, result.data.id, "校区添加成功")
                     }
+
                     is Resource.Error -> {
                         onComplete(false, null, result.message ?: "添加失败")
                     }
+
                     else -> onComplete(false, null, "添加失败")
                 }
             } catch (e: Exception) {
@@ -188,7 +241,7 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
-    
+
     // 根据关键词搜索学校
     fun searchSchools(query: String) {
         viewModelScope.launch {

@@ -1,7 +1,6 @@
-package fin.phoenix.flix.data.repository
+package fin.phoenix.flix.repository
 
 import android.content.Context
-import android.nfc.Tag
 import android.util.Log
 import androidx.core.content.edit
 import androidx.lifecycle.LiveData
@@ -88,7 +87,7 @@ class MessageRepository private constructor(
         // 观察新消息
         repositoryScope.launch {
             messageClient.newMessages.collect { message ->
-                handleNewMessage(message)
+                handleNewMessage(message.copy(senderId = message.senderId ?: "server"))
             }
         }
 
@@ -196,8 +195,8 @@ class MessageRepository private constructor(
      */
     private suspend fun updateOrCreateConversation(message: Message) {
         // 确定会话ID和参与者ID
-        val conversationId: String
         val participantId: String
+        val conversationId: String
         val participant: UserAbstract?
 
         if (message.senderId == currentUserId) {
@@ -207,7 +206,7 @@ class MessageRepository private constructor(
             conversationId = getConversationId(currentUserId!!, participantId)
         } else {
             // 我接收的消息
-            participantId = message.senderId
+            participantId = message.senderId ?: "server"
             participant = message.sender
             conversationId = getConversationId(currentUserId!!, participantId)
         }
@@ -299,9 +298,10 @@ class MessageRepository private constructor(
      * 标记会话中所有消息为已读
      */
     suspend fun markConversationRead(conversationId: String): Result<Int> {
-    // 获取会话中所有未读消息的ID
+        // 获取会话中所有未读消息的ID
         val messages = messageDao?.getMessagesByConversationIdPaged(conversationId, 1000, 0)
-            ?.filter { it.status == null || it.status == MessageStatus.UNREAD }?.map { it.id } ?: listOf()
+            ?.filter { it.status == null || it.status == MessageStatus.UNREAD }?.map { it.id }
+            ?: listOf()
 
         // 如果没有未读消息，返回成功结果
         if (messages.isEmpty()) {
@@ -350,7 +350,7 @@ class MessageRepository private constructor(
         result.onSuccess { syncResult ->
             // 保存同步到的消息到数据库
             syncResult.messages.forEach { message ->
-                handleNewMessage(message)
+                handleNewMessage(message.copy(senderId = message.senderId ?: "server"))
             }
         }
 
@@ -491,7 +491,7 @@ class MessageRepository private constructor(
             val syncResult = result.getOrNull()
             syncResult?.messages?.forEach { message ->
                 // 处理每条消息
-                handleNewMessage(message)
+                handleNewMessage(message.copy(senderId = message.senderId ?: "server"))
             }
             // 更新最后同步时间
             context.getSharedPreferences("flix_prefs", Context.MODE_PRIVATE).edit {

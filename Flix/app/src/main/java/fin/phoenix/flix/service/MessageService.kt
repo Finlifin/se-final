@@ -12,7 +12,7 @@ import android.os.IBinder
 import android.util.Log
 import fin.phoenix.flix.api.PhoenixMessageClient
 import fin.phoenix.flix.data.Message
-import fin.phoenix.flix.data.repository.MessageRepository
+import fin.phoenix.flix.repository.MessageRepository
 import fin.phoenix.flix.util.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

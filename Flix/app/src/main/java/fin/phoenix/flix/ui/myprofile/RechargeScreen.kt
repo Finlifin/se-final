@@ -72,8 +72,7 @@ fun RechargeScreen(
     val paymentMethods = listOf(
         PaymentMethod("alipay", "支付宝", R.drawable.alipay_square_),
         PaymentMethod("wechat", "微信支付", R.drawable.wechat_pay),
-        PaymentMethod("card", "银行卡", R.drawable.union_pay),
-        PaymentMethod("wallet", "钱包余额", R.drawable.wallet_svgrepo_com)
+        PaymentMethod("card", "银行卡", R.drawable.union_pay)
     )
     
     var selectedPaymentMethod by remember { mutableStateOf(paymentMethods.first().id) }

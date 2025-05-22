@@ -38,7 +38,6 @@ class MyProfileViewModel(application: Application) : AndroidViewModel(applicatio
     private val _userFavoritesState = MutableLiveData<Resource<List<Product>>>()
     val userFavoritesState: LiveData<Resource<List<Product>>> = _userFavoritesState
     
-    // 添加学校和校区名称的状态
     private val _schoolNameState = MutableLiveData<Resource<String>>(Resource.Loading)
     val schoolNameState: LiveData<Resource<String>> = _schoolNameState
     

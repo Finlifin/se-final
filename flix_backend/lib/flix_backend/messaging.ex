@@ -299,9 +299,9 @@ defmodule FlixBackend.Messaging do
   - {:ok, message} 成功
   - {:error, reason} 失败
   """
-  def send_order_message(recipient_id, content) do
+  def send_order_message(message_id, recipient_id, content) do
     message_params = %{
-      message_id: generate_server_message_id(),
+      message_id: message_id,
       sender: nil, # 服务器发送的消息
       receiver: recipient_id,
       content: content,
